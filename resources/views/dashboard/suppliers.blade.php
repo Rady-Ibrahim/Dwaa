@@ -41,7 +41,8 @@
             <thead class="bg-zinc-900/80 text-right text-xs uppercase text-zinc-500">
                 <tr>
                     <th class="px-4 py-3">الاسم</th>
-                    <th class="px-4 py-3">الهاتف</th>
+                    <th class="px-4 py-3 text-center">هاتف 1</th>
+                    <th class="px-4 py-3 text-center">هاتف 2</th>
                     <th class="px-4 py-3">المنطقة</th>
                     <th class="px-4 py-3"></th>
                 </tr>
@@ -50,7 +51,28 @@
                 @forelse ($suppliers as $s)
                     <tr class="hover:bg-zinc-900/40">
                         <td class="px-4 py-3 text-white">{{ $s->name }}</td>
-                        <td class="px-4 py-3 text-zinc-400" dir="ltr">{{ $s->phone1 ?? '—' }}</td>
+                        <td class="px-4 py-3 text-zinc-400">
+                            @php
+                                $digitsPhone1 = preg_replace('/\D+/', '', (string) ($s->phone1 ?? ''));
+                                $formattedPhone1 = strlen($digitsPhone1) === 11
+                                    ? substr($digitsPhone1, 0, 4).' '.substr($digitsPhone1, 4, 3).' '.substr($digitsPhone1, 7)
+                                    : ($s->phone1 ?: '—');
+                            @endphp
+                            <div class="flex w-full justify-center">
+                                <span class="inline-block text-center font-mono tracking-wide" dir="ltr">{{ $formattedPhone1 }}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-zinc-400">
+                            @php
+                                $digitsPhone2 = preg_replace('/\D+/', '', (string) ($s->phone2 ?? ''));
+                                $formattedPhone2 = strlen($digitsPhone2) === 11
+                                    ? substr($digitsPhone2, 0, 4).' '.substr($digitsPhone2, 4, 3).' '.substr($digitsPhone2, 7)
+                                    : ($s->phone2 ?: '—');
+                            @endphp
+                            <div class="flex w-full justify-center">
+                                <span class="inline-block text-center font-mono tracking-wide" dir="ltr">{{ $formattedPhone2 }}</span>
+                            </div>
+                        </td>
                         <td class="px-4 py-3 text-zinc-400">{{ $s->area ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             <a href="{{ route('dashboard.suppliers.edit', $s) }}" class="text-xs text-teal-400 hover:underline">تعديل</a>
@@ -63,7 +85,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-4 py-8 text-center text-zinc-500">لا يوجد موردون.</td>
+                        <td colspan="5" class="px-4 py-8 text-center text-zinc-500">لا يوجد موردون.</td>
                     </tr>
                 @endforelse
             </tbody>

@@ -65,11 +65,30 @@ class DashboardAnalyticsController extends Controller
             ->values()
             ->take(20);
 
+        $overview = [
+            'searches' => SearchLog::query()->forQueryAggregates()->count(),
+            'comparisons' => ComparisonLog::query()->count(),
+            'searching_users' => (int) SearchLog::query()
+                ->forQueryAggregates()
+                ->selectRaw('COUNT(DISTINCT user_id) as aggregate')
+                ->value('aggregate'),
+        ];
+
+        $maxSearched = max(1, (int) ($mostSearched->max('c') ?? 1));
+        $maxNoResults = max(1, (int) ($noResults->max('c') ?? 1));
+        $maxNoOffers = max(1, (int) ($noOffers->max('c') ?? 1));
+        $maxActivity = max(1, (int) $activityByUser->max(fn ($r) => $r->searches + $r->comparisons));
+
         return view('dashboard.analytics', compact(
             'mostSearched',
             'noResults',
             'noOffers',
-            'activityByUser'
+            'activityByUser',
+            'overview',
+            'maxSearched',
+            'maxNoResults',
+            'maxNoOffers',
+            'maxActivity'
         ));
     }
 }

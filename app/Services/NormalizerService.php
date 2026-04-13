@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Database\Eloquent\Builder;
+
 class NormalizerService
 {
     public function normalize(string $text): string
@@ -93,5 +95,135 @@ class NormalizerService
         $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
 
         return trim($text);
+    }
+
+    /**
+     * ICU transliteration to Latin ASCII so Arabic queries can match Latin brand spellings (e.g. Obunof).
+     */
+    public function transliterateToLatinAscii(string $text): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        if (class_exists(\Transliterator::class)) {
+            try {
+                static $tr = null;
+                if ($tr === null) {
+                    $tr = \Transliterator::create('Any-Latin; Latin-ASCII');
+                }
+                $out = $tr->transliterate($text);
+
+                return is_string($out) ? $out : $text;
+            } catch (\Throwable) {
+                // fall through
+            }
+        }
+
+        return $this->transliterateToLatinAsciiFallback($text);
+    }
+
+    /**
+     * Consonant-heavy fold for cross-script “sounds like” matching (Arabic اوبونوف vs Latin obunof).
+     */
+    public function phoneticConsonantKey(string $text): string
+    {
+        $ascii = $this->transliterateToLatinAscii($text);
+        $ascii = mb_strtolower($ascii, 'UTF-8');
+        $ascii = preg_replace('/[aeiou\s\-_\'\.]/u', '', $ascii) ?? $ascii;
+        $ascii = preg_replace('/w+/u', '', $ascii) ?? $ascii;
+
+        return $ascii;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function likeTermsForSearch(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [];
+        }
+
+        $normalized = $this->normalize($raw);
+        $lower = mb_strtolower($raw, 'UTF-8');
+        $latin = $this->transliterateToLatinAscii($raw);
+        $latinLower = $latin !== '' ? mb_strtolower($latin, 'UTF-8') : '';
+        $latinNorm = $latin !== '' ? $this->normalize($latin) : '';
+
+        $terms = array_unique(array_filter([
+            $normalized,
+            $lower,
+            $latinLower,
+            $latinNorm,
+        ], fn (string $t) => $t !== ''));
+
+        return array_values($terms);
+    }
+
+    public function applyFlexibleProductSearch(Builder $builder, string $raw): void
+    {
+        $terms = $this->likeTermsForSearch($raw);
+        if ($terms === []) {
+            return;
+        }
+
+        $builder->where(function (Builder $outer) use ($terms) {
+            foreach ($terms as $term) {
+                $safe = $this->stripUnsafeLikeWildcards($term);
+                if ($safe === '') {
+                    continue;
+                }
+                $like = '%'.$safe.'%';
+                $outer->orWhere(function (Builder $inner) use ($like) {
+                    $inner->where('normalized_name', 'LIKE', $like)
+                        ->orWhere('name_ar', 'LIKE', $like)
+                        ->orWhere('name_en', 'LIKE', $like)
+                        ->orWhere('code', 'LIKE', $like)
+                        ->orWhereHas('aliases', function (Builder $a) use ($like) {
+                            $a->where('normalized_name', 'LIKE', $like)
+                                ->orWhere('name', 'LIKE', $like);
+                        });
+                });
+            }
+        });
+    }
+
+    public function productTextMatchesPhoneticFold(string $normalizedName, ?string $nameAr, ?string $nameEn, string $queryFold): bool
+    {
+        if ($queryFold === '' || strlen($queryFold) < 3) {
+            return false;
+        }
+
+        $hay = $this->phoneticConsonantKey(implode(' ', array_filter([
+            $normalizedName,
+            $nameAr ?? '',
+            $nameEn ?? '',
+        ])));
+
+        return $hay !== '' && str_contains($hay, $queryFold);
+    }
+
+    private function stripUnsafeLikeWildcards(string $value): string
+    {
+        return str_replace(['%', '_'], '', $value);
+    }
+
+    private function transliterateToLatinAsciiFallback(string $text): string
+    {
+        $map = [
+            'أ' => 'a', 'إ' => 'i', 'آ' => 'a', 'ٱ' => 'a', 'ا' => 'a',
+            'ب' => 'b', 'ت' => 't', 'ث' => 'th', 'ج' => 'j', 'ح' => 'h', 'خ' => 'kh',
+            'د' => 'd', 'ذ' => 'dh', 'ر' => 'r', 'ز' => 'z', 'س' => 's', 'ش' => 'sh',
+            'ص' => 's', 'ض' => 'd', 'ط' => 't', 'ظ' => 'z', 'ع' => 'a', 'غ' => 'gh',
+            'ف' => 'f', 'ق' => 'q', 'ك' => 'k', 'ل' => 'l', 'م' => 'm', 'ن' => 'n',
+            'ه' => 'h', 'و' => 'w', 'ي' => 'y', 'ى' => 'a', 'ة' => 'h', 'ئ' => 'y', 'ؤ' => 'w',
+        ];
+
+        $out = str_replace(array_keys($map), array_values($map), $text);
+
+        return preg_replace('/[^\x20-\x7E]/u', '', $out) ?? $out;
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Offer;
 use App\Models\Product;
 use App\Models\SearchLog;
 use App\Models\User;
@@ -58,31 +59,70 @@ class SearchService
      */
     public function fetchProducts(string $query, int $limit = 20): Collection
     {
-        $normalized = $this->normalizer->normalize($query);
+        $trim = trim($query);
+        if ($trim === '') {
+            return collect();
+        }
 
-        return Product::query()
-            ->where(function ($q) use ($normalized) {
-                $q->where('normalized_name', 'LIKE', '%'.$normalized.'%')
-                    ->orWhereHas('aliases', function ($alias) use ($normalized) {
-                        $alias->where('normalized_name', 'LIKE', '%'.$normalized.'%');
-                    });
-            })
-            ->with([
-                'supplier:id,name,area',
-                'offers' => function ($q) {
-                    $q->active()
-                        ->orderBy('price')
-                        ->with(['supplier:id,name,area']);
-                },
-            ])
-            ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code'])
+        $queryFold = $this->normalizer->phoneticConsonantKey($trim);
+
+        $with = [
+            'supplier:id,name,area',
+            'offers' => function ($q) {
+                $q->active()
+                    ->orderBy('price')
+                    ->with(['supplier:id,name,area']);
+            },
+        ];
+
+        $primary = Product::query()
+            ->tap(fn ($q) => $this->normalizer->applyFlexibleProductSearch($q, $trim))
+            ->with($with)
+            ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
             ->limit($limit)
             ->get();
+
+        if ($primary->count() >= $limit || strlen($queryFold) < 3) {
+            return $primary;
+        }
+
+        $needed = $limit - $primary->count();
+        $seen = array_flip($primary->modelKeys());
+
+        $extraIds = [];
+        foreach (Product::query()->select(['id', 'normalized_name', 'name_ar', 'name_en'])->orderBy('id')->cursor() as $row) {
+            if (array_key_exists($row->getKey(), $seen)) {
+                continue;
+            }
+            if ($this->normalizer->productTextMatchesPhoneticFold(
+                (string) ($row->normalized_name ?? ''),
+                $row->name_ar,
+                $row->name_en,
+                $queryFold
+            )) {
+                $extraIds[] = $row->id;
+                if (count($extraIds) >= $needed) {
+                    break;
+                }
+            }
+        }
+
+        if ($extraIds === []) {
+            return $primary;
+        }
+
+        $extra = Product::query()
+            ->whereIn('id', $extraIds)
+            ->with($with)
+            ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+            ->get();
+
+        return $primary->concat($extra)->values();
     }
 
     private function formatProduct(Product $product): array
     {
-        /** @var Collection<int, \App\Models\Offer> $offers */
+        /** @var Collection<int, Offer> $offers */
         $offers = $product->offers;
         if ($product->supplier_id) {
             $offers = $offers->where('supplier_id', $product->supplier_id)->values();

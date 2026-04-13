@@ -43,17 +43,7 @@ class DashboardUsersController extends Controller
             'subscription_expires_at' => ['nullable', 'date'],
         ];
 
-        if ($request->filled('password')) {
-            $rules['password'] = ['required', Password::defaults()];
-        }
-
         $data = $request->validate($rules);
-
-        if (! empty($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
-        } else {
-            unset($data['password']);
-        }
 
         if ($request->has('is_active')) {
             $data['is_active'] = $request->boolean('is_active');
@@ -62,6 +52,28 @@ class DashboardUsersController extends Controller
         $user->update($data);
 
         return back()->with('status', 'تم تحديث المستخدم.');
+    }
+
+    public function editPassword(User $user)
+    {
+        return view('dashboard.users-password', [
+            'user' => $user,
+        ]);
+    }
+
+    public function updatePassword(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'password' => ['required', Password::defaults(), 'confirmed'],
+        ]);
+
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return redirect()
+            ->route('dashboard.users')
+            ->with('status', 'تم تحديث كلمة مرور المستخدم.');
     }
 
     public function destroy(Request $request, User $user)

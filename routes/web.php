@@ -32,6 +32,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/users', [DashboardController::class, 'users'])->name('dashboard.users');
         Route::post('/users', [DashboardUsersController::class, 'store'])->name('dashboard.users.store');
         Route::put('/users/{user}', [DashboardUsersController::class, 'update'])->name('dashboard.users.update');
+        Route::get('/users/{user}/password', [DashboardUsersController::class, 'editPassword'])->name('dashboard.users.password.edit');
+        Route::put('/users/{user}/password', [DashboardUsersController::class, 'updatePassword'])->name('dashboard.users.password.update');
         Route::delete('/users/{user}', [DashboardUsersController::class, 'destroy'])->name('dashboard.users.destroy');
 
         Route::get('/activation-codes', [DashboardActivationCodesController::class, 'index'])->name('dashboard.activation-codes');

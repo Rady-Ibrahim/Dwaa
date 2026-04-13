@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\ProductAlias;
 use App\Models\UnmatchedProduct;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -114,16 +115,10 @@ class MappingService
             ->update(['status' => 'ignored']);
     }
 
-    public function searchProducts(string $query, int $limit = 8): \Illuminate\Support\Collection
+    public function searchProducts(string $query, int $limit = 8): Collection
     {
-        $normalized = $this->normalizer->normalize($query);
-
         return Product::query()
-            ->where(function ($q) use ($normalized, $query) {
-                $q->where('normalized_name', 'LIKE', '%'.$normalized.'%')
-                    ->orWhere('name_en', 'LIKE', '%'.$query.'%')
-                    ->orWhere('code', 'LIKE', '%'.$query.'%');
-            })
+            ->tap(fn ($q) => $this->normalizer->applyFlexibleProductSearch($q, $query))
             ->select(['id', 'name_ar', 'name_en', 'code'])
             ->limit($limit)
             ->get();

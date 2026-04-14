@@ -41,6 +41,7 @@ class ActivationService
 
         $user->update([
             'subscription_expires_at' => $base->copy()->addDays($record->duration_days),
+            'activation_code' => $record->code,
         ]);
 
         return $user->fresh();

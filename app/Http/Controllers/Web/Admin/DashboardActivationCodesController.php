@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivationCode;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -51,6 +52,28 @@ class DashboardActivationCodesController extends Controller
         }
 
         $activationCode->update($data);
+
+        if ($request->has('is_active') && ! $request->boolean('is_active')) {
+            $affectedByCode = User::query()
+                ->where('role', User::ROLE_CLIENT)
+                ->where('activation_code', $activationCode->code)
+                ->whereNotNull('subscription_expires_at')
+                ->update([
+                    'subscription_expires_at' => now()->subSecond(),
+                ]);
+
+            // Backward compatibility: older activated users may not have activation_code stored.
+            if ($affectedByCode === 0) {
+                User::query()
+                    ->where('role', User::ROLE_CLIENT)
+                    ->whereNull('activation_code')
+                    ->whereNotNull('subscription_expires_at')
+                    ->where('subscription_expires_at', '>', now())
+                    ->update([
+                        'subscription_expires_at' => now()->subSecond(),
+                    ]);
+            }
+        }
 
         return back()->with('status', 'تم تحديث الكود.');
     }

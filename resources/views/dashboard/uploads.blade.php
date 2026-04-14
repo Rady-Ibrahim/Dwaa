@@ -6,7 +6,7 @@
 @section('content')
     <div class="mb-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-6">
    
-        <form method="POST" action="{{ route('dashboard.uploads.store') }}" enctype="multipart/form-data" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <form method="POST" action="{{ route('dashboard.uploads.store') }}" enctype="multipart/form-data" class="grid gap-4 sm:grid-cols-2">
             @csrf
             <div class="sm:col-span-2 lg:col-span-3">
                 <label class="mb-1 block text-xs text-zinc-500">المورد</label>
@@ -21,23 +21,12 @@
                 <label class="mb-1 block text-xs text-zinc-500">الملف</label>
                 <input type="file" name="file" accept=".xlsx,.xls,.csv" required class="text-sm text-zinc-400">
             </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود اسم الصنف</label>
-                <input name="col_name" value="{{ old('col_name', 'A') }}" required class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr" placeholder="A">
+            <div class="sm:col-span-2">
+                <p class="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-400">
+                    سيتم استخدام الأعمدة تلقائيًا: الاسم من <bdi>C</bdi>، السعر من <bdi>B</bdi>، الخصم من <bdi>A</bdi>.
+                </p>
             </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود السعر</label>
-                <input name="col_price" value="{{ old('col_price', 'B') }}" required class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr" placeholder="B">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود الخصم (اختياري)</label>
-                <input name="col_discount" value="{{ old('col_discount') }}" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr" placeholder="C">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود البونص (اختياري)</label>
-                <input name="col_bonus" value="{{ old('col_bonus') }}" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr">
-            </div>
-            <div class="sm:col-span-2 lg:col-span-3">
+            <div class="sm:col-span-2">
                 <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500">رفع وبدء المعالجة</button>
             </div>
         </form>

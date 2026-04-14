@@ -18,15 +18,18 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/password', [PasswordController::class, 'update']);
 
-    Route::middleware('role:client')->group(function () {
+    Route::middleware(['is_active'])->group(function () {
+        Route::post('/password', [PasswordController::class, 'update']);
+    });
+
+    Route::middleware(['role:client'])->group(function () {
         Route::post('/activate', [ActivationController::class, 'activate']);
     });
 
-    Route::middleware(['role:client', 'subscription_valid'])->group(function () {
+    Route::middleware(['is_active', 'role:client', 'subscription_valid'])->group(function () {
         Route::get('/search', [SearchController::class, 'index']);
         Route::post('/search/from-excel', ClientExcelSearchController::class);
         Route::get('/favorites', [FavoriteController::class, 'index']);
@@ -39,7 +42,7 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
         Route::delete('/saved-comparisons/{saved_comparison}', [SavedComparisonController::class, 'destroy']);
     });
 
-    Route::middleware(['role:admin'])->prefix('admin')->group(function () {
+    Route::middleware(['is_active', 'role:admin'])->prefix('admin')->group(function () {
         Route::get('/users', [UserAdminController::class, 'index']);
         Route::post('/users', [UserAdminController::class, 'store']);
         Route::put('/users/{user}', [UserAdminController::class, 'update']);

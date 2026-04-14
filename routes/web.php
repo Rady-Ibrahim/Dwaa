@@ -8,14 +8,15 @@ use App\Http\Controllers\Web\Admin\DashboardUploadsController;
 use App\Http\Controllers\Web\Admin\DashboardUsersController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\WebAuthController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    return redirect()->route('client.login');
 });
 
-Route::get('/login', [WebAuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [WebAuthController::class, 'login']);
+Route::get('/admin/login', [WebAuthController::class, 'showLoginForm'])->name('admin.login');
+Route::post('/admin/login', [WebAuthController::class, 'login'])->name('admin.login.submit');
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout');
@@ -51,4 +52,21 @@ Route::middleware('auth')->group(function () {
         Route::post('/mapping/{unmatched_product}/create', [DashboardMappingWebController::class, 'createProduct'])->name('dashboard.mapping.create');
         Route::post('/mapping/{unmatched_product}/ignore', [DashboardMappingWebController::class, 'ignore'])->name('dashboard.mapping.ignore');
     });
+});
+// Client Routes
+Route::view('/login', 'client.login')->name('client.login');
+Route::redirect('/client/login', '/login');
+
+Route::prefix('client')->group(function () {
+    Route::redirect('/', '/client/search');
+    Route::view('/search', 'client.search')->name('client.search');
+    Route::view('/compare', 'client.compare')->name('client.compare');
+    Route::view('/favorites', 'client.favorites')->name('client.favorites');
+    Route::view('/saved-comparisons', 'client.saved-comparisons')->name('client.saved-comparisons');
+    Route::view('/password', 'client.password')->name('client.password');
+    Route::view('/activate', 'client.activate')->name('client.activate');
+
+    Route::post('/logout', function (Request $request) {
+        return redirect()->route('client.login')->withCookie(cookie()->forget('client_token'));
+    })->name('client.logout');
 });

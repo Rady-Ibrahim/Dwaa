@@ -15,17 +15,13 @@ class DashboardUploadsController extends Controller
         $data = $request->validate([
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
-            'col_name' => ['required', 'string'],
-            'col_price' => ['required', 'string'],
-            'col_discount' => ['nullable', 'string'],
-            'col_bonus' => ['nullable', 'string'],
         ]);
 
         $columnMap = [
-            'name' => $data['col_name'],
-            'price' => $data['col_price'],
-            'discount' => $data['col_discount'] ?? null,
-            'bonus' => $data['col_bonus'] ?? null,
+            'name' => 'C',
+            'price' => 'B',
+            'discount' => 'A',
+            'bonus' => null,
         ];
 
         $upload = $this->uploadService->storeUpload(

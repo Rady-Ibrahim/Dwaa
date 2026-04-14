@@ -29,7 +29,7 @@
         </div>
 
         <div class="rounded-3xl border border-white/[0.08] bg-[#121014]/90 p-8 shadow-2xl backdrop-blur-sm">
-            <form method="POST" action="{{ route('login') }}" class="space-y-5">
+            <form method="POST" action="{{ route('admin.login.submit') }}" class="space-y-5">
                 @csrf
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-zinc-400">الهاتف</label>

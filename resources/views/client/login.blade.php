@@ -32,6 +32,17 @@
 
 @push('scripts')
     <script>
+        const clientApiLoginUrl = @json(url('/api/login'));
+        const clientSearchUrl = @json(url('/client/search'));
+
+        // Fallback for stale JS bundles on server.
+        if (typeof window.setClientToken !== 'function') {
+            window.setClientToken = function (token) {
+                sessionStorage.setItem('client_token', token);
+                document.cookie = `client_token=${encodeURIComponent(token)}; path=/; max-age=86400; samesite=lax`;
+            };
+        }
+
         const btn = document.getElementById('loginBtn');
         if (btn) {
             btn.addEventListener('click', login);
@@ -49,7 +60,7 @@
             errorEl.classList.add('hidden');
 
             try {
-                const res = await axios.post('/api/login', {
+                const res = await axios.post(clientApiLoginUrl, {
                     phone,
                     password,
                     device_name: 'web'
@@ -57,7 +68,7 @@
                 if (res.data?.token) {
                     setClientToken(res.data.token);
                     setTimeout(() => {
-                        window.location.replace('/client/search');
+                        window.location.replace(clientSearchUrl);
                     }, 50);
                     return;
                 }

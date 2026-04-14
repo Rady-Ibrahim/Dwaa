@@ -3,13 +3,11 @@
 @section('title', 'المقارنات المحفوظة')
 
 @section('content')
-    <div class="mb-6 flex justify-between items-center gap-4">
+    <div class="mb-6">
         <div>
             <h3 class="text-xl font-semibold">المقارنات المحفوظة</h3>
             <p class="text-sm text-slate-500">عرض وحذف المقارنات المحفوظة.</p>
         </div>
-        <button onclick="createComparison()" class="rounded-xl bg-sky-600 px-4 py-2 text-white transition hover:bg-sky-500">إنشاء
-            مقارنة جديدة</button>
     </div>
 
     <div class="client-card overflow-hidden">
@@ -56,24 +54,6 @@
             </td>
         </tr>
     `).join('');
-        }
-
-        async function createComparison() {
-            const title = prompt('اكتب عنوانًا لهذه المقارنة:');
-            if (!title) return;
-
-            try {
-                await axios.post('/saved-comparisons', {
-                    title,
-                    payload: {
-                        pairs: []
-                    }
-                });
-                clientNotify('تم إنشاء مقارنة جديدة', 'success');
-                loadComparisons();
-            } catch (err) {
-                clientNotify('خطأ في إنشاء المقارنة', 'error');
-            }
         }
 
         async function deleteComparison(id) {

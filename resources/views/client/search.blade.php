@@ -49,8 +49,7 @@
                 oninput="debouncedSearch()">
         </div>
         <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" class="hidden" />
-        <p class="mt-3 text-sm text-slate-500">الرفع من الشيت يبحث تلقائيًا بالاسم من عمود <bdi>C</bdi> (السعر <bdi>B</bdi>، الخصم
-            <bdi>A</bdi>).</p>
+
     </div>
 
     <div class="bg-white rounded-2xl shadow overflow-hidden">

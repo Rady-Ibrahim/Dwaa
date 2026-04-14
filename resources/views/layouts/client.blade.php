@@ -66,8 +66,7 @@
             <nav class="mt-2 space-y-1 px-3 pb-4">
                 <a href="/client"
                     class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">الرئيسية</a>
-                <a href="/client/search"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">البحث</a>
+                
                 <a href="/client/compare"
                     class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">المقارنة</a>
                 <a href="/client/favorites"

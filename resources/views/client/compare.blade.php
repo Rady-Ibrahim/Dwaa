@@ -51,8 +51,8 @@
             <thead class="bg-slate-50">
                 <tr>
                     <th class="p-3">اسم المنتج</th>
-                    <th class="p-3">سعر A</th>
-                    <th class="p-3">سعر B</th>
+                    <th class="p-3">سعر </th>
+                    <th class="p-3">سعر </th>
                     <th class="p-3">الخصم</th>
                     <th class="p-3">الفرق</th>
                     <th class="p-3">الأفضل</th>

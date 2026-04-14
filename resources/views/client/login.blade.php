@@ -49,7 +49,7 @@
             errorEl.classList.add('hidden');
 
             try {
-                const res = await axios.post('login', {
+                const res = await axios.post('/api/login', {
                     phone,
                     password,
                     device_name: 'web'

@@ -19,24 +19,27 @@
             </div>
             <div class="sm:col-span-2 lg:col-span-3">
                 <label class="mb-1 block text-xs text-zinc-500">الملف</label>
-                <input type="file" name="file" accept=".xlsx,.xls,.csv" required class="text-sm text-zinc-400">
+            
+                <div class="flex items-center gap-2">
+                    <!-- أيقونة صغيرة -->
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="w-4 h-4 text-zinc-400"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12v-8m0 0L8 8m4-4l4 4"/>
+                    </svg>
+            
+                    <!-- input -->
+                    <input type="file"
+                           name="file"
+                           accept=".xlsx,.xls,.csv"
+                           required
+                           class="text-sm text-zinc-400">
+                </div>
             </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود اسم الصنف</label>
-                <input name="col_name" value="{{ old('col_name', 'A') }}" required class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr" placeholder="A">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود السعر</label>
-                <input name="col_price" value="{{ old('col_price', 'B') }}" required class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr" placeholder="B">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود الخصم (اختياري)</label>
-                <input name="col_discount" value="{{ old('col_discount', 'C') }}" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr" placeholder="C">
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-zinc-500">عمود البونص (اختياري)</label>
-                <input name="col_bonus" value="{{ old('col_bonus') }}" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" dir="ltr">
-            </div>
+
             <div class="sm:col-span-2 lg:col-span-3">
                 <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500">رفع وبدء المعالجة</button>
             </div>

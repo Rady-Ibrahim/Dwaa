@@ -54,7 +54,6 @@
             ['route' => 'dashboard.users', 'label' => 'المستخدمون', 'match' => 'dashboard.users'],
             ['route' => 'dashboard.activation-codes', 'label' => 'أكواد التفعيل', 'match' => 'dashboard.activation-codes*'],
             ['route' => 'dashboard.uploads', 'label' => 'الرفوعات', 'match' => 'dashboard.uploads'],
-            ['route' => 'dashboard.mapping', 'label' => 'غير المطابق', 'match' => 'dashboard.mapping'],
         ];
     @endphp
 

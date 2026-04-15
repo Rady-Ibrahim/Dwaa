@@ -11,12 +11,13 @@
             </div>
             <p class="mt-2 text-sm text-sky-600">رتب صح .. ووفر أكتر</p>
         </div>
-        <h3 class="text-2xl font-semibold mb-6 text-center text-sky-700">تسجيل دخول الصيدلي</h3>
+        <h3 class="text-2xl font-semibold mb-6 text-center text-sky-700">تسجيل دخول العميل</h3>
         <div id="loginForm" class="space-y-5">
             <div>
                 <label class="block text-sm font-medium mb-2">رقم الهاتف</label>
                 <input type="text" id="phone"
-                    class="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-sky-500 focus:outline-none" required>
+                    class="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-sky-500 focus:outline-none"
+                    required>
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2">كلمة المرور</label>
@@ -24,12 +25,11 @@
                     <input type="password" id="password"
                         class="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-sky-500 focus:outline-none"
                         style="padding-left: 3.2rem;" required>
-                    <button type="button" id="togglePassword"
-                        class="text-slate-500 hover:text-slate-700"
+                    <button type="button" id="togglePassword" class="text-slate-500 hover:text-slate-700"
                         style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; z-index: 2; padding: 0.2rem;"
                         aria-label="إظهار كلمة المرور" title="إظهار/إخفاء كلمة المرور">
-                        <svg id="eyeOpenIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" stroke-width="1.8">
+                        <svg id="eyeOpenIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round"
                                 d="M2.25 12s3.75-7.5 9.75-7.5S21.75 12 21.75 12 18 19.5 12 19.5 2.25 12 2.25 12Z" />
                             <circle cx="12" cy="12" r="3" />
@@ -75,7 +75,7 @@
             passwordInput.value = rememberedPassword;
         }
 
-        togglePasswordBtn?.addEventListener('click', function () {
+        togglePasswordBtn?.addEventListener('click', function() {
             const isPassword = passwordInput.type === 'password';
             passwordInput.type = isPassword ? 'text' : 'password';
             eyeOpenIcon?.classList.toggle('hidden', isPassword);
@@ -84,7 +84,7 @@
 
         // Fallback for stale JS bundles on server.
         if (typeof window.setClientToken !== 'function') {
-            window.setClientToken = function (token, remember = false) {
+            window.setClientToken = function(token, remember = false) {
                 if (remember) {
                     localStorage.setItem('client_token', token);
                     sessionStorage.removeItem('client_token');

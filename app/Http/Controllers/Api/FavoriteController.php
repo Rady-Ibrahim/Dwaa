@@ -13,9 +13,16 @@ class FavoriteController extends Controller
     {
         $favorites = UserFavorite::query()
             ->where('user_id', $request->user()->id)
-            ->with(['product' => function ($q) {
-                $q->select(['id', 'name_ar', 'name_en', 'code']);
-            }])
+            ->with([
+                'product' => function ($q) {
+                    $q->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code'])
+                        ->with(['supplier:id,name', 'offers' => function ($q2) {
+                            $q2->active()
+                                ->orderBy('price')
+                                ->with(['supplier:id,name']);
+                        }]);
+                },
+            ])
             ->latest()
             ->paginate(30);
 

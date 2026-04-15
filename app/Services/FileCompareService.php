@@ -7,9 +7,91 @@ use App\Models\Product;
 use App\Models\ProductAlias;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use RuntimeException;
 
 class FileCompareService
 {
+    private const NAME_HEADER_ALIASES = [
+        'الصنف',
+        'اسم الصنف',
+        'اسم المنتج',
+        'اسم الصنف / المنتج',
+        'المنتج',
+        'بيان',
+        'البيان',
+        'الوصف',
+        'اسم',
+        'اسم المادة',
+        'اسم الدواء',
+        'الصنف بالكامل',
+        'Item',
+        'Item Name',
+        'Product',
+        'Product Name',
+        'Description',
+        'Trade Name',
+        'Commercial Name',
+        'Brand Name',
+        'Generic Name',
+        'Medicine Name',
+    ];
+
+    private const PRICE_HEADER_ALIASES = [
+        'سعر',
+        'السعر',
+        'سعر ج',
+        'سعر البيع',
+        'سعر الوحدة',
+        'سعر المستهلك',
+        'السعر النهائي',
+        'سعر قبل الخصم',
+        'سعر العبوة',
+        'سعر الكرتونة',
+        'سعر القطاعي',
+        'سعر الجملة',
+        'سعر خاص',
+        'Public Price',
+        'Unit Price',
+        'Selling Price',
+        'Retail Price',
+        'Consumer Price',
+        'List Price',
+        'Price',
+        'Base Price',
+        'Original Price',
+        'Gross Price',
+        'MRP',
+        'PTR',
+        'PTD',
+    ];
+
+    private const DISCOUNT_HEADER_ALIASES = [
+        'خصم',
+        'الخصم',
+        'نسبة الخصم',
+        'خصم %',
+        'الخصم %',
+        '% خصم',
+        'خصم تجاري',
+        'خصم إضافي',
+        'خصم خاص',
+        'عرض',
+        'العرض',
+        'أوفر',
+        'بونص',
+        'Discount',
+        'Discount %',
+        'Discount-%',
+        'Disc',
+        'Disc %',
+        'Promo',
+        'Promotion',
+        'Offer',
+        'Deal',
+        'Rebate',
+        'Markdown',
+    ];
+
     public function __construct(
         private NormalizerService $normalizer,
         private UploadService $uploadService,
@@ -30,8 +112,8 @@ class FileCompareService
         $pathA = Storage::disk('local')->path($storagePathA);
         $pathB = Storage::disk('local')->path($storagePathB);
 
-        $normA = $this->uploadService->normalizeColumnMap($mapA);
-        $normB = $this->uploadService->normalizeColumnMap($mapB);
+        $normA = $this->hasManualColumnMap($mapA) ? $this->uploadService->normalizeColumnMap($mapA) : null;
+        $normB = $this->hasManualColumnMap($mapB) ? $this->uploadService->normalizeColumnMap($mapB) : null;
 
         $rowsA = $this->extractRows($pathA, $normA);
         $rowsB = $this->extractRows($pathB, $normB);
@@ -87,19 +169,31 @@ class FileCompareService
     }
 
     /**
-     * @param  array{name:int,price:int,discount?:int}  $columnIndexes
+     * @param  array{name:int,price:int,discount?:int}|null  $columnIndexes
      * @return list<array{raw_name:string,price:float,discount:float}>
      */
-    private function extractRows(string $absolutePath, array $columnIndexes): array
+    private function extractRows(string $absolutePath, ?array $columnIndexes): array
     {
         $spreadsheet = IOFactory::load($absolutePath);
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
         $out = [];
+        $detectedHeader = $columnIndexes !== null;
 
         foreach ($rows as $row) {
             if (! is_array($row)) {
                 continue;
             }
+
+            if (! $detectedHeader) {
+                $columnIndexes = $this->detectColumnMapFromHeaderRow($row);
+                if ($columnIndexes === null) {
+                    continue;
+                }
+                $detectedHeader = true;
+                // Skip header row once it is detected.
+                continue;
+            }
+
             $nameIdx = $columnIndexes['name'];
             $priceIdx = $columnIndexes['price'];
             $rawName = trim((string) ($row[$nameIdx] ?? ''));
@@ -119,7 +213,92 @@ class FileCompareService
             ];
         }
 
+        if (! $detectedHeader) {
+            throw new RuntimeException('تعذر اكتشاف أعمدة الاسم والسعر من هيدر ملف المقارنة.');
+        }
+
         return $out;
+    }
+
+    /**
+     * @param  array{name?:mixed,price?:mixed,discount?:mixed}  $columnMap
+     */
+    private function hasManualColumnMap(array $columnMap): bool
+    {
+        return isset($columnMap['name'], $columnMap['price'])
+            && $columnMap['name'] !== null
+            && $columnMap['price'] !== null;
+    }
+
+    /**
+     * @param  array<int, mixed>  $row
+     * @return array{name:int,price:int,discount?:int}|null
+     */
+    private function detectColumnMapFromHeaderRow(array $row): ?array
+    {
+        $aliases = [
+            'name' => self::NAME_HEADER_ALIASES,
+            'price' => self::PRICE_HEADER_ALIASES,
+            'discount' => self::DISCOUNT_HEADER_ALIASES,
+        ];
+        $map = [];
+
+        foreach ($row as $idx => $value) {
+            $header = $this->normalizeHeader((string) $value);
+            if ($header === '') {
+                continue;
+            }
+
+            foreach ($aliases as $key => $keyAliases) {
+                if (isset($map[$key])) {
+                    continue;
+                }
+
+                if ($this->headerMatchesAliases($header, $keyAliases)) {
+                    $map[$key] = (int) $idx;
+                    break;
+                }
+            }
+        }
+
+        if (! isset($map['name'], $map['price'])) {
+            return null;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<int, string>  $aliases
+     */
+    private function headerMatchesAliases(string $normalizedHeader, array $aliases): bool
+    {
+        foreach ($aliases as $alias) {
+            $normalizedAlias = $this->normalizeHeader($alias);
+            if ($normalizedAlias === '') {
+                continue;
+            }
+
+            if ($normalizedHeader === $normalizedAlias) {
+                return true;
+            }
+
+            if (mb_strlen($normalizedAlias) >= 4 && str_contains($normalizedHeader, $normalizedAlias)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeHeader(string $value): string
+    {
+        $normalized = mb_strtolower(trim($value));
+        $normalized = str_replace(['أ', 'إ', 'آ'], 'ا', $normalized);
+        $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
     }
 
     private function findProduct(string $normalized): ?Product

@@ -90,16 +90,25 @@ class SearchService
         $seen = array_flip($primary->modelKeys());
 
         $extraIds = [];
+        $queryFirstWord = $this->firstWordToken($trim);
         foreach (Product::query()->select(['id', 'normalized_name', 'name_ar', 'name_en'])->orderBy('id')->cursor() as $row) {
             if (array_key_exists($row->getKey(), $seen)) {
                 continue;
             }
-            if ($this->normalizer->productTextMatchesPhoneticFold(
+            $matchedByPhonetic = $this->normalizer->productTextMatchesPhoneticFold(
                 (string) ($row->normalized_name ?? ''),
                 $row->name_ar,
                 $row->name_en,
                 $queryFold
-            )) {
+            );
+            $matchedByFirstWord = $this->matchesQueryByFirstWordSimilarity(
+                $queryFirstWord,
+                (string) ($row->normalized_name ?? ''),
+                $row->name_ar,
+                $row->name_en
+            );
+
+            if ($matchedByPhonetic || $matchedByFirstWord) {
                 $extraIds[] = $row->id;
                 if (count($extraIds) >= $needed) {
                     break;
@@ -158,5 +167,84 @@ class SearchService
                 ];
             })->values()->all(),
         ];
+    }
+
+    private function matchesQueryByFirstWordSimilarity(string $query, ?string ...$haystacks): bool
+    {
+        $queryWord = $this->firstWordToken($query);
+        if (mb_strlen($queryWord) < 3) {
+            return false;
+        }
+
+        foreach ($haystacks as $haystack) {
+            $candidateWord = $this->firstWordToken((string) ($haystack ?? ''));
+            if (mb_strlen($candidateWord) < 3) {
+                continue;
+            }
+
+            if ($this->isOneEditOrLess($queryWord, $candidateWord)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function firstWordToken(string $value): string
+    {
+        $normalized = $this->normalizer->normalize($value);
+        if ($normalized === '') {
+            return '';
+        }
+
+        return explode(' ', $normalized)[0] ?? '';
+    }
+
+    private function isOneEditOrLess(string $a, string $b): bool
+    {
+        if ($a === $b) {
+            return true;
+        }
+
+        $lenA = mb_strlen($a);
+        $lenB = mb_strlen($b);
+        if (abs($lenA - $lenB) > 1) {
+            return false;
+        }
+
+        $charsA = preg_split('//u', $a, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $charsB = preg_split('//u', $b, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $i = 0;
+        $j = 0;
+        $edits = 0;
+
+        while ($i < count($charsA) && $j < count($charsB)) {
+            if ($charsA[$i] === $charsB[$j]) {
+                $i++;
+                $j++;
+
+                continue;
+            }
+
+            $edits++;
+            if ($edits > 1) {
+                return false;
+            }
+
+            if ($lenA > $lenB) {
+                $i++;
+            } elseif ($lenB > $lenA) {
+                $j++;
+            } else {
+                $i++;
+                $j++;
+            }
+        }
+
+        if ($i < count($charsA) || $j < count($charsB)) {
+            $edits++;
+        }
+
+        return $edits <= 1;
     }
 }

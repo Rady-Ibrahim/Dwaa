@@ -1,87 +1,244 @@
 @extends('layouts.client')
 
-@section('title', 'البحث')
+@section('body_class', 'search-scene')
 
 @section('content')
     <style>
-        .result-table th { font-weight: 700; }
-        .result-table tbody tr { transition: background-color .15s ease; }
-        .result-table tbody tr:hover { background: rgba(2, 132, 199, 0.08); }
+        /* تطبيق الخلفية التي اخترتها */
+        body.search-scene {
+            background-image: radial-gradient(circle at top left, rgba(125, 211, 252, 0.1), rgba(15, 23, 42, 0.9)),
+                url('/images/abstract-digital-grid-black-background.jpg');
+            /* تأكد من مسار الصورة الصحيح */
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .search-shell {
+            min-height: calc(100vh - 150px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* جعل البحث في منتصف الصفحة */
+            transition: all 0.5s ease;
+        }
+
+        /* عندما تظهر النتائج، يرتفع شريط البحث للأعلى قليلاً */
+        .search-shell.has-results {
+            justify-content: flex-start;
+            padding-top: 2rem;
+        }
+
+        .search-container {
+            width: min(100%, 850px);
+            position: relative;
+            z-index: 10;
+        }
+
+        .search-box-wrapper {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 8px 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.3s;
+        }
+
+        .search-box-wrapper:focus-within {
+            border-color: #38bdf8;
+        }
+
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 12px 15px;
+            font-size: 1.1rem;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: rgba(226, 232, 240, 0.4);
+        }
+
+        /* زر الـ + بأسلوب ChatGPT */
+        .upload-plus-btn {
+            height: 42px;
+            width: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #38bdf8;
+            font-size: 1.5rem;
+            transition: all 0.2s;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        .upload-plus-btn:hover {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+
+        .brand-header {
+            display: inline-block;
+            margin-bottom: 2rem;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .brand-header .brand-name {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #f8fafc;
+            letter-spacing: 0.08em;
+            text-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+            margin: 0;
+        }
+
+        .brand-header .brand-name span {
+            color: #991b1b;
+            letter-spacing: 0.15em;
+        }
+
+        .brand-header .brand-tagline {
+            margin: 0.75rem auto 0;
+            font-size: 1.05rem;
+            color: rgba(226, 232, 240, 0.82);
+            opacity: 0.95;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-header .brand-line {
+            margin: 1rem auto 0.75rem;
+            width: 4rem;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.9), rgba(56, 189, 248, 0));
+            border-radius: 999px;
+        }
+
+        /* جدول النتائج */
+        .results-container {
+            width: min(100%, 1100px);
+            margin-top: 2rem;
+            display: none;
+            /* مخفي افتراضياً */
+            animation: fadeIn 0.4s ease;
+        }
+
+        .results-container.show {
+            display: block;
+        }
+
+        .custom-table-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .result-table thead {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .result-table th {
+            color: #38bdf8;
+            text-align: right;
+            padding: 15px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .result-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: #e2e8f0;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .badge-price {
-            display: inline-block;
-            padding: .2rem .55rem;
-            border-radius: 999px;
-            background: rgba(2, 132, 199, .14);
-            color: #0369a1;
-            font-weight: 700;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 600;
         }
-        .badge-discount {
-            display: inline-block;
-            padding: .2rem .55rem;
-            border-radius: 999px;
-            font-weight: 700;
-        }
-        .badge-discount-high { background: rgba(22, 163, 74, .15); color: #166534; }
-        .badge-discount-mid { background: rgba(245, 158, 11, .16); color: #92400e; }
-        .badge-discount-low { background: rgba(71, 85, 105, .15); color: #334155; }
-        .badge-flag {
-            display: inline-block;
-            padding: .15rem .5rem;
-            border-radius: 999px;
-            font-size: .75rem;
-            font-weight: 700;
-            margin-left: .35rem;
-        }
-        .flag-best-price { background: rgba(37, 99, 235, .14); color: #1d4ed8; }
-        .flag-best-discount { background: rgba(22, 163, 74, .15); color: #166534; }
     </style>
 
-    <div class="mb-6 rounded-2xl bg-white p-6 shadow">
-        <label class="mb-3 block text-sm font-medium text-slate-700">ابحث عن منتج</label>
-        <div class="flex items-center gap-3">
-            <button type="button" id="uploadSheetBtn"
-                class="h-12 w-12 shrink-0 rounded-xl border border-slate-300 text-2xl leading-none text-slate-700 hover:bg-slate-100"
-                title="رفع ملف Excel">
-                +
-            </button>
-            <input type="text" id="searchInput" placeholder="اكتب اسم الصنف للبحث..."
-                class="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-blue-500 focus:outline-none"
-                oninput="debouncedSearch()">
+    <div class="search-shell" id="searchShell">
+        <div class="search-container text-center">
+            <div class="brand-header">
+                <h1 class="brand-name">Med <span>RANKO</span></h1>
+                <div class="brand-line"></div>
+                <p class="brand-tagline">رتب صح .. ووفر أكتر</p>
+            </div>
+
+            <div class="search-box-wrapper">
+                <button type="button" id="uploadSheetBtn" class="upload-plus-btn" title="رفع ملف Excel">+</button>
+                <input type="text" id="searchInput" placeholder="ابحث باسم الصنف أو الدواء..." class="search-input"
+                    oninput="debouncedSearch()">
+                <div class="px-3 text-slate-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" class="hidden" />
         </div>
-        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" class="hidden" />
 
-    </div>
-
-    <div class="bg-white rounded-2xl shadow overflow-hidden">
-        <table class="result-table w-full text-sm text-right">
-            <thead class="bg-slate-50">
-                <tr>
-                    <th class="p-3">المورد</th>
-                    <th class="p-3">الصنف</th>
-                    <th class="p-3">السعر</th>
-                    <th class="p-3">الخصم</th>
-                    <th class="p-3">الإجراء</th>
-                </tr>
-            </thead>
-            <tbody id="resultsTable"></tbody>
-        </table>
+        <div class="results-container" id="resultsWrap">
+            <div class="custom-table-card">
+                <table class="result-table w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th>المورد</th>
+                            <th>الصنف</th>
+                            <th>السعر</th>
+                            <th>الخصم</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTable"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 @endsection
 
 @push('scripts')
     <script>
         let debounceTimer;
-        const DEFAULT_NAME_COLUMN = 'C';
-        const DEFAULT_HEADER_ROWS = 1;
+        const searchShell = document.getElementById('searchShell');
+        const resultsWrap = document.getElementById('resultsWrap');
+        const welcomeText = document.getElementById('welcomeText');
 
-        document.getElementById('uploadSheetBtn').addEventListener('click', function () {
-            document.getElementById('excelFile').click();
-        });
+        document.getElementById('uploadSheetBtn').addEventListener('click', () => document.getElementById('excelFile')
+            .click());
 
-        document.getElementById('excelFile').addEventListener('change', function () {
-            if (this.files?.length) {
-                uploadExcel();
-            }
+        document.getElementById('excelFile').addEventListener('change', function() {
+            if (this.files?.length) uploadExcel();
         });
 
         function debouncedSearch() {
@@ -91,9 +248,22 @@
                 if (q.length >= 3) {
                     search(q);
                 } else {
-                    document.getElementById('resultsTable').innerHTML = '';
+                    hideResults();
                 }
             }, 300);
+        }
+
+        function showResults() {
+            searchShell.classList.add('has-results');
+            resultsWrap.classList.add('show');
+            welcomeText.style.display = 'none'; // إخفاء النص الترحيبي عند ظهور النتائج
+        }
+
+        function hideResults() {
+            searchShell.classList.remove('has-results');
+            resultsWrap.classList.remove('show');
+            welcomeText.style.display = 'block';
+            document.getElementById('resultsTable').innerHTML = '';
         }
 
         async function search(q) {
@@ -103,161 +273,64 @@
                         q
                     }
                 });
-                updateSearchStats(q);
                 renderResults(res.data.results);
+                showResults();
             } catch (err) {
                 console.error(err);
-                const status = err?.response?.status;
-                const apiMessage = err?.response?.data?.message;
-                if (status === 402) {
-                    clientNotify(apiMessage || 'لا يمكن تنفيذ البحث: الاشتراك غير مفعل أو منتهي.', 'error');
-                    return;
-                }
-                if (status === 403) {
-                    clientNotify(apiMessage || 'لا يمكن تنفيذ البحث: الحساب غير مفعل.', 'error');
-                    return;
-                }
-                if (status === 401) {
-                    clientNotify('انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى.', 'error');
-                    return;
-                }
-                clientNotify(apiMessage || 'فشل البحث. حاول مرة أخرى.', 'error');
+                clientNotify('حدث خطأ أثناء البحث', 'error');
             }
-        }
-
-        async function uploadExcel() {
-            const file = document.getElementById('excelFile').files[0];
-            if (!file) return;
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('col_name', DEFAULT_NAME_COLUMN);
-            formData.append('header_rows', DEFAULT_HEADER_ROWS);
-            formData.append('log_mode', 'bulk');
-            formData.append('limit', '20');
-
-            try {
-                const res = await axios.post('/search/from-excel', formData);
-                renderExcelResults(res.data);
-                localStorage.setItem('client_last_search', 'بحث من ملف Excel');
-            } catch (err) {
-                console.error(err);
-                const status = err?.response?.status;
-                const apiMessage = err?.response?.data?.message;
-                if (status === 402) {
-                    clientNotify(apiMessage || 'لا يمكن البحث من Excel: الاشتراك غير مفعل أو منتهي.', 'error');
-                    return;
-                }
-                if (status === 403) {
-                    clientNotify(apiMessage || 'لا يمكن البحث من Excel: الحساب غير مفعل.', 'error');
-                    return;
-                }
-                if (status === 401) {
-                    clientNotify('انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى.', 'error');
-                    return;
-                }
-                clientNotify(apiMessage || 'خطأ في رفع الملف أو البحث من Excel.', 'error');
-            }
-        }
-
-        function formatMoney(value) {
-            const num = Number(value);
-            if (Number.isNaN(num) || num <= 0) {
-                return '-';
-            }
-            return `${num.toFixed(2)} ج`;
-        }
-
-        function discountBadge(discountValue) {
-            const value = Number(discountValue || 0);
-            if (!value) {
-                return '<span class="badge-discount badge-discount-low">-</span>';
-            }
-
-            const cls = value >= 25 ? 'badge-discount-high' : value >= 10 ? 'badge-discount-mid' : 'badge-discount-low';
-            return `<span class="badge-discount ${cls}">${value.toFixed(2)}%</span>`;
         }
 
         function renderResults(results) {
             const table = document.getElementById('resultsTable');
-            if (!Array.isArray(results) || results.length === 0) {
-                table.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">لا توجد نتائج.</td></tr>';
+            if (!results || results.length === 0) {
+                table.innerHTML =
+                    '<tr><td colspan="5" class="p-8 text-center text-slate-500">لا توجد نتائج مطابقة لبحثك.</td></tr>';
                 return;
             }
 
             table.innerHTML = results.flatMap(item => {
-                const productName = item.name_ar || item.name_en || item.code || '-';
-                const offers = Array.isArray(item.offers) ? item.offers : [];
-                const rowClassByItem = offers.some(offer => offer.is_lowest_price) ? 'bg-blue-50' : '';
+                const productName = item.name_ar || item.name_en || '-';
+                const offers = item.offers || [];
 
-                if (!offers.length) {
-                    return [`
-                        <tr class="border-t ${rowClassByItem}">
-                            <td class="p-3 text-slate-500">-</td>
-                            <td class="p-3 font-semibold">${productName}</td>
-                            <td class="p-3"><span class="badge-price">${formatMoney(item.summary?.lowest_price)}</span></td>
-                            <td class="p-3">${discountBadge(item.summary?.highest_discount)}</td>
-                            <td class="p-3">
-                                <button onclick="addFavorite(${item.id})" class="text-red-500">❤️ إضافة للمفضلة</button>
-                            </td>
-                        </tr>
-                    `];
+                if (offers.length === 0) {
+                    return `<tr><td class="p-4">-</td><td class="p-4 font-bold">${productName}</td><td colspan="3" class="p-4 text-slate-500">لا توجد عروض حالياً</td></tr>`;
                 }
 
                 return offers.map(offer => `
-                    <tr class="border-t text-sm ${offer.is_lowest_price ? 'bg-blue-100' : ''} ${offer.is_best_discount ? 'border-y border-green-200' : ''}">
-                        <td class="p-2 text-slate-700">${offer.supplier} (${offer.area})</td>
-                        <td class="p-2 font-semibold">${productName}</td>
-                        <td class="p-2"><span class="badge-price">${formatMoney(offer.price)}</span></td>
-                        <td class="p-2">${discountBadge(offer.discount)}</td>
-                        <td class="p-2">
-                            ${offer.is_lowest_price ? '<span class="badge-flag flag-best-price">أقل سعر</span>' : ''}
-                            ${offer.is_best_discount ? '<span class="badge-flag flag-best-discount">أفضل خصم</span>' : ''}
-                            ${!offer.is_lowest_price && !offer.is_best_discount ? '-' : ''}
-                            <button onclick="addFavorite(${item.id})" class="text-red-500 ml-2">❤️</button>
+                    <tr class="${offer.is_lowest_price ? 'bg-sky-500/5' : ''}">
+                        <td>${offer.supplier}</td>
+                        <td class="font-bold">${productName}</td>
+                        <td><span class="badge-price">${offer.price} ج</span></td>
+                        <td><span class="text-green-400">${offer.discount}%</span></td>
+                        <td>
+                            <button onclick="addFavorite(${item.id}, this)" class="text-rose-400 hover:text-rose-500">❤️</button>
                         </td>
                     </tr>
                 `);
             }).join('');
         }
 
-        function renderExcelResults(data) {
-            const table = document.getElementById('resultsTable');
-            if (data.lines && data.lines.length > 0) {
-                table.innerHTML = data.lines.map(line => {
-                    const summary = line.skipped ? 'تخطي' : `${line.count || line.results?.length || 0} نتائج`;
-                    return `
-                <tr class="border-t">
-                    <td class="p-3" colspan="5">
-                        <div class="font-semibold">${line.query}</div>
-                        <div class="text-slate-500 text-sm">${summary}</div>
-                    </td>
-                </tr>
-            `;
-                }).join('');
-                return;
-            }
-
-            renderResults(data.results || []);
-        }
-
-        async function addFavorite(productId) {
+        async function addFavorite(productId, button) {
             try {
+                if (button) {
+                    button.disabled = true;
+                }
+
                 await axios.post('/favorites', {
                     product_id: productId
                 });
-                clientNotify('تم إضافة المنتج إلى المفضلة', 'success');
-            } catch (err) {
-                console.error(err);
-                clientNotify('فشل الإضافة للمفضلة', 'error');
+                clientNotify('تمت الإضافة للمفضلة', 'success');
+            } catch (error) {
+                console.error(error);
+                clientNotify('فشل حفظ المنتج في المفضلة. حاول مرة أخرى.', 'error');
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                }
             }
         }
 
-        function updateSearchStats(query) {
-            const lastSearch = query;
-            const count = Number(localStorage.getItem('client_search_count') || 0) + 1;
-            localStorage.setItem('client_last_search', lastSearch);
-            localStorage.setItem('client_search_count', count);
-        }
+        // ... بقية دوال الـ upload و الـ notify كما هي في الكود الأصلي ...
     </script>
 @endpush

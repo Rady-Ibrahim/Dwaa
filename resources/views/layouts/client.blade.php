@@ -4,155 +4,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dwaa Client</title>
+    <title>MedRANKO | @yield('title')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
-        .client-card {
-            border: 1px solid #e0f2fe;
-            background: #fff;
-            border-radius: 1rem;
-            box-shadow: 0 2px 10px rgba(2, 132, 199, 0.08);
-            transition: transform .18s ease, box-shadow .18s ease;
+        /* الأساسيات */
+        .client-shell {
+            min-height: 100vh;
+            background: #0f172a;
+            /* لون داكن أساسي */
+            color: #e2e8f0;
+            font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
         }
-        .client-card:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2, 132, 199, 0.12); }
-        .brand-logo-text {
-            font-weight: 800;
-            letter-spacing: .5px;
-            line-height: 1;
+
+        /* الهيدر العلوي - Topbar */
+        .client-topbar {
+            height: 70px;
+            background: rgba(15, 23, 42, 0.8);
+            /* خلفية شفافة داكنة */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
         }
-        .client-toast-wrap {
+
+        .topbar-menu-btn {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            border-radius: 10px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+
+        .topbar-menu-btn:hover {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+
+        .topbar-title {
+            flex: 1;
+            margin-right: 1.25rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #f8fafc;
+            letter-spacing: -0.02em;
+        }
+
+        /* المنيو الجانبي - Sidebar */
+        .client-side {
             position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1000;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100vh;
+            background: #070e1e;
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 50;
+            transform: translateX(100%);
+            transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
-            gap: .5rem;
-            width: min(90vw, 360px);
         }
-        .client-toast {
-            border-radius: .8rem;
-            padding: .75rem .9rem;
-            color: #0f172a;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
-            font-size: .92rem;
-            line-height: 1.35;
-            animation: slideIn .2s ease;
+
+        .client-side.show {
+            transform: translateX(0);
+            box-shadow: -10px 0 50px rgba(0, 0, 0, 0.5);
         }
-        .client-toast--success { border-right: 4px solid #16a34a; }
-        .client-toast--error { border-right: 4px solid #dc2626; }
-        .client-toast--info { border-right: 4px solid #0284c7; }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-8px); }
-            to { opacity: 1; transform: translateX(0); }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .brand-logo-text {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-logo-text img {
+            max-width: 220px;
+            height: auto;
+            display: block;
+        }
+
+        /* الروابط الجانبية */
+        .client-side-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 4px 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: #94a3b8;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .client-side-link:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: #38bdf8;
+        }
+
+        .client-side-link.active {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+        }
+
+        /* بروفايل المستخدم */
+        .profile-trigger {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 5px 12px;
+            border-radius: 99px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .profile-trigger:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .profile-menu {
+            position: absolute;
+            top: 110%;
+            left: 0;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 8px;
+            width: 220px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 100;
+        }
+
+        .profile-menu.show {
+            display: block;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Overlay */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 45;
+            display: none;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
         }
     </style>
     @stack('styles')
 </head>
 
-<body class="min-h-screen bg-sky-50 text-slate-800">
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <div class="w-64 border-l border-sky-100 bg-white/95 shadow-lg backdrop-blur">
-            <div class="p-5">
-                <div class="brand-logo-text text-3xl">
-                    <span class="text-slate-900">Med</span>
-                    <span class="text-rose-700">RANKO</span>
-                </div>
-                <p class="mt-2 text-xs text-sky-600">رتب صح .. ووفر أكتر</p>
+<body class="client-shell @yield('body_class')">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <aside class="client-side" id="clientSidebar">
+        <div class="sidebar-header">
+            <div class="brand-logo-text">
+                <img src="\images\brand\med-ranko-logo.jpeg" alt="MedRANKO logo">
             </div>
-            <nav class="mt-2 space-y-1 px-3 pb-4">
-                <a href="/client"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">الرئيسية</a>
-                <a href="/client/search"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">البحث</a>
-                
-                <a href="/client/compare"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">المقارنة</a>
-                <a href="/client/favorites"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">المفضلة</a>
-                <a href="/client/saved-comparisons"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">المقارنات
-                    المحفوظة</a>
-                <a href="/client/activate"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">تفعيل الحساب</a>
+        </div>
+
+        <nav class="flex-1 mt-4">
+            <a href="/client" class="client-side-link {{ request()->is('client') ? 'active' : '' }}">
+                <span>🏠</span> الرئيسية
+            </a>
+            <a href="/client/search" class="client-side-link {{ request()->is('client/search') ? 'active' : '' }}">
+                <span>🔍</span> البحث المتقدم
+            </a>
+            <a href="/client/compare" class="client-side-link {{ request()->is('client/compare') ? 'active' : '' }}">
+                <span>⚖️</span> المقارنة الذكية
+            </a>
+            <a href="/client/favorites"
+                class="client-side-link {{ request()->is('client/favorites') ? 'active' : '' }}">
+                <span>⭐</span> المفضلة
+            </a>
+            <a href="/client/activate" class="client-side-link {{ request()->is('client/activate') ? 'active' : '' }}">
+                <span>🚀</span> تفعيل الاشتراك
+            </a>
+            <a href="/client/password" class="client-side-link {{ request()->is('client/password') ? 'active' : '' }}">
+                <span>⚙️</span> الإعدادات
+            </a>
+        </nav>
+
+
+    </aside>
+
+    <div class="flex flex-col min-h-screen">
+        <header class="client-topbar flex justify-between items-center px-6">
+            <div class="flex items-center gap-4">
+                <button type="button" id="sidebarToggleBtn" class="topbar-menu-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16m-7 6h7" />
+                    </svg>
+                </button>
+                <h2 class="topbar-title">@yield('title', 'الرئيسية')</h2>
+            </div>
+
+            <div class="flex items-center gap-3">
                 <a href="/client/password"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">الإعدادات</a>
+                    class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 hover:bg-sky-500 hover:text-white transition-all shadow-lg shadow-sky-900/20"
+                    title="الإعدادات الشخصية">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </a>
+
                 <button onclick="clientLogout()"
-                    class="block w-full rounded-xl px-4 py-2.5 text-right text-slate-700 transition hover:bg-rose-100 hover:text-rose-700">تسجيل
-                    الخروج</button>
-            </nav>
-        </div>
+                    class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 hover:bg-rose-500 hover:text-white transition-all shadow-lg shadow-rose-900/20"
+                    title="تسجيل الخروج">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+        </header>
 
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col">
-            <!-- Header -->
-            <header class="border-b border-sky-100 bg-white/80 p-4 shadow-sm backdrop-blur">
-                <h2 class="text-xl font-semibold text-sky-700">@yield('title', 'الرئيسية')</h2>
-            </header>
-
-            <!-- Content -->
-            <main class="flex-1 overflow-auto bg-gradient-to-b from-sky-50 to-white p-6">
-                @yield('content')
-            </main>
-        </div>
+        <main class="flex-1">
+            @yield('content')
+        </main>
     </div>
 
     <div id="clientToastWrap" class="client-toast-wrap"></div>
 
-    @stack('scripts')
     <script>
-        (function ensureClientToken() {
-            const hasToken = !!(localStorage.getItem('client_token') || sessionStorage.getItem('client_token'));
-            if (!hasToken) {
-                window.location.replace('/client/login');
-            }
-        })();
+        // Sidebar Logic
+        const sidebar = document.getElementById('clientSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const toggleBtn = document.getElementById('sidebarToggleBtn');
 
-        window.addEventListener('unhandledrejection', function (event) {
-            const status = event.reason?.response?.status;
-            if (status === 401) {
-                clientLogout();
-            }
-        });
-
-        window.addEventListener('error', function (event) {
-            const status = event.error?.response?.status;
-            if (status === 401) {
-                clientLogout();
-            }
-        });
-
-        if (window.axios) {
-            window.axios.interceptors.response.use(
-                response => response,
-                error => {
-                    if (error?.response?.status === 401) {
-                        clientLogout();
-                    }
-                    return Promise.reject(error);
-                }
-            );
-        }
-
-        window.clientNotify = function (message, type = 'info') {
-            const wrap = document.getElementById('clientToastWrap');
-            if (!wrap || !message) return;
-
-            const toast = document.createElement('div');
-            toast.className = `client-toast client-toast--${type}`;
-            toast.textContent = message;
-            wrap.appendChild(toast);
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateX(-8px)';
-                setTimeout(() => toast.remove(), 180);
-            }, 3200);
+        const toggleSidebar = () => {
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
         };
+
+        toggleBtn.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', toggleSidebar);
+
+        // Profile Menu Logic
+        const profileBtn = document.getElementById('profileMenuBtn');
+        const profileMenu = document.getElementById('profileMenu');
+
+        profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileMenu.classList.toggle('show');
+        });
+
+        document.addEventListener('click', () => profileMenu.classList.remove('show'));
     </script>
+    @stack('scripts')
 </body>
 
 </html>

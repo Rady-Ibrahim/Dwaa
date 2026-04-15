@@ -17,12 +17,8 @@ class DashboardUploadsController extends Controller
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
         ]);
 
-        $columnMap = [
-            'name' => 'C',
-            'price' => 'B',
-            'discount' => 'A',
-            'bonus' => null,
-        ];
+        // Dashboard uploads rely on automatic header detection during processing.
+        $columnMap = [];
 
         $upload = $this->uploadService->storeUpload(
             (int) $data['supplier_id'],

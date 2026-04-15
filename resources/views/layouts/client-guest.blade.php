@@ -9,8 +9,8 @@
     @stack('styles')
 </head>
 
-<body class="min-h-screen bg-gradient-to-b from-sky-100 via-sky-50 to-white flex items-center justify-center">
-    <main class="w-full max-w-md p-6">
+<body class="relative min-h-screen bg-gradient-to-b from-sky-100 via-sky-50 to-white flex items-center justify-center overflow-hidden">
+    <main class="relative z-10 w-full max-w-md p-6">
         @yield('content')
     </main>
     @stack('scripts')

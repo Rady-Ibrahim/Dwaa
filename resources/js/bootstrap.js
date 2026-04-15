@@ -13,8 +13,7 @@ function getCookie(name) {
 }
 
 axios.interceptors.request.use(config => {
-    const token = sessionStorage.getItem('client_token') || getCookie('client_token');
-    console.log('[axios] attach token', token);
+    const token = localStorage.getItem('client_token') || sessionStorage.getItem('client_token') || getCookie('client_token');
 
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -23,23 +22,26 @@ axios.interceptors.request.use(config => {
     return config;
 });
 
-window.setClientToken = function (token) {
-    console.log('[client-token] setClientToken', token);
-    sessionStorage.setItem('client_token', token);
-    // Keep API token in sessionStorage for Authorization header.
-    // The web auth cookie is issued by the backend /api/login response.
-    console.log('[client-token] cookie after login response', document.cookie);
+window.setClientToken = function (token, remember = false) {
+    if (remember) {
+        localStorage.setItem('client_token', token);
+        sessionStorage.removeItem('client_token');
+    } else {
+        sessionStorage.setItem('client_token', token);
+        localStorage.removeItem('client_token');
+    }
 };
 
 window.clearClientToken = function () {
     sessionStorage.removeItem('client_token');
+    localStorage.removeItem('client_token');
     document.cookie = 'client_token=; path=/; max-age=0';
 };
 
 window.clientLogout = function () {
     axios.post('/logout').catch(() => null).finally(() => {
         clearClientToken();
-        window.location.href = '/login';
+        window.location.href = '/client/login';
     });
 };
 

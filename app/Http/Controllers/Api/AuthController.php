@@ -11,6 +11,23 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'role' => $user->role,
+                'is_active' => $user->is_active,
+                'subscription_expires_at' => $user->subscription_expires_at,
+                'created_at' => $user->created_at,
+            ],
+        ]);
+    }
+
     public function login(Request $request)
     {
         Log::info('API login attempt', [
@@ -66,6 +83,7 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'is_active' => $user->is_active,
                 'subscription_expires_at' => $user->subscription_expires_at,
+                'created_at' => $user->created_at,
             ],
         ]);
 

@@ -66,6 +66,8 @@
             <nav class="mt-2 space-y-1 px-3 pb-4">
                 <a href="/client"
                     class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">الرئيسية</a>
+                <a href="/client/search"
+                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">البحث</a>
                 
                 <a href="/client/compare"
                     class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">المقارنة</a>
@@ -77,7 +79,7 @@
                 <a href="/client/activate"
                     class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">تفعيل الحساب</a>
                 <a href="/client/password"
-                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">تغيير كلمة المرور</a>
+                    class="block rounded-xl px-4 py-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700">الإعدادات</a>
                 <button onclick="clientLogout()"
                     class="block w-full rounded-xl px-4 py-2.5 text-right text-slate-700 transition hover:bg-rose-100 hover:text-rose-700">تسجيل
                     الخروج</button>
@@ -103,9 +105,9 @@
     @stack('scripts')
     <script>
         (function ensureClientToken() {
-            const hasSessionToken = !!sessionStorage.getItem('client_token');
-            if (!hasSessionToken) {
-                window.location.replace('/login');
+            const hasToken = !!(localStorage.getItem('client_token') || sessionStorage.getItem('client_token'));
+            if (!hasToken) {
+                window.location.replace('/client/login');
             }
         })();
 

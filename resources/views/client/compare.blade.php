@@ -25,6 +25,16 @@
         }
         .pill-best-a { background: rgba(22, 163, 74, .14); color: #166534; }
         .pill-best-b { background: rgba(37, 99, 235, .14); color: #1d4ed8; }
+        .file-pick-btn {
+            width: 100%;
+            border: 1px dashed #94a3b8;
+            border-radius: .8rem;
+            padding: .8rem .9rem;
+            background: #f8fafc;
+            color: #0f172a;
+            text-align: right;
+        }
+        .file-pick-btn:hover { background: #eef2ff; }
     </style>
 
     <div class="bg-white p-6 rounded-2xl shadow">
@@ -33,15 +43,19 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="space-y-3">
                     <label class="block text-sm font-medium">الملف الأول</label>
-                    <input type="file" id="fileA" accept=".xlsx,.xls,.csv" required class="w-full" />
+                    <input type="file" id="fileA" accept=".xlsx,.xls,.csv" required class="hidden" />
+                    <button type="button" class="file-pick-btn" id="pickFileABtn">اختيار الملف الأول</button>
+                    <p id="fileAName" class="text-xs text-slate-500">لم يتم اختيار ملف</p>
                 </div>
                 <div class="space-y-3">
                     <label class="block text-sm font-medium">الملف الثاني</label>
-                    <input type="file" id="fileB" accept=".xlsx,.xls,.csv" required class="w-full" />
+                    <input type="file" id="fileB" accept=".xlsx,.xls,.csv" required class="hidden" />
+                    <button type="button" class="file-pick-btn" id="pickFileBBtn">اختيار الملف الثاني</button>
+                    <p id="fileBName" class="text-xs text-slate-500">لم يتم اختيار ملف</p>
                 </div>
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
-                <button type="submit" class="rounded bg-blue-600 text-white px-4 py-2">مقارنة</button>
+                <button type="submit" id="compareBtn" class="rounded bg-blue-600 text-white px-4 py-2">مقارنة</button>
             </div>
         </form>
     </div>
@@ -51,9 +65,10 @@
             <thead class="bg-slate-50">
                 <tr>
                     <th class="p-3">اسم المنتج</th>
-                    <th class="p-3">سعر </th>
-                    <th class="p-3">سعر </th>
-                    <th class="p-3">الخصم</th>
+                    <th class="p-3">سعر الملف الأول</th>
+                    <th class="p-3">سعر الملف الثاني</th>
+                    <th class="p-3">خصم الملف الأول</th>
+                    <th class="p-3">خصم الملف الثاني</th>
                     <th class="p-3">الفرق</th>
                     <th class="p-3">الأفضل</th>
                 </tr>
@@ -67,13 +82,38 @@
 @push('scripts')
     <script>
         let latestCompareData = null;
+        const fileAInput = document.getElementById('fileA');
+        const fileBInput = document.getElementById('fileB');
+        const fileAName = document.getElementById('fileAName');
+        const fileBName = document.getElementById('fileBName');
+        const compareBtn = document.getElementById('compareBtn');
+
+        document.getElementById('pickFileABtn').addEventListener('click', () => fileAInput.click());
+        document.getElementById('pickFileBBtn').addEventListener('click', () => fileBInput.click());
+
+        fileAInput.addEventListener('change', () => {
+            fileAName.textContent = fileAInput.files?.[0]?.name || 'لم يتم اختيار ملف';
+        });
+
+        fileBInput.addEventListener('change', () => {
+            fileBName.textContent = fileBInput.files?.[0]?.name || 'لم يتم اختيار ملف';
+        });
 
         async function compareFiles(event) {
             event.preventDefault();
+            if (!fileAInput.files?.[0] || !fileBInput.files?.[0]) {
+                clientNotify('اختر الملف الأول والثاني قبل المقارنة', 'error');
+                return;
+            }
+
+            compareBtn.disabled = true;
+            compareBtn.textContent = 'جاري المقارنة...';
+            const table = document.getElementById('compareTable');
+            table.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-sky-700">جارٍ مقارنة الملفات...</td></tr>';
 
             const formData = new FormData();
-            formData.append('file_a', document.getElementById('fileA').files[0]);
-            formData.append('file_b', document.getElementById('fileB').files[0]);
+            formData.append('file_a', fileAInput.files[0]);
+            formData.append('file_b', fileBInput.files[0]);
             // Fixed mapping as agreed: name C, price B, discount A
             formData.append('col_name_a', 'C');
             formData.append('col_price_a', 'B');
@@ -89,6 +129,9 @@
                 renderCompare(res.data);
             } catch (err) {
                 clientNotify('خطأ في المقارنة. تأكد من تنسيق الملف وتوافق الأعمدة.', 'error');
+            } finally {
+                compareBtn.disabled = false;
+                compareBtn.textContent = 'مقارنة';
             }
         }
 
@@ -98,7 +141,7 @@
 
             if (!data.pairs || data.pairs.length === 0) {
                 table.innerHTML =
-                    '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا توجد أزواج متطابقة.</td></tr>';
+                    '<tr><td colspan="8" class="p-4 text-center text-slate-500">لا توجد أزواج متطابقة.</td></tr>';
                 return;
             }
 
@@ -115,10 +158,8 @@
                 <td class="p-3">${pair.file_a.raw_name}</td>
                 <td class="p-3"><span class="pill-price">${priceA}</span></td>
                 <td class="p-3"><span class="pill-price">${priceB}</span></td>
-                <td class="p-3">
-                    <span class="pill-discount">${discountA}%</span>
-                    <span class="pill-discount">${discountB}%</span>
-                </td>
+                <td class="p-3"><span class="pill-discount">${discountA}%</span></td>
+                <td class="p-3"><span class="pill-discount">${discountB}%</span></td>
                 <td class="p-3 font-semibold text-amber-700">${diff}</td>
                 <td class="p-3"><span class="pill-discount ${bestClass}">${best}</span></td>
             </tr>

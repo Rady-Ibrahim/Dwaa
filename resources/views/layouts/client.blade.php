@@ -203,8 +203,16 @@
             <a href="/client/search" class="client-side-link {{ request()->is('client/search') ? 'active' : '' }}">
                 <span>🔍</span> البحث المتقدم
             </a>
+            <a href="/client/products"
+                class="client-side-link {{ request()->is('client/products') ? 'active' : '' }}">
+                <span>📦</span> كل المنتجات
+            </a>
             <a href="/client/compare" class="client-side-link {{ request()->is('client/compare') ? 'active' : '' }}">
                 <span>⚖️</span> المقارنة الذكية
+            </a>
+            <a href="/client/saved-comparisons"
+                class="client-side-link {{ request()->is('client/saved-comparisons') || request()->is('client/saved-comparisons/*') ? 'active' : '' }}">
+                <span>💾</span> حفظ المقارنة
             </a>
             <a href="/client/favorites"
                 class="client-side-link {{ request()->is('client/favorites') ? 'active' : '' }}">

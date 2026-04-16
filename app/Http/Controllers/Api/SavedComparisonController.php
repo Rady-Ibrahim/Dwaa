@@ -10,10 +10,16 @@ class SavedComparisonController extends Controller
 {
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('q', ''));
+
         return SavedComparison::query()
             ->where('user_id', $request->user()->id)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where('title', 'like', '%'.$search.'%');
+            })
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(10)
+            ->withQueryString();
     }
 
     public function store(Request $request)
@@ -30,6 +36,15 @@ class SavedComparisonController extends Controller
         ]);
 
         return response()->json($row, 201);
+    }
+
+    public function show(Request $request, SavedComparison $savedComparison)
+    {
+        if ($savedComparison->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        return response()->json($savedComparison);
     }
 
     public function destroy(Request $request, SavedComparison $savedComparison)

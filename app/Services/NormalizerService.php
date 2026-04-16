@@ -176,7 +176,39 @@ class NormalizerService
                 if ($safe === '') {
                     continue;
                 }
+
                 $like = '%'.$safe.'%';
+
+                $outer->orWhere(function (Builder $inner) use ($like) {
+                    $inner->where('normalized_name', 'LIKE', $like)
+                        ->orWhere('name_ar', 'LIKE', $like)
+                        ->orWhere('name_en', 'LIKE', $like)
+                        ->orWhere('code', 'LIKE', $like)
+                        ->orWhereHas('aliases', function (Builder $a) use ($like) {
+                            $a->where('normalized_name', 'LIKE', $like)
+                                ->orWhere('name', 'LIKE', $like);
+                        });
+                });
+            }
+        });
+    }
+
+    public function applyPrefixProductSearch(Builder $builder, string $raw): void
+    {
+        $terms = $this->likeTermsForSearch($raw);
+        if ($terms === []) {
+            return;
+        }
+
+        $builder->where(function (Builder $outer) use ($terms) {
+            foreach ($terms as $term) {
+                $safe = $this->stripUnsafeLikeWildcards($term);
+                if ($safe === '') {
+                    continue;
+                }
+
+                $like = $safe.'%';
+
                 $outer->orWhere(function (Builder $inner) use ($like) {
                     $inner->where('normalized_name', 'LIKE', $like)
                         ->orWhere('name_ar', 'LIKE', $like)

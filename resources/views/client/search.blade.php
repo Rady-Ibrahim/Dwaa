@@ -182,6 +182,30 @@
             border-radius: 8px;
             font-weight: 600;
         }
+
+        .badge-price-good {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .badge-price-bad {
+            background: rgba(244, 63, 94, 0.15);
+            color: #fb7185;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .badge-pill-neutral {
+            background: rgba(148, 163, 184, 0.15);
+            color: #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
     </style>
 
     <div class="search-shell" id="searchShell">
@@ -214,6 +238,8 @@
                     <thead>
                         <tr>
                             <th>المورد</th>
+                            <th>المنطقة</th>
+                            <th>تليفون المورد</th>
                             <th>الصنف</th>
                             <th>السعر</th>
                             <th>الخصم</th>
@@ -225,6 +251,8 @@
             </div>
         </div>
     </div>
+
+        {{-- تم إزالة Overlay الخاصة بعرض تفاصيل المنتج (البيانات تظهر مباشرة في الجدول) --}}
 @endsection
 
 @push('scripts')
@@ -233,6 +261,7 @@
         const searchShell = document.getElementById('searchShell');
         const resultsWrap = document.getElementById('resultsWrap');
         const welcomeText = document.getElementById('welcomeText');
+        // لا توجد فلاتر في صفحة البحث (تظهر في صفحة "كل المنتجات" فقط).
 
         document.getElementById('uploadSheetBtn').addEventListener('click', () => document.getElementById('excelFile')
             .click());
@@ -281,30 +310,51 @@
             }
         }
 
+        let lastFlatOffers = [];
+
+        function escapeForAttr(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
         function renderResults(results) {
             const table = document.getElementById('resultsTable');
             if (!results || results.length === 0) {
-                table.innerHTML =
-                    '<tr><td colspan="5" class="p-8 text-center text-slate-500">لا توجد نتائج مطابقة لبحثك.</td></tr>';
+                table.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">لا توجد نتائج مطابقة لبحثك.</td></tr>';
                 return;
             }
 
             table.innerHTML = results.flatMap(item => {
                 const productName = item.name_ar || item.name_en || '-';
+                const productCode = item.code || '';
                 const offers = item.offers || [];
 
                 if (offers.length === 0) {
-                    return `<tr><td class="p-4">-</td><td class="p-4 font-bold">${productName}</td><td colspan="3" class="p-4 text-slate-500">لا توجد عروض حالياً</td></tr>`;
+                    return `<tr>
+                        <td class="p-4">-</td>
+                        <td class="p-4">-</td>
+                        <td class="p-4">-</td>
+                        <td class="p-4 font-bold">${productName}</td>
+                        <td colspan="3" class="p-4 text-slate-500">لا توجد عروض حالياً</td>
+                    </tr>`;
                 }
 
                 return offers.map(offer => `
                     <tr class="${offer.is_lowest_price ? 'bg-sky-500/5' : ''}">
                         <td>${offer.supplier}</td>
+                        <td>${offer.area || '-'}</td>
+                        <td>${offer.supplier_phone || '-'}</td>
                         <td class="font-bold">${productName}</td>
                         <td><span class="badge-price">${offer.price} ج</span></td>
-                        <td><span class="text-green-400">${offer.discount}%</span></td>
+                        <td><span class="${offer.is_best_discount ? 'text-green-400' : 'text-green-400'}">${offer.discount}%</span></td>
                         <td>
-                            <button onclick="addFavorite(${item.id}, this)" class="text-rose-400 hover:text-rose-500">❤️</button>
+                            <div class="flex items-center gap-2" dir="ltr">
+                                <button onclick="addFavorite(${item.id}, this)" class="text-rose-400 hover:text-rose-500">❤️</button>
+                            </div>
                         </td>
                     </tr>
                 `);

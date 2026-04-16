@@ -67,20 +67,43 @@ class SearchService
         $queryFold = $this->normalizer->phoneticConsonantKey($trim);
 
         $with = [
-            'supplier:id,name,area',
+            'supplier:id,name,area,phone1,phone2',
             'offers' => function ($q) {
                 $q->active()
                     ->orderBy('price')
-                    ->with(['supplier:id,name,area']);
+                    ->with(['supplier:id,name,area,phone1,phone2']);
             },
         ];
 
-        $primary = Product::query()
-            ->tap(fn ($q) => $this->normalizer->applyFlexibleProductSearch($q, $trim))
+        // 1) Prefix (keyword starts with query terms) => يعطي أولوية للبحث العادي عند أول 3 أحرف
+        $prefix = Product::query()
+            ->tap(fn ($q) => $this->normalizer->applyPrefixProductSearch($q, $trim))
             ->with($with)
             ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+            ->orderBy('id')
             ->limit($limit)
             ->get();
+
+        if ($prefix->count() >= $limit) {
+            return $prefix;
+        }
+
+        // 2) Flexible contains (رمز باقي النتائج بعد الـ prefix)
+        $primary = $prefix;
+        $needed = $limit - $primary->count();
+        if ($needed > 0) {
+            $seen = array_flip($primary->modelKeys());
+            $extraSubstring = Product::query()
+                ->tap(fn ($q) => $this->normalizer->applyFlexibleProductSearch($q, $trim))
+                ->whereNotIn('id', array_keys($seen))
+                ->with($with)
+                ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                ->orderBy('id')
+                ->limit($needed)
+                ->get();
+
+            $primary = $primary->concat($extraSubstring)->values();
+        }
 
         if ($primary->count() >= $limit || strlen($queryFold) < 3) {
             return $primary;
@@ -158,6 +181,7 @@ class SearchService
                 return [
                     'supplier' => $offer->supplier->name,
                     'area' => $offer->supplier->area,
+                    'supplier_phone' => $offer->supplier->phone1 ?: $offer->supplier->phone2,
                     'price' => (float) $offer->price,
                     'discount' => (float) $offer->discount,
                     'bonus' => $offer->bonus,

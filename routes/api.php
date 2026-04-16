@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\ActivationCodeController;
 use App\Http\Controllers\Api\Admin\AnalyticsController;
 use App\Http\Controllers\Api\ClientExcelSearchController;
 use App\Http\Controllers\Api\ClientFileCompareController;
+use App\Http\Controllers\Api\ClientProductsController;
 use App\Http\Controllers\Api\SavedComparisonController;
 use App\Http\Controllers\Api\Admin\MappingController;
 use App\Http\Controllers\Api\Admin\SupplierController;
@@ -40,7 +41,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/compare-files', ClientFileCompareController::class);
         Route::get('/saved-comparisons', [SavedComparisonController::class, 'index']);
         Route::post('/saved-comparisons', [SavedComparisonController::class, 'store']);
+        Route::get('/saved-comparisons/{saved_comparison}', [SavedComparisonController::class, 'show']);
         Route::delete('/saved-comparisons/{saved_comparison}', [SavedComparisonController::class, 'destroy']);
+
+        Route::get('/products', [ClientProductsController::class, 'index']);
     });
 
     Route::middleware(['is_active', 'role:admin'])->prefix('admin')->group(function () {

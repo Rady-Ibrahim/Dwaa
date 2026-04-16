@@ -63,6 +63,10 @@ Route::prefix('client')->group(function () {
     Route::view('/compare', 'client.compare')->name('client.compare');
     Route::view('/favorites', 'client.favorites')->name('client.favorites');
     Route::view('/saved-comparisons', 'client.saved-comparisons')->name('client.saved-comparisons');
+    Route::get('/saved-comparisons/{savedComparison}', function ($savedComparison) {
+        return view('client.saved-comparison-show', ['savedComparisonId' => $savedComparison]);
+    })->name('client.saved-comparisons.show');
+Route::view('/products', 'client.products')->name('client.products');
     Route::view('/password', 'client.password')->name('client.password');
     Route::view('/activate', 'client.activate')->name('client.activate');
 

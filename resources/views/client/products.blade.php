@@ -18,50 +18,72 @@
                 <div class="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center">📦</div>
                 <h4 class="text-xl font-bold text-white">كل المنتجات</h4>
             </div>
-            <p class="text-sm text-slate-400">اختر المورد والسعر/الخصم ثم اعرض النتائج.</p>
         </div>
 
+        <style>
+            select option {
+                background-color: #0f172a !important; 
+                color: #ffffff !important;
+            }
+            /* تصغير حجم المدخلات لتناسب الصف الواحد */
+            .filter-input-slim {
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+            }
+        </style>
+        
         <div class="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
             <div class="p-4 border-b border-white/5 bg-slate-950/35">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+                    
                     <div>
-                        <label class="block text-xs text-slate-300 mb-2">فلتر الموردين</label>
+                        <label class="block text-[10px] text-slate-400 mb-1 mr-1">المورد</label>
                         <select id="productsSupplierFilter"
-                            class="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-500">
+                            class="filter-input-slim w-full rounded-xl bg-slate-900 border border-white/10 text-sm text-white focus:outline-none focus:border-sky-500 appearance-none cursor-pointer">
                             <option value="all" selected>كل الموردين</option>
                         </select>
                     </div>
+        
                     <div>
-                        <label class="block text-xs text-slate-300 mb-2">سعر من</label>
-                        <input id="productsMinPrice" type="number" step="0.01" placeholder="سعر من"
-                            class="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500">
+                        <label class="block text-[10px] text-slate-400 mb-1 mr-1">سعر من</label>
+                        <input id="productsMinPrice" type="number" step="0.01" placeholder="0.00"
+                            class="filter-input-slim w-full rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500">
                     </div>
+        
                     <div>
-                        <label class="block text-xs text-slate-300 mb-2">سعر إلى</label>
-                        <input id="productsMaxPrice" type="number" step="0.01" placeholder="سعر إلى"
-                            class="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500">
+                        <label class="block text-[10px] text-slate-400 mb-1 mr-1">سعر إلى</label>
+                        <input id="productsMaxPrice" type="number" step="0.01" placeholder="0.00"
+                            class="filter-input-slim w-full rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500">
                     </div>
+        
                     <div>
-                        <label class="block text-xs text-slate-300 mb-2">خصم من %</label>
-                        <input id="productsMinDiscount" type="number" step="0.1" placeholder="خصم من %"
-                            class="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500">
+                        <label class="block text-[10px] text-slate-400 mb-1 mr-1">خصم من %</label>
+                        <input id="productsMinDiscount" type="number" step="0.1" placeholder="0%"
+                            class="filter-input-slim w-full rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500">
                     </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+        
                     <div>
-                        <label class="block text-xs text-slate-300 mb-2">خصم إلى %</label>
-                        <input id="productsMaxDiscount" type="number" step="0.1" placeholder="خصم إلى %"
-                            class="w-full rounded-2xl bg-slate-950/60 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500">
+                        <label class="block text-[10px] text-slate-400 mb-1 mr-1">خصم إلى %</label>
+                        <input id="productsMaxDiscount" type="number" step="0.1" placeholder="100%"
+                            class="filter-input-slim w-full rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500">
                     </div>
-                    <div class="md:col-span-3 lg:col-span-3 flex items-end justify-end">
-                        <button id="clearProductsFiltersBtn"
-                            class="px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm">
-                            مسح الفلاتر
+        
+                    <div>
+                        <button id="clearProductsFiltersBtn" 
+                            title="مسح الفلاتر"
+                            class="w-full filter-input-slim rounded-xl bg-slate-800 hover:bg-rose-500/20 text-rose-500 border border-white/5 transition-all flex items-center justify-center gap-2 group">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span class="text-xs">مسح</span>
                         </button>
                     </div>
+        
                 </div>
             </div>
+        </div>
 
             <div class="p-4">
                 <div class="custom-table-card overflow-hidden">

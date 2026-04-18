@@ -61,6 +61,7 @@ Route::prefix('client')->group(function () {
     Route::redirect('/', '/client/search');
     Route::view('/search', 'client.search')->name('client.search');
     Route::view('/compare', 'client.compare')->name('client.compare');
+    Route::view('/compare-platform', 'client.compare-platform')->name('client.compare-platform');
     Route::view('/favorites', 'client.favorites')->name('client.favorites');
     Route::view('/saved-comparisons', 'client.saved-comparisons')->name('client.saved-comparisons');
     Route::get('/saved-comparisons/{savedComparison}', function ($savedComparison) {

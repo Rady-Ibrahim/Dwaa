@@ -285,13 +285,17 @@
         function showResults() {
             searchShell.classList.add('has-results');
             resultsWrap.classList.add('show');
-            welcomeText.style.display = 'none'; // إخفاء النص الترحيبي عند ظهور النتائج
+            if (welcomeText) {
+                welcomeText.style.display = 'none'; // إخفاء النص الترحيبي عند ظهور النتائج
+            }
         }
 
         function hideResults() {
             searchShell.classList.remove('has-results');
             resultsWrap.classList.remove('show');
-            welcomeText.style.display = 'block';
+            if (welcomeText) {
+                welcomeText.style.display = 'block';
+            }
             document.getElementById('resultsTable').innerHTML = '';
         }
 
@@ -381,6 +385,52 @@
             }
         }
 
-        // ... بقية دوال الـ upload و الـ notify كما هي في الكود الأصلي ...
+        async function uploadExcel() {
+            const input = document.getElementById('excelFile');
+            const file = input.files?.[0];
+            if (!file) return;
+
+            const table = document.getElementById('resultsTable');
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('log_mode', 'bulk');
+            formData.append('limit', '5');
+
+            try {
+                showResults();
+                table.innerHTML =
+                    '<tr><td colspan="7" class="p-8 text-center text-slate-400">جاري قراءة الشيت والبحث...</td></tr>';
+
+                const res = await axios.post('/search/from-excel', formData);
+                const lines = res.data?.lines || [];
+
+                if (!lines.length) {
+                    table.innerHTML =
+                        '<tr><td colspan="7" class="p-8 text-center text-slate-500">لا توجد أصناف صالحة للبحث داخل الشيت.</td></tr>';
+                    return;
+                }
+
+                const mergedResults = lines.flatMap(line => line?.results || []);
+                if (!mergedResults.length) {
+                    table.innerHTML =
+                        '<tr><td colspan="7" class="p-8 text-center text-slate-500">تمت قراءة الشيت لكن لا توجد نتائج مطابقة.</td></tr>';
+                    return;
+                }
+
+                renderResults(mergedResults);
+                clientNotify('تمت قراءة الشيت بنجاح', 'success');
+            } catch (error) {
+                console.error(error);
+                const firstValidationError = error.response?.data?.errors
+                    ? Object.values(error.response.data.errors)?.flat()?.[0]
+                    : null;
+                const serverMsg = firstValidationError || error.response?.data?.message || 'فشل رفع الشيت أو قراءته.';
+                table.innerHTML =
+                    `<tr><td colspan="7" class="p-8 text-center text-rose-400">${escapeForAttr(serverMsg)}</td></tr>`;
+                clientNotify(serverMsg, 'error');
+            } finally {
+                input.value = '';
+            }
+        }
     </script>
 @endpush

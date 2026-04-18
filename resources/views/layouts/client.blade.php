@@ -6,6 +6,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MedRANKO | @yield('title')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script>
+        // Toast Notification Function - Define Early
+        window.clientNotify = function(message, type = 'info') {
+            const toastWrap = document.getElementById('clientToastWrap');
+            if (!toastWrap) return;
+
+            const colors = {
+                'success': 'bg-emerald-500/90 text-white',
+                'error': 'bg-rose-500/90 text-white',
+                'info': 'bg-sky-500/90 text-white',
+                'warning': 'bg-amber-500/90 text-white'
+            };
+
+            const toast = document.createElement('div');
+            toast.className =
+                `${colors[type] || colors['info']} px-6 py-3 rounded-lg shadow-lg mb-3 text-sm font-medium backdrop-blur-sm`;
+            toast.textContent = message;
+            toastWrap.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        };
+    </script>
     <style>
         /* الأساسيات */
         .client-shell {
@@ -182,6 +206,14 @@
         .sidebar-overlay.show {
             display: block;
         }
+
+        .client-toast-wrap {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
     </style>
     @stack('styles')
 </head>
@@ -203,12 +235,15 @@
             <a href="/client/search" class="client-side-link {{ request()->is('client/search') ? 'active' : '' }}">
                 <span>🔍</span> البحث المتقدم
             </a>
-            <a href="/client/products"
-                class="client-side-link {{ request()->is('client/products') ? 'active' : '' }}">
+            <a href="/client/products" class="client-side-link {{ request()->is('client/products') ? 'active' : '' }}">
                 <span>📦</span> كل المنتجات
             </a>
             <a href="/client/compare" class="client-side-link {{ request()->is('client/compare') ? 'active' : '' }}">
                 <span>⚖️</span> المقارنة الذكية
+            </a>
+            <a href="/client/compare-platform"
+                class="client-side-link {{ request()->is('client/compare-platform') ? 'active' : '' }}">
+                <span>📑</span> مقارنة ملف مع المنصة
             </a>
             <a href="/client/saved-comparisons"
                 class="client-side-link {{ request()->is('client/saved-comparisons') || request()->is('client/saved-comparisons/*') ? 'active' : '' }}">
@@ -290,12 +325,14 @@
         const profileBtn = document.getElementById('profileMenuBtn');
         const profileMenu = document.getElementById('profileMenu');
 
-        profileBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            profileMenu.classList.toggle('show');
-        });
+        if (profileBtn && profileMenu) {
+            profileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                profileMenu.classList.toggle('show');
+            });
 
-        document.addEventListener('click', () => profileMenu.classList.remove('show'));
+            document.addEventListener('click', () => profileMenu.classList.remove('show'));
+        }
     </script>
     @stack('scripts')
 </body>

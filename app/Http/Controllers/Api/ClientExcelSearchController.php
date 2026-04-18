@@ -12,7 +12,9 @@ use Illuminate\Support\Str;
 
 class ClientExcelSearchController extends Controller
 {
-    public const MAX_ROWS = 500;
+    public const MAX_ROWS = 1000;
+    public const MAX_SEARCHABLE_ROWS = 60;
+    public const MAX_LOOP_SECONDS = 45.0;
 
     public function __construct(
         private SearchService $searchService,
@@ -21,9 +23,14 @@ class ClientExcelSearchController extends Controller
 
     public function __invoke(Request $request)
     {
+        // يمنع إنهاء الطلب مبكراً عند ملفات Excel الكبيرة.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(180);
+        }
+
         $data = $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
-            'col_name' => ['required', 'string'],
+            'col_name' => ['nullable', 'string'],
             'header_rows' => ['nullable', 'integer', 'min:0', 'max:10'],
             'log_mode' => ['required', 'string', 'in:bulk,per_row'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
@@ -37,11 +44,13 @@ class ClientExcelSearchController extends Controller
         $originalName = $request->file('file')->getClientOriginalName();
 
         try {
-            $names = $this->excelSearchService->readNameColumn(
-                $fullPath,
-                $data['col_name'],
-                $headerRows
-            );
+            $names = isset($data['col_name']) && $data['col_name'] !== ''
+                ? $this->excelSearchService->readNameColumn(
+                    $fullPath,
+                    $data['col_name'],
+                    $headerRows
+                )
+                : $this->excelSearchService->readNameColumnAuto($fullPath);
             $names = array_slice($names, 0, self::MAX_ROWS);
 
             if ($logMode === 'per_row') {
@@ -62,8 +71,17 @@ class ClientExcelSearchController extends Controller
     {
         $sessionId = (string) Str::uuid();
         $lines = [];
+        $cache = [];
+        $names = array_slice($names, 0, self::MAX_SEARCHABLE_ROWS);
+        $startedAt = microtime(true);
+        $stoppedByTimeout = false;
 
         foreach ($names as $query) {
+            if ((microtime(true) - $startedAt) >= self::MAX_LOOP_SECONDS) {
+                $stoppedByTimeout = true;
+                break;
+            }
+
             if (mb_strlen($query) < 3) {
                 $lines[] = [
                     'query' => $query,
@@ -73,11 +91,17 @@ class ClientExcelSearchController extends Controller
 
                 continue;
             }
-            $lines[] = array_merge(
-                $this->searchService->search($request->user(), $query, $limit, [
+
+            $cacheKey = mb_strtolower(trim($query));
+            if (! isset($cache[$cacheKey])) {
+                $cache[$cacheKey] = $this->searchService->search($request->user(), $query, $limit, [
                     'source' => SearchLog::SOURCE_EXCEL_ROW,
                     'bulk_session_id' => $sessionId,
-                ]),
+                ]);
+            }
+
+            $lines[] = array_merge(
+                $cache[$cacheKey],
                 ['skipped' => false]
             );
         }
@@ -87,6 +111,7 @@ class ClientExcelSearchController extends Controller
             'bulk_session_id' => $sessionId,
             'filename' => $originalName,
             'rows_read' => count($names),
+            'stopped_by_timeout' => $stoppedByTimeout,
             'lines' => $lines,
         ];
     }
@@ -97,24 +122,40 @@ class ClientExcelSearchController extends Controller
      */
     private function runBulkLog(Request $request, array $names, int $limit, string $originalName): array
     {
+        $originalRowsRead = count($names);
+        $names = array_slice($names, 0, self::MAX_SEARCHABLE_ROWS);
         $lines = [];
+        $cache = [];
+        $startedAt = microtime(true);
         $stats = [
             'filename' => $originalName,
-            'rows_read' => count($names),
+            'rows_read' => $originalRowsRead,
+            'rows_processed' => count($names),
+            'rows_truncated' => max(0, $originalRowsRead - count($names)),
             'rows_searched' => 0,
             'rows_skipped_short' => 0,
             'rows_with_results' => 0,
             'rows_with_offers' => 0,
+            'stopped_by_timeout' => false,
         ];
 
         foreach ($names as $query) {
+            if ((microtime(true) - $startedAt) >= self::MAX_LOOP_SECONDS) {
+                $stats['stopped_by_timeout'] = true;
+                break;
+            }
+
             if (mb_strlen($query) < 3) {
                 $stats['rows_skipped_short']++;
 
                 continue;
             }
             $stats['rows_searched']++;
-            $payload = $this->searchService->search($request->user(), $query, $limit, ['log' => false]);
+            $cacheKey = mb_strtolower(trim($query));
+            if (! isset($cache[$cacheKey])) {
+                $cache[$cacheKey] = $this->searchService->search($request->user(), $query, $limit, ['log' => false]);
+            }
+            $payload = $cache[$cacheKey];
             $lines[] = array_merge($payload, ['skipped' => false]);
 
             if ($payload['count'] > 0) {

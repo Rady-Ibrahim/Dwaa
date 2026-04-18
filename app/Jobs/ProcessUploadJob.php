@@ -27,6 +27,9 @@ class ProcessUploadJob implements ShouldQueue
     private const NAME_HEADER_ALIASES = [
         'الصنف',
         'اسم الصنف',
+        'اسم الصنف:',
+        ':اسم الصنف',
+        'إسم الصنف ',
         'اسم المنتج',
         'اسم الصنف / المنتج',
         'المنتج',
@@ -41,6 +44,8 @@ class ProcessUploadJob implements ShouldQueue
         'Item Name',
         'Product',
         'Product Name',
+        'PROD_NAME',
+        'PRODUCT_NAME',
         'Description',
         'Trade Name',
         'Commercial Name',
@@ -52,6 +57,7 @@ class ProcessUploadJob implements ShouldQueue
     private const PRICE_HEADER_ALIASES = [
         'سعر',
         'السعر',
+        ':السعر',
         'سعر ج',
         'سعر البيع',
         'سعر الوحدة',
@@ -64,6 +70,8 @@ class ProcessUploadJob implements ShouldQueue
         'سعر الجملة',
         'سعر خاص',
         'Public Price',
+        'Price',
+        'PRICE_1',
         'Unit Price',
         'Selling Price',
         'Retail Price',
@@ -81,17 +89,32 @@ class ProcessUploadJob implements ShouldQueue
     private const DISCOUNT_HEADER_ALIASES = [
         'خصم',
         'الخصم',
+        ':الخصم',
+        'الخصم:', 
         'نسبة الخصم',
         'خصم %',
         'الخصم %',
         '% خصم',
         'خصم تجاري',
         'خصم إضافي',
+        'الخصم اساسى :',
+        'خصم اساسى',
+        'الخصم اساسى',
         'خصم خاص',
         'عرض',
         'العرض',
         'أوفر',
         'بونص',
+        'مندوب',
+        'المندوب',
+        'شركات',
+        'جمله',
+        'جملة',
+        'صيدليات',
+        'صيدلية',
+        'الموزع',
+        'الموزعين',
+        'الموزعين',
         'Discount',
         'Discount %',
         'Discount-%',
@@ -252,9 +275,16 @@ class ProcessUploadJob implements ShouldQueue
      */
     private function headerMatchesAliases(string $normalizedHeader, array $aliases): bool
     {
+        $isLikelyCodeColumn = $this->looksLikeCodeHeader($normalizedHeader);
+
         foreach ($aliases as $alias) {
             $normalizedAlias = $this->normalizeHeader($alias);
             if ($normalizedAlias === '') {
+                continue;
+            }
+
+            // يمنع اختيار "رقم الصنف" كعمود اسم منتج.
+            if ($isLikelyCodeColumn && in_array($normalizedAlias, ['الصنف', 'item', 'product'], true)) {
                 continue;
             }
 
@@ -268,6 +298,15 @@ class ProcessUploadJob implements ShouldQueue
         }
 
         return false;
+    }
+
+    private function looksLikeCodeHeader(string $normalizedHeader): bool
+    {
+        return str_contains($normalizedHeader, 'رقم')
+            || str_contains($normalizedHeader, 'كود')
+            || str_contains($normalizedHeader, 'code')
+            || str_contains($normalizedHeader, 'id')
+            || str_contains($normalizedHeader, 'sku');
     }
 
     private function normalizeHeader(string $value): string

@@ -23,7 +23,7 @@ class SearchService
     public function search(User $user, string $query, int $limit = 20, array $logOptions = []): array
     {
         $products = $this->fetchProducts($query, $limit);
-        $hadOffers = $products->contains(fn (Product $p) => $p->offers->isNotEmpty());
+        $hadOffers = $products->contains(fn(Product $p) => $p->offers->isNotEmpty());
 
         $log = array_merge([
             'log' => true,
@@ -45,13 +45,207 @@ class SearchService
             ]);
         }
 
-        $results = $products->map(fn (Product $product) => $this->formatProduct($product));
+        $results = $products->map(fn(Product $product) => $this->formatProduct($product));
 
         return [
             'query' => $query,
             'count' => $results->count(),
             'results' => $results->values()->all(),
         ];
+    }
+
+    /**
+     * Multi-stage pharmaceutical search: 1) Primary word 2) Secondary words 3) Dosage
+     * Better for medications like "اتور 10مجم" vs "اتور 20مجم"
+     */
+    public function pharmacySearch(string $query, int $limit = 20): Collection
+    {
+        $trim = trim($query);
+        if ($trim === '') {
+            return collect();
+        }
+
+        // Extract query components
+        $components = $this->extractPharmacyComponents($trim);
+
+        if (empty($components['words'])) {
+            return $this->fetchProducts($query, $limit);
+        }
+
+        // Stage 1: Find candidates using primary word (first word)
+        $primary_word = $components['words'][0];
+        $stage1 = $this->getProductsByPrimaryWord($primary_word, $limit * 3);
+
+        if ($stage1->isEmpty()) {
+            return $this->fetchProducts($query, $limit);
+        }
+
+        // Stage 2: Re-rank by secondary words and dosage matching
+        $scored = $stage1->map(function (Product $product) use ($components, $query) {
+            $score = $this->calculatePharmacyMatchScore($product, $components, $query);
+            return ['product' => $product, 'score' => $score];
+        })
+            ->filter(fn($entry) => $entry['score'] >= 65)
+            ->sortByDesc('score')
+            ->take($limit)
+            ->pluck('product');
+
+        return $scored;
+    }
+
+    /**
+     * Extract words, dosages, and other components from pharmaceutical query
+     */
+    private function extractPharmacyComponents(string $text): array
+    {
+        $normalized = $this->normalizer->normalize($text);
+        $words = preg_split('/\s+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        // Extract dosage patterns: "10مجم", "20جرام", etc.
+        $dosages = [];
+        preg_match_all('/(\d+(?:\.\d+)?)\s*(مجم|ملج|جرام|جم|ج|ml|iu)/ui', $text, $matches);
+        if (!empty($matches[0])) {
+            $dosages = array_map(fn($m) => mb_strtolower($m, 'UTF-8'), $matches[0]);
+        }
+
+        return [
+            'words' => $words,
+            'dosages' => $dosages,
+            'raw_text' => $text,
+        ];
+    }
+
+    /**
+     * Get products matching primary word with offers loaded
+     */
+    private function getProductsByPrimaryWord(string $word, int $limit): Collection
+    {
+        if (mb_strlen($word) < 2) {
+            return collect();
+        }
+
+        $with = [
+            'supplier:id,name,area,phone1,phone2',
+            'offers' => function ($q) {
+                $q->active()
+                    ->orderBy('price')
+                    ->with(['supplier:id,name,area,phone1,phone2']);
+            },
+        ];
+
+        return Product::query()
+            ->where(function ($q) use ($word) {
+                $q->where('normalized_name', 'LIKE', $word . '%')
+                    ->orWhere('name_ar', 'LIKE', '%' . $word . '%')
+                    ->orWhere('name_en', 'LIKE', '%' . $word . '%');
+            })
+            ->with($with)
+            ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Calculate match score based on word matching and dosage matching
+     */
+    private function calculatePharmacyMatchScore(Product $product, array $components, string $queryText): float
+    {
+        $product_text = mb_strtolower($product->name_ar . ' ' . $product->name_en, 'UTF-8');
+        $product_normalized = mb_strtolower((string)($product->normalized_name ?? ''), 'UTF-8');
+
+        $queryWords = $components['words'];
+        if ($queryWords === []) {
+            return 0.0;
+        }
+
+        $totalWeight = array_sum(array_map([$this, 'queryTokenWeight'], $queryWords));
+        $matchedWeight = 0.0;
+        foreach ($queryWords as $word) {
+            if (str_contains($product_normalized, $word) || str_contains($product_text, $word)) {
+                $matchedWeight += $this->queryTokenWeight($word);
+            }
+        }
+
+        $wordMatchScore = $totalWeight > 0 ? ($matchedWeight / $totalWeight) * 100 : 0;
+        $score = $wordMatchScore;
+
+        if ($this->queryExactPhraseMatches($product_normalized, $queryWords)) {
+            $score += 40;
+        }
+
+        if ($this->queryStartsWithSequence($product_normalized, $queryWords)) {
+            $score += 20;
+        }
+
+        $score += $this->matchDosageToProduct($product_text, $components['dosages']) * 0.4;
+
+        return $score;
+    }
+
+    private function queryTokenWeight(string $token): float
+    {
+        if (preg_match('/^[\d\.\/\-]+$/u', $token)) {
+            return 0.05;
+        }
+
+        if (preg_match('/\d/u', $token) && !preg_match('/\p{L}/u', $token)) {
+            return 0.10;
+        }
+
+        return 1.0;
+    }
+
+    private function queryExactPhraseMatches(string $normalizedProduct, array $queryWords): bool
+    {
+        if ($queryWords === []) {
+            return false;
+        }
+
+        return str_contains($normalizedProduct, implode(' ', $queryWords));
+    }
+
+    private function queryStartsWithSequence(string $normalizedProduct, array $queryWords): bool
+    {
+        if (count($queryWords) < 2) {
+            return false;
+        }
+
+        return str_contains($normalizedProduct, $queryWords[0] . ' ' . $queryWords[1]);
+    }
+
+    /**
+     * Match dosages in product name with query dosages
+     */
+    private function matchDosageToProduct(string $productText, array $queryDosages): float
+    {
+        if (empty($queryDosages)) {
+            return 0; // No explicit dosage in query
+        }
+
+        // Extract product dosages
+        preg_match_all('/(\d+(?:\.\d+)?)\s*(مجم|ملج|جرام|جم|ج|ml|iu)/ui', $productText, $matches);
+        $product_dosages = array_map(fn($m) => mb_strtolower($m, 'UTF-8'), $matches[0] ?? []);
+
+        if (empty($product_dosages)) {
+            return 0; // Product has no dosage or query dosage is not explicit
+        }
+
+        // Check if any product dosage matches query dosage
+        foreach ($queryDosages as $q_dosage) {
+            foreach ($product_dosages as $p_dosage) {
+                if (strcasecmp(trim($q_dosage), trim($p_dosage)) === 0) {
+                    return 100; // Perfect match!
+                }
+                // Partial match (same number, different unit)
+                if (preg_match('/^(\d+)/', $q_dosage, $m1) && preg_match('/^(\d+)/', $p_dosage, $m2)) {
+                    if ($m1[1] === $m2[1]) {
+                        return 80;
+                    }
+                }
+            }
+        }
+
+        return 30; // Different dosages
     }
 
     /**
@@ -77,7 +271,7 @@ class SearchService
 
         // 1) Prefix (keyword starts with query terms) => يعطي أولوية للبحث العادي عند أول 3 أحرف
         $prefix = Product::query()
-            ->tap(fn ($q) => $this->normalizer->applyPrefixProductSearch($q, $trim))
+            ->tap(fn($q) => $this->normalizer->applyPrefixProductSearch($q, $trim))
             ->with($with)
             ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
             ->orderBy('id')
@@ -94,7 +288,7 @@ class SearchService
         if ($needed > 0) {
             $seen = array_flip($primary->modelKeys());
             $extraSubstring = Product::query()
-                ->tap(fn ($q) => $this->normalizer->applyFlexibleProductSearch($q, $trim))
+                ->tap(fn($q) => $this->normalizer->applyFlexibleProductSearch($q, $trim))
                 ->whereNotIn('id', array_keys($seen))
                 ->with($with)
                 ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
@@ -152,7 +346,7 @@ class SearchService
         return $primary->concat($extra)->values();
     }
 
-    private function formatProduct(Product $product): array
+    public function formatProduct(Product $product): array
     {
         /** @var Collection<int, Offer> $offers */
         $offers = $product->offers;

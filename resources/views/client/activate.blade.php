@@ -42,6 +42,7 @@
                             </svg>
                         </span>
                     </button>
+                    <p id="message" class="hidden text-center mt-4 text-sm font-bold"></p>
                 </form>
 
 
@@ -71,7 +72,10 @@
             try {
                 const res = await axios.get('/me');
                 const user = res.data?.user || {};
-                if (user.is_active) {
+                const expiresAt = user.subscription_expires_at ? new Date(user.subscription_expires_at) : null;
+                const isSubscriptionActive = user.is_active && expiresAt && expiresAt.getTime() > Date.now();
+
+                if (isSubscriptionActive) {
                     const until = formatDate(user.subscription_expires_at);
                     activationInfoText.textContent = until ?
                         `حسابك نشط حالياً. ينتهي الاشتراك في ${until}` :
@@ -79,6 +83,10 @@
                     activationInfo.classList.remove('hidden');
                     activationInfo.classList.add('flex');
                     activationCodeInput.placeholder = "الحساب نشط بالفعل";
+                } else {
+                    activationInfo.classList.add('hidden');
+                    activationInfo.classList.remove('flex');
+                    activationCodeInput.placeholder = "XXXX-XXXX";
                 }
             } catch (err) {
                 console.error('State load failed', err);
@@ -102,12 +110,13 @@
                 });
 
                 messageEl.textContent = '✅ اكتمل التفعيل! يتم الآن تحديث بياناتك...';
-                messageEl.className = 'text-emerald-400 text-center mt-4 font-bold block';
+                messageEl.className = 'text-emerald-400 text-center mt-4 font-bold text-lg block';
                 messageEl.classList.remove('hidden');
+                messageEl.style.display = 'block';
 
                 window.clientNotify('تم التفعيل بنجاح', 'success');
 
-                setTimeout(() => window.location.href = '/client', 1500);
+                setTimeout(() => window.location.reload(), 2500);
             } catch (err) {
                 messageEl.textContent = '❌ عذراً، هذا الرمز غير صالح أو تم استخدامه مسبقاً.';
                 messageEl.className = 'text-rose-400 text-center mt-4 font-bold block';

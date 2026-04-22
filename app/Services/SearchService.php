@@ -19,8 +19,13 @@ class SearchService
      *     bulk_session_id?: ?string,
      *     meta?: ?array<string, mixed>
      * }  $logOptions
+     * @param  array{
+     *     min_price?: ?float,
+     *     max_price?: ?float,
+     *     date_filter?: ?int
+     * }  $filters
      */
-    public function search(User $user, string $query, int $limit = 20, array $logOptions = []): array
+    public function search(User $user, string $query, int $limit = 20, array $logOptions = [], array $filters = []): array
     {
         $products = $this->fetchProducts($query, $limit);
         $hadOffers = $products->contains(fn(Product $p) => $p->offers->isNotEmpty());
@@ -45,7 +50,8 @@ class SearchService
             ]);
         }
 
-        $results = $products->map(fn(Product $product) => $this->formatProduct($product));
+        $results = $products->map(fn(Product $product) => $this->formatProduct($product, $filters))
+            ->filter(fn($product) => !empty($product['offers']));
 
         return [
             'query' => $query,
@@ -129,7 +135,7 @@ class SearchService
             'offers' => function ($q) {
                 $q->active()
                     ->orderBy('price')
-                    ->with(['supplier:id,name,area,phone1,phone2']);
+                    ->with(['supplier:id,name,area,phone1,phone2', 'upload:id,finished_at']);
             },
         ];
 
@@ -265,7 +271,7 @@ class SearchService
             'offers' => function ($q) {
                 $q->active()
                     ->orderBy('price')
-                    ->with(['supplier:id,name,area,phone1,phone2']);
+                    ->with(['supplier:id,name,area,phone1,phone2', 'upload:id,finished_at']);
             },
         ];
 
@@ -346,13 +352,31 @@ class SearchService
         return $primary->concat($extra)->values();
     }
 
-    public function formatProduct(Product $product): array
+    public function formatProduct(Product $product, array $filters = []): array
     {
         /** @var Collection<int, Offer> $offers */
         $offers = $product->offers;
         if ($product->supplier_id) {
             $offers = $offers->where('supplier_id', $product->supplier_id)->values();
         }
+
+        // Apply single price filter
+        if (isset($filters['price'])) {
+            $targetPrice = (float) $filters['price'];
+            $offers = $offers->filter(function ($offer) use ($targetPrice) {
+                return (float) $offer->price === $targetPrice;
+            });
+        }
+
+        // Apply date filter
+        if (isset($filters['date_filter']) && $filters['date_filter']) {
+            $hours = (int) $filters['date_filter'];
+            $cutoffDate = now()->subHours($hours);
+            $offers = $offers->filter(function ($offer) use ($cutoffDate) {
+                return $offer->upload && $offer->upload->finished_at && $offer->upload->finished_at >= $cutoffDate;
+            });
+        }
+
         $lowestPrice = $offers->min('price');
         $highestDiscount = $offers->max('discount');
 
@@ -380,6 +404,7 @@ class SearchService
                     'discount' => (float) $offer->discount,
                     'bonus' => $offer->bonus,
                     'expires_at' => $offer->expires_at->toDateString(),
+                    'upload_date' => $offer->upload?->finished_at?->format('Y-m-d'),
                     'is_lowest_price' => (float) $offer->price === (float) $lowestPrice,
                     'is_best_discount' => (float) $offer->discount === (float) $highestDiscount,
                 ];

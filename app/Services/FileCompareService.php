@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Concerns\HasExcelHeaderAliases;
 use App\Models\Offer;
 use App\Models\Product;
 use App\Models\ProductAlias;
@@ -11,86 +12,7 @@ use RuntimeException;
 
 class FileCompareService
 {
-    private const NAME_HEADER_ALIASES = [
-        'الصنف',
-        'اسم الصنف',
-        'اسم المنتج',
-        'اسم الصنف / المنتج',
-        'المنتج',
-        'بيان',
-        'البيان',
-        'الوصف',
-        'اسم',
-        'اسم المادة',
-        'اسم الدواء',
-        'الصنف بالكامل',
-        'Item',
-        'Item Name',
-        'Product',
-        'Product Name',
-        'Description',
-        'Trade Name',
-        'Commercial Name',
-        'Brand Name',
-        'Generic Name',
-        'Medicine Name',
-    ];
-
-    private const PRICE_HEADER_ALIASES = [
-        'سعر',
-        'السعر',
-        'سعر ج',
-        'سعر البيع',
-        'سعر الوحدة',
-        'سعر المستهلك',
-        'السعر النهائي',
-        'سعر قبل الخصم',
-        'سعر العبوة',
-        'سعر الكرتونة',
-        'سعر القطاعي',
-        'سعر الجملة',
-        'سعر خاص',
-        'Public Price',
-        'Unit Price',
-        'Selling Price',
-        'Retail Price',
-        'Consumer Price',
-        'List Price',
-        'Price',
-        'Base Price',
-        'Original Price',
-        'Gross Price',
-        'MRP',
-        'PTR',
-        'PTD',
-    ];
-
-    private const DISCOUNT_HEADER_ALIASES = [
-        'خصم',
-        'الخصم',
-        'نسبة الخصم',
-        'خصم %',
-        'الخصم %',
-        '% خصم',
-        'خصم تجاري',
-        'خصم إضافي',
-        'خصم خاص',
-        'عرض',
-        'العرض',
-        'أوفر',
-        'بونص',
-        'Discount',
-        'Discount %',
-        'Discount-%',
-        'Disc',
-        'Disc %',
-        'Promo',
-        'Promotion',
-        'Offer',
-        'Deal',
-        'Rebate',
-        'Markdown',
-    ];
+    use HasExcelHeaderAliases;
 
     public function __construct(
         private NormalizerService $normalizer,
@@ -169,8 +91,8 @@ class FileCompareService
     }
 
     /**
-     * @param  array{name:int,price:int,discount?:int}|null  $columnIndexes
-     * @return list<array{raw_name:string,price:float,discount:float}>
+     * @param  array{name:int,price:int,discount?:int,bonus?:int}|null  $columnIndexes
+     * @return list<array{raw_name:string,price:float,discount:float,bonus?:string}>
      */
     private function extractRows(string $absolutePath, ?array $columnIndexes): array
     {
@@ -201,6 +123,9 @@ class FileCompareService
             $discount = isset($columnIndexes['discount'])
                 ? (float) ($row[$columnIndexes['discount']] ?? 0)
                 : 0.0;
+            $bonus = isset($columnIndexes['bonus'])
+                ? trim((string) ($row[$columnIndexes['bonus']] ?? ''))
+                : '';
 
             if ($rawName === '' || $price <= 0) {
                 continue;
@@ -210,6 +135,7 @@ class FileCompareService
                 'raw_name' => $rawName,
                 'price' => $price,
                 'discount' => $discount,
+                'bonus' => $bonus !== '' ? $bonus : null,
             ];
         }
 
@@ -240,6 +166,7 @@ class FileCompareService
             'name' => self::NAME_HEADER_ALIASES,
             'price' => self::PRICE_HEADER_ALIASES,
             'discount' => self::DISCOUNT_HEADER_ALIASES,
+            'bonus' => self::BONUS_HEADER_ALIASES,
         ];
         $map = [];
 
@@ -254,7 +181,8 @@ class FileCompareService
                     continue;
                 }
 
-                if ($this->headerMatchesAliases($header, $keyAliases)) {
+                $isName = ($key === 'name');
+                if ($this->headerMatchesAliases($header, $keyAliases, $isName)) {
                     $map[$key] = (int) $idx;
                     break;
                 }
@@ -271,11 +199,18 @@ class FileCompareService
     /**
      * @param  array<int, string>  $aliases
      */
-    private function headerMatchesAliases(string $normalizedHeader, array $aliases): bool
+    private function headerMatchesAliases(string $normalizedHeader, array $aliases, bool $isName = false): bool
     {
+        $isLikelyCodeColumn = $this->looksLikeCodeHeader($normalizedHeader);
+
         foreach ($aliases as $alias) {
             $normalizedAlias = $this->normalizeHeader($alias);
             if ($normalizedAlias === '') {
+                continue;
+            }
+
+            // يمنع اختيار "رقم الصنف" كعمود اسم منتج
+            if ($isName && $isLikelyCodeColumn && in_array($normalizedAlias, ['الصنف', 'item', 'product'], true)) {
                 continue;
             }
 
@@ -289,6 +224,18 @@ class FileCompareService
         }
 
         return false;
+    }
+
+    /**
+     * Check if a normalized header looks like a code/ID column
+     */
+    private function looksLikeCodeHeader(string $normalizedHeader): bool
+    {
+        return str_contains($normalizedHeader, 'رقم')
+            || str_contains($normalizedHeader, 'كود')
+            || str_contains($normalizedHeader, 'code')
+            || str_contains($normalizedHeader, 'id')
+            || str_contains($normalizedHeader, 'sku');
     }
 
     private function normalizeHeader(string $value): string

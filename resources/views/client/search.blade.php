@@ -233,16 +233,67 @@
         </div>
 
         <div class="results-container" id="resultsWrap">
+            <!-- Filters Section -->
+            <div class="filters-section mb-4" id="filtersSection" style="display: none;">
+                <div class="custom-table-card p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">تصفية حسب السعر</label>
+                            <input type="number" id="priceFilter" placeholder="سعر المنتج"
+                                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:border-sky-500 focus:outline-none text-right"
+                                dir="rtl">
+                        </div>
+
+                        <style>
+                            select option {
+                                background-color: #0f172a !important;
+                                /* لون الصفحة الداكن */
+                                color: #ffffff !important;
+                            }
+
+                            .filter-slim {
+                                padding: 0.5rem 0.75rem !important;
+                            }
+                        </style>
+
+                        <div class="relative group">
+                            <label class="block text-sm font-medium text-slate-300 mb-2">تصفية حسب التاريخ</label>
+                            <select id="dateFilter"
+                                class="filter-slim w-full rounded-xl bg-slate-900/60 border border-white/5 text-sm text-white focus:outline-none focus:border-sky-500/50 appearance-none cursor-pointer transition-all"
+                                dir="rtl">
+                                <option value="" class="bg-slate-950">الكل</option>
+                                <option value="24" class="bg-slate-950">آخر 24 ساعة</option>
+                                <option value="48" class="bg-slate-950">آخر 48 ساعة</option>
+                                <option value="72" class="bg-slate-950">آخر 3 أيام</option>
+                                <option value="168" class="bg-slate-950">آخر 7 أيام</option>
+                                <option value="720" class="bg-slate-950">آخر 30 يوم</option>
+                            </select>
+                        </div>
+
+
+                        <div class="flex items-end gap-2">
+                            <button onclick="applyFilters()"
+                                class="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition">
+                                تطبيق
+                            </button>
+                            <button onclick="resetFilters()"
+                                class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
+                                إعادة ضبط
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="custom-table-card">
                 <table class="result-table w-full text-sm">
                     <thead>
                         <tr>
                             <th>المورد</th>
-                            <th>المنطقة</th>
-                            <th>تليفون المورد</th>
                             <th>الصنف</th>
                             <th>السعر</th>
                             <th>الخصم</th>
+                            <th>تاريخ التحديث</th>
                             <th>الإجراء</th>
                         </tr>
                     </thead>
@@ -252,7 +303,7 @@
         </div>
     </div>
 
-        {{-- تم إزالة Overlay الخاصة بعرض تفاصيل المنتج (البيانات تظهر مباشرة في الجدول) --}}
+    {{-- تم إزالة Overlay الخاصة بعرض تفاصيل المنتج (البيانات تظهر مباشرة في الجدول) --}}
 @endsection
 
 @push('scripts')
@@ -285,14 +336,16 @@
         function showResults() {
             searchShell.classList.add('has-results');
             resultsWrap.classList.add('show');
+            document.getElementById('filtersSection').style.display = 'block';
             if (welcomeText) {
-                welcomeText.style.display = 'none'; // إخفاء النص الترحيبي عند ظهور النتائج
+                welcomeText.style.display = 'none'; // Hide welcome text when results appear
             }
         }
 
         function hideResults() {
             searchShell.classList.remove('has-results');
             resultsWrap.classList.remove('show');
+            document.getElementById('filtersSection').style.display = 'none';
             if (welcomeText) {
                 welcomeText.style.display = 'block';
             }
@@ -301,9 +354,11 @@
 
         async function search(q) {
             try {
+                const filters = getActiveFilters();
                 const res = await axios.get('/search', {
                     params: {
-                        q
+                        q,
+                        ...filters
                     }
                 });
                 renderResults(res.data.results);
@@ -311,6 +366,34 @@
             } catch (err) {
                 console.error(err);
                 clientNotify('حدث خطأ أثناء البحث', 'error');
+            }
+        }
+
+        function getActiveFilters() {
+            const priceFilter = document.getElementById('priceFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+
+            const filters = {};
+            if (priceFilter) filters.price = priceFilter;
+            if (dateFilter) filters.date_filter = dateFilter;
+
+            return filters;
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (query.length >= 3) {
+                search(query);
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('priceFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+
+            const query = document.getElementById('searchInput').value.trim();
+            if (query.length >= 3) {
+                search(query);
             }
         }
 
@@ -328,7 +411,8 @@
         function renderResults(results) {
             const table = document.getElementById('resultsTable');
             if (!results || results.length === 0) {
-                table.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">لا توجد نتائج مطابقة لبحثك.</td></tr>';
+                table.innerHTML =
+                    '<tr><td colspan="6" class="p-8 text-center text-slate-500">لا توجد نتائج مطابقة لبحثك أو لا توجد عروض متاحة للمنتجات الموجودة.</td></tr>';
                 return;
             }
 
@@ -340,24 +424,23 @@
                 if (offers.length === 0) {
                     return `<tr>
                         <td class="p-4">-</td>
-                        <td class="p-4">-</td>
-                        <td class="p-4">-</td>
                         <td class="p-4 font-bold">${productName}</td>
-                        <td colspan="3" class="p-4 text-slate-500">لا توجد عروض حالياً</td>
+                        <td colspan="4" class="p-4 text-slate-500">لا توجد عروض حالياً</td>
                     </tr>`;
                 }
 
                 return offers.map(offer => `
                     <tr class="${offer.is_lowest_price ? 'bg-sky-500/5' : ''}">
                         <td>${offer.supplier}</td>
-                        <td>${offer.area || '-'}</td>
-                        <td>${offer.supplier_phone || '-'}</td>
                         <td class="font-bold">${productName}</td>
                         <td><span class="badge-price">${offer.price} ج</span></td>
                         <td><span class="${offer.is_best_discount ? 'text-green-400' : 'text-green-400'}">${offer.discount}%</span></td>
+                        <td><span class="badge-pill-neutral">${offer.upload_date || '-'}</span></td>
                         <td>
-                            <div class="flex items-center gap-2" dir="ltr">
-                                <button onclick="addFavorite(${item.id}, this)" class="text-rose-400 hover:text-rose-500">❤️</button>
+                            <div class="flex items-left justify-left gap-2" dir="ltr">
+                                <button onclick="addFavorite(${item.id}, this)" class="text-rose-400 hover:text-rose-500 transition-transform hover:scale-110">
+                                    ❤️
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -399,21 +482,21 @@
             try {
                 showResults();
                 table.innerHTML =
-                    '<tr><td colspan="7" class="p-8 text-center text-slate-400">جاري قراءة الشيت والبحث...</td></tr>';
+                    '<tr><td colspan="6" class="p-8 text-center text-slate-400">جاري قراءة الشيت والبحث...</td></tr>';
 
                 const res = await axios.post('/search/from-excel', formData);
                 const lines = res.data?.lines || [];
 
                 if (!lines.length) {
                     table.innerHTML =
-                        '<tr><td colspan="7" class="p-8 text-center text-slate-500">لا توجد أصناف صالحة للبحث داخل الشيت.</td></tr>';
+                        '<tr><td colspan="6" class="p-8 text-center text-slate-500">لا توجد أصناف صالحة للبحث داخل الشيت.</td></tr>';
                     return;
                 }
 
                 const mergedResults = lines.flatMap(line => line?.results || []);
                 if (!mergedResults.length) {
                     table.innerHTML =
-                        '<tr><td colspan="7" class="p-8 text-center text-slate-500">تمت قراءة الشيت لكن لا توجد نتائج مطابقة.</td></tr>';
+                        '<tr><td colspan="6" class="p-8 text-center text-slate-500">تمت قراءة الشيت لكن لا توجد نتائج مطابقة.</td></tr>';
                     return;
                 }
 
@@ -421,12 +504,12 @@
                 clientNotify('تمت قراءة الشيت بنجاح', 'success');
             } catch (error) {
                 console.error(error);
-                const firstValidationError = error.response?.data?.errors
-                    ? Object.values(error.response.data.errors)?.flat()?.[0]
-                    : null;
+                const firstValidationError = error.response?.data?.errors ?
+                    Object.values(error.response.data.errors)?.flat()?.[0] :
+                    null;
                 const serverMsg = firstValidationError || error.response?.data?.message || 'فشل رفع الشيت أو قراءته.';
                 table.innerHTML =
-                    `<tr><td colspan="7" class="p-8 text-center text-rose-400">${escapeForAttr(serverMsg)}</td></tr>`;
+                    `<tr><td colspan="6" class="p-8 text-center text-rose-400">${escapeForAttr(serverMsg)}</td></tr>`;
                 clientNotify(serverMsg, 'error');
             } finally {
                 input.value = '';

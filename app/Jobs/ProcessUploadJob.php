@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Concerns\HasExcelHeaderAliases;
 use App\Imports\SupplierOfferImport;
 use App\Models\Offer;
 use App\Models\Product;
@@ -23,110 +24,7 @@ use Throwable;
 class ProcessUploadJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    private const NAME_HEADER_ALIASES = [
-        'الصنف',
-        'اسم الصنف',
-        'اسم الصنف:',
-        ':اسم الصنف',
-        'إسم الصنف ',
-        'اسم المنتج',
-        'اسم الصنف / المنتج',
-        'المنتج',
-        'بيان',
-        'البيان',
-        'الوصف',
-        'اسم',
-        'اسم المادة',
-        'اسم الدواء',
-        'الصنف بالكامل',
-        'Item',
-        'Item Name',
-        'Product',
-        'Product Name',
-        'PROD_NAME',
-        'PRODUCT_NAME',
-        'Description',
-        'Trade Name',
-        'Commercial Name',
-        'Brand Name',
-        'Generic Name',
-        'Medicine Name',
-    ];
-
-    private const PRICE_HEADER_ALIASES = [
-        'سعر',
-        'السعر',
-        ':السعر',
-        'سعر ج',
-        'سعر البيع',
-        'سعر الوحدة',
-        'سعر المستهلك',
-        'السعر النهائي',
-        'سعر قبل الخصم',
-        'سعر العبوة',
-        'سعر الكرتونة',
-        'سعر القطاعي',
-        'سعر الجملة',
-        'سعر خاص',
-        'Public Price',
-        'Price',
-        'PRICE_1',
-        'Unit Price',
-        'Selling Price',
-        'Retail Price',
-        'Consumer Price',
-        'List Price',
-        'Price',
-        'Base Price',
-        'Original Price',
-        'Gross Price',
-        'MRP',
-        'PTR',
-        'PTD',
-    ];
-
-    private const DISCOUNT_HEADER_ALIASES = [
-        'خصم',
-        'الخصم',
-        ':الخصم',
-        'الخصم:', 
-        'نسبة الخصم',
-        'خصم %',
-        'الخصم %',
-        '% خصم',
-        'خصم تجاري',
-        'خصم إضافي',
-        'الخصم اساسى :',
-        'خصم اساسى',
-        'الخصم اساسى',
-        'خصم خاص',
-        'عرض',
-        'العرض',
-        'أوفر',
-        'بونص',
-        'مندوب',
-        'المندوب',
-        'شركات',
-        'جمله',
-        'جملة',
-        'صيدليات',
-        'صيدلية',
-        'الموزع',
-        'الموزعين',
-        'الموزعين',
-        'Discount',
-        'Discount %',
-        'Discount-%',
-        'Disc',
-        'Disc %',
-        'Promo',
-        'Promotion',
-        'Offer',
-        'Deal',
-        'Rebate',
-        'Markdown',
-    ];
+    use HasExcelHeaderAliases;
 
     public int $tries = 3;
 
@@ -141,8 +39,8 @@ class ProcessUploadJob implements ShouldQueue
             'started_at' => now(),
         ]);
 
-        // كتالوج المورد = منتجات بـ supplier_id؛ حذفها يزيل العروض والأسماء البديلة والمفضلات المرتبطة (cascade)
-        Product::query()->where('supplier_id', $this->upload->supplier_id)->delete();
+        // حذف العروض القديمة فقط، مع الاحتفاظ بالمنتجات
+        Offer::query()->where('supplier_id', $this->upload->supplier_id)->delete();
 
         $columnMap = is_array($this->upload->column_map) ? $this->upload->column_map : [];
         $manualMap = $this->hasManualColumnMap($columnMap) ? $columnMap : null;
@@ -241,6 +139,7 @@ class ProcessUploadJob implements ShouldQueue
             'name' => self::NAME_HEADER_ALIASES,
             'price' => self::PRICE_HEADER_ALIASES,
             'discount' => self::DISCOUNT_HEADER_ALIASES,
+            'bonus' => self::BONUS_HEADER_ALIASES,
         ];
         $map = [];
 
@@ -327,7 +226,7 @@ class ProcessUploadJob implements ShouldQueue
     {
         $spreadsheetRow = $row->getDelegate();
         $columnLetter = Coordinate::stringFromColumnIndex($zeroBasedColumnIndex + 1);
-        $address = $columnLetter.$spreadsheetRow->getRowIndex();
+        $address = $columnLetter . $spreadsheetRow->getRowIndex();
         $cell = $spreadsheetRow->getWorksheet()->getCell($address);
         $value = $cell->getValue();
 

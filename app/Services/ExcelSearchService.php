@@ -2,107 +2,12 @@
 
 namespace App\Services;
 
+use App\Concerns\HasExcelHeaderAliases;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ExcelSearchService
 {
-    private const NAME_HEADER_ALIASES = [
-        'الصنف',
-        'اسم الصنف',
-        'اسم الصنف:',
-        ':اسم الصنف',
-        'إسم الصنف ',
-        'اسم المنتج',
-        'اسم الصنف / المنتج',
-        'المنتج',
-        'بيان',
-        'البيان',
-        'الوصف',
-        'اسم',
-        'اسم المادة',
-        'اسم الدواء',
-        'الصنف بالكامل',
-        'Item',
-        'Item Name',
-        'Product',
-        'Product Name',
-        'PROD_NAME',
-        'PRODUCT_NAME',
-        'Description',
-        'Trade Name',
-        'Commercial Name',
-        'Brand Name',
-        'Generic Name',
-        'Medicine Name',
-    ];
-    private const PRICE_HEADER_ALIASES = [
-        'سعر',
-        'السعر',
-        ':السعر',
-        'سعر ج',
-        'سعر البيع',
-        'سعر الوحدة',
-        'سعر المستهلك',
-        'السعر النهائي',
-        'سعر قبل الخصم',
-        'سعر العبوة',
-        'سعر الكرتونة',
-        'سعر القطاعي',
-        'سعر الجملة',
-        'سعر خاص',
-        'Public Price',
-        'Price',
-        'PRICE_1',
-        'Unit Price',
-        'Selling Price',
-        'Retail Price',
-        'Consumer Price',
-        'List Price',
-        'Base Price',
-        'Original Price',
-        'Gross Price',
-        'MRP',
-        'PTR',
-        'PTD',
-    ];
-    private const DISCOUNT_HEADER_ALIASES = [
-        'خصم',
-        'الخصم',
-        ':الخصم',
-        'الخصم:',
-        'نسبة الخصم',
-        'خصم %',
-        'الخصم %',
-        '% خصم',
-        'خصم تجاري',
-        'خصم إضافي',
-        'الخصم اساسى :',
-        'خصم خاص',
-        'عرض',
-        'العرض',
-        'أوفر',
-        'بونص',
-        'مندوب',
-        'المندوب',
-        'شركات',
-        'جمله',
-        'جملة',
-        'صيدليات',
-        'صيدلية',
-        'الموزع',
-        'الموزعين',
-        'Discount',
-        'Discount %',
-        'Discount-%',
-        'Disc',
-        'Disc %',
-        'Promo',
-        'Promotion',
-        'Offer',
-        'Deal',
-        'Rebate',
-        'Markdown',
-    ];
+    use HasExcelHeaderAliases;
 
     public function __construct(private UploadService $uploadService) {}
 
@@ -176,7 +81,7 @@ class ExcelSearchService
     }
 
     /**
-     * @return list<array{name:string,price:?float,discount:?float}>
+     * @return list<array{name:string,price:?float,discount:?float,bonus:?string}>
      */
     public function readRowsAutoForPlatformCompare(string $absolutePath, int $maxRows = 200): array
     {
@@ -233,11 +138,13 @@ class ExcelSearchService
 
             $priceRaw = $row[$map['price']] ?? null;
             $discountRaw = isset($map['discount']) ? ($row[$map['discount']] ?? null) : null;
+            $bonusRaw = isset($map['bonus']) ? trim((string) ($row[$map['bonus']] ?? '')) : '';
 
             $out[] = [
                 'name' => $name,
                 'price' => is_numeric($priceRaw) ? (float) $priceRaw : null,
                 'discount' => is_numeric($discountRaw) ? (float) $discountRaw : null,
+                'bonus' => $bonusRaw !== '' ? $bonusRaw : null,
             ];
 
             if (count($out) >= $maxRows) {
@@ -283,7 +190,7 @@ class ExcelSearchService
     }
 
     /**
-     * @return array{name:int,price:int,discount?:int}|null
+     * @return array{name:int,price:int,discount?:int,bonus?:int}|null
      */
     private function detectCompareColumnsFromHeaderRow(array $row): ?array
     {
@@ -304,6 +211,10 @@ class ExcelSearchService
             }
             if (! isset($map['discount']) && $this->headerMatchesAliases($header, self::DISCOUNT_HEADER_ALIASES, false)) {
                 $map['discount'] = (int) $idx;
+                continue;
+            }
+            if (! isset($map['bonus']) && $this->headerMatchesAliases($header, self::BONUS_HEADER_ALIASES, false)) {
+                $map['bonus'] = (int) $idx;
             }
         }
 
@@ -341,36 +252,6 @@ class ExcelSearchService
 
     private function detectNameColumnFromHeaderRow(array $row): ?int
     {
-        $aliases = [
-            'الصنف',
-            'اسم الصنف',
-            'اسم الصنف:',
-            ':اسم الصنف',
-            'إسم الصنف ',
-            'اسم المنتج',
-            'اسم الصنف / المنتج',
-            'المنتج',
-            'بيان',
-            'البيان',
-            'الوصف',
-            'اسم',
-            'اسم المادة',
-            'اسم الدواء',
-            'الصنف بالكامل',
-            'Item',
-            'Item Name',
-            'Product',
-            'Product Name',
-            'PROD_NAME',
-            'PRODUCT_NAME',
-            'Description',
-            'Trade Name',
-            'Commercial Name',
-            'Brand Name',
-            'Generic Name',
-            'Medicine Name',
-        ];
-
         foreach ($row as $idx => $value) {
             $header = $this->normalizeHeader((string) $value);
             if ($header === '') {
@@ -378,7 +259,7 @@ class ExcelSearchService
             }
 
             $isLikelyCodeColumn = $this->looksLikeCodeHeader($header);
-            foreach ($aliases as $alias) {
+            foreach (self::NAME_HEADER_ALIASES as $alias) {
                 $normalizedAlias = $this->normalizeHeader($alias);
                 if ($normalizedAlias === '') {
                     continue;

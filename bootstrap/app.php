@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscription_valid' => \App\Http\Middleware\SubscriptionValid::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
             'client.auth' => \App\Http\Middleware\ClientAuth::class,
+            'auth' => \App\Http\Middleware\Authenticate::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -33,6 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*')) {
                 return response()->json(['message' => 'غير مصرح'], 401);
             }
+            
+            return redirect()->route('admin.login');
         });
     })
     ->withSchedule(function (Schedule $schedule) {

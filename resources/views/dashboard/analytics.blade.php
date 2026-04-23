@@ -2,7 +2,6 @@
 
 @section('title', 'التحليلات')
 @section('heading', 'تحليلات البحث والنشاط')
-@section('subheading', 'بحث نصي وإكسل، ومقارنة ملفين — تُحدَّث مع الاستخدام')
 
 @section('content')
     <div class="mb-8 grid gap-4 sm:grid-cols-3">

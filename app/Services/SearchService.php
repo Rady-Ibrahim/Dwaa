@@ -313,12 +313,20 @@ class SearchService
         $needed = $limit - $primary->count();
         $seen = array_flip($primary->modelKeys());
 
-        $extraIds = [];
+        // Stage 3: Hybrid phonetic search (DB-level speed + PHP-level accuracy)
+        // Step 1: Fetch candidates from DB using indexed phonetic_key (fast)
         $queryFirstWord = $this->firstWordToken($trim);
-        foreach (Product::query()->select(['id', 'normalized_name', 'name_ar', 'name_en'])->orderBy('id')->cursor() as $row) {
-            if (array_key_exists($row->getKey(), $seen)) {
-                continue;
-            }
+
+        $candidates = Product::query()
+            ->where('phonetic_key', 'LIKE', $queryFold . '%')
+            ->whereNotIn('id', array_keys($seen))
+            ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+            ->limit($needed * 5)  // Fetch 5x to ensure enough results after PHP filtering
+            ->get();
+
+        // Step 2: Filter candidates with precise PHP matching and rank by prefix match
+        $matchedCandidates = [];
+        foreach ($candidates as $row) {
             $matchedByPhonetic = $this->normalizer->productTextMatchesPhoneticFold(
                 (string) ($row->normalized_name ?? ''),
                 $row->name_ar,
@@ -333,17 +341,25 @@ class SearchService
             );
 
             if ($matchedByPhonetic || $matchedByFirstWord) {
-                $extraIds[] = $row->id;
-                if (count($extraIds) >= $needed) {
-                    break;
-                }
+                // Calculate prefix match score (prioritize words starting with query)
+                $prefixScore = $this->calculatePrefixMatchScore($trim, $row);
+                $matchedCandidates[] = [
+                    'id' => $row->id,
+                    'score' => $prefixScore,
+                ];
             }
         }
 
-        if ($extraIds === []) {
+        // Sort by prefix match score (descending) to prioritize products starting with query
+        usort($matchedCandidates, fn($a, $b) => $b['score'] <=> $a['score']);
+
+        $extraIds = array_slice(array_column($matchedCandidates, 'id'), 0, $needed);
+
+        if (empty($extraIds)) {
             return $primary;
         }
 
+        // Step 3: Load full product data with offers
         $extra = Product::query()
             ->whereIn('id', $extraIds)
             ->with($with)
@@ -490,5 +506,53 @@ class SearchService
         }
 
         return $edits <= 1;
+    }
+
+    /**
+     * Calculate prefix match score to prioritize products starting with query word
+     * Scoring:
+     * - 100: Product name starts with exact query word
+     * - 80: Product's first word starts with query word (partial)
+     * - 50: Query word appears at start of a middle word
+     * - 20: Query word appears anywhere in the name
+     */
+    private function calculatePrefixMatchScore(string $query, Product $product): int
+    {
+        $normalizedQuery = $this->normalizer->normalize(mb_strtolower($query, 'UTF-8'));
+        $normalizedName = mb_strtolower((string) ($product->normalized_name ?? ''), 'UTF-8');
+        $arabicName = mb_strtolower($product->name_ar ?? '', 'UTF-8');
+
+        // Check if normalized_name starts with query
+        if (str_starts_with($normalizedName, $normalizedQuery)) {
+            return 100;
+        }
+
+        // Check if any word in normalized_name starts with query
+        $normalizedWords = preg_split('/\s+/u', $normalizedName, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($normalizedWords as $word) {
+            if (str_starts_with($word, $normalizedQuery)) {
+                return 80;
+            }
+        }
+
+        // Check if name_ar starts with query or has word starting with query
+        $arabicWords = preg_split('/\s+/u', $arabicName, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($arabicWords as $word) {
+            if (str_starts_with($word, $query)) {
+                return 80;
+            }
+        }
+
+        // Check if query appears at word boundaries
+        if (preg_match('/\s' . preg_quote($normalizedQuery, '/') . '/u', ' ' . $normalizedName)) {
+            return 50;
+        }
+
+        // Check if query appears anywhere
+        if (str_contains($normalizedName, $normalizedQuery) || str_contains($arabicName, $query)) {
+            return 20;
+        }
+
+        return 1; // Fallback score for phonetic matches
     }
 }

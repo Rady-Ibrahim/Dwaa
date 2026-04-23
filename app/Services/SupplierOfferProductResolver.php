@@ -11,8 +11,13 @@ use Illuminate\Support\Str;
  */
 class SupplierOfferProductResolver
 {
+    public function __construct(private NormalizerService $normalizer) {}
+
     public function resolve(string $normalized, string $rawName, int $supplierId): Product
     {
+        // احسب phonetic_key مرة واحدة عند الإنشاء
+        $phoneticKey = $this->normalizer->phoneticConsonantKey($rawName);
+
         $product = Product::query()->firstOrCreate(
             [
                 'supplier_id' => $supplierId,
@@ -22,6 +27,7 @@ class SupplierOfferProductResolver
                 'name_ar' => Str::limit($rawName, 255),
                 'name_en' => null,
                 'code' => $this->uniqueAutoCode(),
+                'phonetic_key' => $phoneticKey,
             ]
         );
 
@@ -41,7 +47,7 @@ class SupplierOfferProductResolver
     private function uniqueAutoCode(): string
     {
         do {
-            $code = 'AUTO-'.strtoupper(bin2hex(random_bytes(5)));
+            $code = 'AUTO-' . strtoupper(bin2hex(random_bytes(5)));
         } while (Product::query()->where('code', $code)->exists());
 
         return $code;

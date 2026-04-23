@@ -14,6 +14,7 @@ class Product extends Model
         'name_en',
         'code',
         'normalized_name',
+        'phonetic_key',
     ];
 
     public function supplier(): BelongsTo

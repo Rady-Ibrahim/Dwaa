@@ -15,6 +15,10 @@ Route::get('/', function () {
     return redirect()->route('client.login');
 });
 
+Route::get('/login', function () {
+    return redirect()->route('admin.login');
+})->name('login');
+
 Route::get('/admin/login', [WebAuthController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [WebAuthController::class, 'login'])->name('admin.login.submit');
 

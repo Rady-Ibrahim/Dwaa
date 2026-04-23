@@ -24,7 +24,7 @@ class SearchController extends Controller
         ];
 
         return response()->json(
-            $this->searchService->search($request->user(), $data['q'], 20, [], $filters)
+            $this->searchService->search($request->user(), $data['q'], 1000, [], $filters)
         );
     }
 }

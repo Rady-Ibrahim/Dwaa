@@ -437,7 +437,7 @@
                         <td><span class="${offer.is_best_discount ? 'text-green-400' : 'text-green-400'}">${offer.discount}%</span></td>
                         <td><span class="badge-pill-neutral">${offer.upload_date || '-'}</span></td>
                         <td>
-                            <div class="flex items-left justify-left gap-2" dir="ltr">
+                            <div class="flex items-center justify-center gap-2" dir="ltr">
                                 <button onclick="addFavorite(${item.id}, this)" class="text-rose-400 hover:text-rose-500 transition-transform hover:scale-110">
                                     ❤️
                                 </button>
@@ -477,7 +477,7 @@
             const formData = new FormData();
             formData.append('file', file);
             formData.append('log_mode', 'bulk');
-            formData.append('limit', '5');
+            formData.append('limit', '1000');
 
             try {
                 showResults();

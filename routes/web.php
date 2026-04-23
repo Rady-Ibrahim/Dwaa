@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/mapping/{unmatched_product}/link', [DashboardMappingWebController::class, 'link'])->name('dashboard.mapping.link');
         Route::post('/mapping/{unmatched_product}/create', [DashboardMappingWebController::class, 'createProduct'])->name('dashboard.mapping.create');
         Route::post('/mapping/{unmatched_product}/ignore', [DashboardMappingWebController::class, 'ignore'])->name('dashboard.mapping.ignore');
+
+        Route::get('/settings', [DashboardController::class, 'settings'])->name('dashboard.settings');
+        Route::post('/settings', [DashboardController::class, 'updateSettings'])->name('dashboard.settings.update');
     });
 });
 // Client Routes

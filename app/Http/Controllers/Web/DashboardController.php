@@ -10,8 +10,11 @@ use App\Models\Supplier;
 use App\Models\UnmatchedProduct;
 use App\Models\Upload;
 use App\Models\User;
+use App\Models\Advertisement;
+use App\Models\Setting;
 use App\Services\NormalizerService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -116,5 +119,70 @@ class DashboardController extends Controller
                 ->paginate(15),
             'uploads' => Upload::query()->with('supplier')->orderByDesc('id')->limit(50)->get(),
         ]);
+    }
+
+    public function settings()
+    {
+        $advertisements = Advertisement::query()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $generalSettings = [
+            'app_name' => Setting::get('app_name', 'Med RANKO'),
+            'app_description' => Setting::get('app_description', 'رتّب صح ووفر أكتر'),
+            'support_email' => Setting::get('support_email', 'support@medranko.com'),
+            'support_phone' => Setting::get('support_phone', '+20 123 456 7890'),
+            'ticker_enabled' => Setting::get('ticker_enabled', '1') === '1',
+            'ticker_speed' => Setting::get('ticker_speed', '20'),
+        ];
+
+        return view('dashboard.settings', compact('advertisements', 'generalSettings'));
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $data = $request->all();
+        
+        // Handle boolean fields properly
+        $data['ticker_enabled'] = isset($data['ticker_enabled']) ? true : false;
+        
+        $request->validate([
+            'advertisements' => 'array',
+            'advertisements.*' => 'nullable|string|max:255',
+            'ticker_enabled' => 'boolean',
+            'ticker_speed' => 'integer|min:5|max:60',
+            'app_name' => 'string|max:255',
+            'app_description' => 'string|max:500',
+            'support_email' => 'email|max:255',
+            'support_phone' => 'string|max:255',
+        ]);
+
+        // Clear existing advertisements
+        Advertisement::query()->delete();
+
+        // Create new advertisements
+        if (!empty($request->advertisements)) {
+            foreach ($request->advertisements as $index => $message) {
+                if (!empty(trim($message ?? ''))) {
+                    Advertisement::create([
+                        'message' => trim($message),
+                        'is_active' => $data['ticker_enabled'],
+                        'sort_order' => $index,
+                    ]);
+                }
+            }
+        }
+
+        // Save general settings
+        Setting::set('app_name', $request->app_name);
+        Setting::set('app_description', $request->app_description);
+        Setting::set('support_email', $request->support_email);
+        Setting::set('support_phone', $request->support_phone);
+        Setting::set('ticker_enabled', $data['ticker_enabled'] ? '1' : '0');
+        Setting::set('ticker_speed', $request->ticker_speed);
+
+        return redirect()->route('dashboard.settings')
+            ->with('status', 'تم حفظ الإعدادات بنجاح');
     }
 }

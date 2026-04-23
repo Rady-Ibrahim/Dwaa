@@ -33,13 +33,13 @@ class ClientExcelSearchController extends Controller
             'col_name' => ['nullable', 'string'],
             'header_rows' => ['nullable', 'integer', 'min:0', 'max:10'],
             'log_mode' => ['required', 'string', 'in:bulk,per_row'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
         ]);
 
         $headerRows = (int) ($data['header_rows'] ?? 1);
         $limit = (int) ($data['limit'] ?? 20);
         $logMode = $data['log_mode'];
-        $path = $request->file('file')->store('temp/excel-search/'.now()->format('Y/m'), 'local');
+        $path = $request->file('file')->store('temp/excel-search/' . now()->format('Y/m'), 'local');
         $fullPath = Storage::disk('local')->path($path);
         $originalName = $request->file('file')->getClientOriginalName();
 
@@ -163,13 +163,13 @@ class ClientExcelSearchController extends Controller
             }
 
             $lineHasOffers = collect($payload['results'] ?? [])
-                ->contains(fn ($r) => ($r['summary']['suppliers_count'] ?? 0) > 0);
+                ->contains(fn($r) => ($r['summary']['suppliers_count'] ?? 0) > 0);
             if ($lineHasOffers) {
                 $stats['rows_with_offers']++;
             }
         }
 
-        $queryLabel = mb_strlen($originalName) > 200 ? mb_substr($originalName, 0, 197).'…' : $originalName;
+        $queryLabel = mb_strlen($originalName) > 200 ? mb_substr($originalName, 0, 197) . '…' : $originalName;
 
         SearchLog::query()->create([
             'user_id' => $request->user()->id,

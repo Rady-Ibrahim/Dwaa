@@ -214,6 +214,29 @@
             z-index: 9999;
             max-width: 400px;
         }
+
+        /* News Ticker Animation */
+        @keyframes scroll {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .news-ticker {
+            position: relative;
+        }
+
+        .ticker-content {
+            display: flex;
+            width: fit-content;
+        }
+
+        .ticker-content span {
+            flex-shrink: 0;
+        }
     </style>
     @stack('styles')
 </head>
@@ -263,6 +286,21 @@
 
 
     </aside>
+
+    <!-- News Ticker -->
+    @if($tickerAdvertisements->count() > 0)
+        <div class="news-ticker bg-gradient-to-r from-[#8B1538] to-[#a61e45] text-white py-2 overflow-hidden">
+            <div class="ticker-content flex items-center" style="animation: scroll 20s linear infinite;">
+                @foreach($tickerAdvertisements as $advertisement)
+                    <span class="mx-8 whitespace-nowrap">{{ $advertisement->message }}</span>
+                @endforeach
+                <!-- Duplicate for seamless scrolling -->
+                @foreach($tickerAdvertisements as $advertisement)
+                    <span class="mx-8 whitespace-nowrap">{{ $advertisement->message }}</span>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     <div class="flex flex-col min-h-screen">
         <header class="client-topbar flex justify-between items-center px-6">

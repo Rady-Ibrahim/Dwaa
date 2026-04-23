@@ -51,7 +51,8 @@ class SearchService
         }
 
         $results = $products->map(fn(Product $product) => $this->formatProduct($product, $filters))
-            ->filter(fn($product) => !empty($product['offers']));
+            ->filter(fn($product) => !empty($product['offers']))
+            ->sortByDesc(fn($product) => $product['summary']['highest_discount'] ?? 0);
 
         return [
             'query' => $query,
@@ -395,7 +396,7 @@ class SearchService
                 'lowest_price' => $lowestPrice,
                 'highest_discount' => $highestDiscount,
             ],
-            'offers' => $offers->map(function ($offer) use ($lowestPrice, $highestDiscount) {
+            'offers' => $offers->sortByDesc('discount')->map(function ($offer) use ($lowestPrice, $highestDiscount) {
                 return [
                     'supplier' => $offer->supplier->name,
                     'area' => $offer->supplier->area,

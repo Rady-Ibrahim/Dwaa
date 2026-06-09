@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\UserDevicesController;
 use App\Http\Controllers\Api\ActivationController;
 use App\Http\Controllers\Api\Admin\ActivationCodeController;
 use App\Http\Controllers\Api\Admin\AnalyticsController;
@@ -54,6 +55,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/users', [UserAdminController::class, 'store']);
         Route::put('/users/{user}', [UserAdminController::class, 'update']);
         Route::delete('/users/{user}', [UserAdminController::class, 'destroy']);
+
+        // إدارة أجهزة المستخدمين
+        Route::get('/users/{user}/devices', [UserDevicesController::class, 'index']);
+        Route::delete('/users/{user}/devices', [UserDevicesController::class, 'destroyAll']);
+        Route::delete('/users/{user}/devices/{device}', [UserDevicesController::class, 'destroy']);
 
         Route::get('/suppliers', [SupplierController::class, 'index']);
         Route::post('/suppliers', [SupplierController::class, 'store']);

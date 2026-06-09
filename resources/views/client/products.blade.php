@@ -243,11 +243,19 @@
             loadProducts(1);
         });
 
+        // ── مشكلة 4: debounce على inputs الأرقام لمنع الـ API calls المتكررة ──
+        let productsDebounceTimer;
+        function debouncedLoad() {
+            clearTimeout(productsDebounceTimer);
+            productsDebounceTimer = setTimeout(() => loadProducts(1), 400);
+        }
+
         productsSupplierFilter.addEventListener('change', () => loadProducts(1));
-        productsMinPrice.addEventListener('input', () => loadProducts(1));
-        productsMaxPrice.addEventListener('input', () => loadProducts(1));
-        productsMinDiscount.addEventListener('input', () => loadProducts(1));
-        productsMaxDiscount.addEventListener('input', () => loadProducts(1));
+        productsMinPrice.addEventListener('input', debouncedLoad);
+        productsMaxPrice.addEventListener('input', debouncedLoad);
+        productsMinDiscount.addEventListener('input', debouncedLoad);
+        productsMaxDiscount.addEventListener('input', debouncedLoad);
+        // ─────────────────────────────────────────────────────────────────────
 
         async function addFavorite(productId, button) {
             try {

@@ -10,7 +10,11 @@ use Illuminate\Support\Facades\Storage;
 
 class ClientPlatformCompareController extends Controller
 {
-    private const MAX_ROWS = 120;
+    /**
+     * الحد الأقصى لعدد الصفوف المقروءة من ملف المقارنة.
+     * رُفع من 120 إلى 1000 لضمان مقارنة الملف كاملاً (مشكلة 3).
+     */
+    private const MAX_ROWS = 1000;
 
     public function __construct(
         private SearchService $searchService,
@@ -20,7 +24,8 @@ class ClientPlatformCompareController extends Controller
     public function __invoke(Request $request)
     {
         if (function_exists('set_time_limit')) {
-            @set_time_limit(180);
+            // رُفع الحد الزمني لاستيعاب الملفات الكبيرة (حتى 1000 صف)
+            @set_time_limit(600);
         }
 
         $request->validate([

@@ -66,24 +66,44 @@
             color: rgba(226, 232, 240, 0.4);
         }
 
-        /* زر الـ + بأسلوب ChatGPT */
-        .upload-plus-btn {
-            height: 42px;
-            width: 42px;
+        /* إحصائيات الخصومات (مشكلة 6) */
+        .discount-stats-bar {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(56, 189, 248, 0.15);
             border-radius: 12px;
-            color: #38bdf8;
-            font-size: 1.5rem;
-            transition: all 0.2s;
-            border: 1px solid rgba(56, 189, 248, 0.2);
+            animation: fadeIn 0.3s ease;
         }
 
-        .upload-plus-btn:hover {
-            background: #38bdf8;
-            color: #0f172a;
+        .discount-stat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: rgba(34, 197, 94, 0.12);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .discount-stat-chip:hover {
+            background: rgba(34, 197, 94, 0.25);
+        }
+
+        .discount-stat-chip .chip-count {
+            background: rgba(34, 197, 94, 0.2);
+            border-radius: 999px;
+            padding: 0 0.4rem;
+            font-size: 0.72rem;
+            color: #86efac;
         }
 
         .brand-header {
@@ -217,7 +237,6 @@
             </div>
 
             <div class="search-box-wrapper">
-                <button type="button" id="uploadSheetBtn" class="upload-plus-btn" title="رفع ملف Excel">+</button>
                 <input type="text" id="searchInput" placeholder="ابحث باسم الصنف أو الدواء..." class="search-input"
                     oninput="debouncedSearch()">
                 <div class="px-3 text-slate-500">
@@ -229,7 +248,11 @@
                 </div>
             </div>
 
+            {{-- input ملف Excel مخفي — لا يزال مطلوباً لخاصية رفع الشيت --}}
             <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" class="hidden" />
+
+            {{-- إحصائيات الخصومات (مشكلة 6) — تظهر فقط عند كتابة سعر --}}
+            <div id="discountStatsBar" class="discount-stats-bar" style="display:none;"></div>
         </div>
 
         <div class="results-container" id="resultsWrap">
@@ -312,10 +335,10 @@
         const searchShell = document.getElementById('searchShell');
         const resultsWrap = document.getElementById('resultsWrap');
         const welcomeText = document.getElementById('welcomeText');
-        // لا توجد فلاتر في صفحة البحث (تظهر في صفحة "كل المنتجات" فقط).
+        const discountStatsBar = document.getElementById('discountStatsBar');
 
-        document.getElementById('uploadSheetBtn').addEventListener('click', () => document.getElementById('excelFile')
-            .click());
+        // ── مشكلة 5: زر + أُزيل من HTML — لا يوجد listener هنا ─────────────
+        // لو أردت إعادته لاحقاً: document.getElementById('uploadSheetBtn')?.addEventListener(...)
 
         document.getElementById('excelFile').addEventListener('change', function() {
             if (this.files?.length) uploadExcel();
@@ -346,6 +369,8 @@
             searchShell.classList.remove('has-results');
             resultsWrap.classList.remove('show');
             document.getElementById('filtersSection').style.display = 'none';
+            discountStatsBar.style.display = 'none';
+            discountStatsBar.innerHTML = '';
             if (welcomeText) {
                 welcomeText.style.display = 'block';
             }
@@ -361,6 +386,13 @@
                         ...filters
                     }
                 });
+
+                // ── مشكلة 6: عرض إحصائيات الموردين حسب الخصم ───────────────
+                const discountStats = res.data.discount_stats || [];
+                const priceFilterActive = !!filters.price;
+                renderDiscountStats(discountStats, priceFilterActive);
+                // ─────────────────────────────────────────────────────────────
+
                 renderResults(res.data.results);
                 showResults();
             } catch (err) {
@@ -408,8 +440,51 @@
                 .replace(/>/g, '&gt;');
         }
 
+        // ── مشكلة 6: رسم شريط إحصائيات الخصومات ────────────────────────────
+        function renderDiscountStats(stats, forceShow) {
+            if (!stats || stats.length === 0) {
+                discountStatsBar.style.display = 'none';
+                discountStatsBar.innerHTML = '';
+                return;
+            }
+
+            // نعرض الـ bar فقط لما يكون المستخدم كتب سعر (specific) أو لما في نتائج
+            discountStatsBar.innerHTML =
+                '<span class="text-slate-400 text-xs ml-2">الموردين حسب الخصم:</span>' +
+                stats.map(stat => `
+                    <span class="discount-stat-chip"
+                          onclick="applyDiscountFilter(${stat.discount})"
+                          title="اضغط لعرض عروض خصم ${stat.discount}% فقط">
+                        خصم ${stat.discount}%
+                        <span class="chip-count">${stat.suppliers_count} مورد</span>
+                    </span>
+                `).join('');
+
+            discountStatsBar.style.display = 'flex';
+        }
+
+        function applyDiscountFilter(discountValue) {
+            // نُعبّئ خانة السعر بالقيمة المختارة ونعيد البحث — أو نفلتر الجدول مباشرة
+            // هنا نفلتر الصفوف الموجودة بالـ DOM مباشرة بدون API call إضافي
+            const rows = document.querySelectorAll('#resultsTable tr[data-discount]');
+            rows.forEach(row => {
+                const rowDiscount = parseFloat(row.dataset.discount || '0');
+                row.style.display = rowDiscount === discountValue ? '' : 'none';
+            });
+
+            // نبرز الـ chip المختار
+            document.querySelectorAll('.discount-stat-chip').forEach(chip => {
+                chip.style.opacity = chip.textContent.includes(`خصم ${discountValue}%`) ? '1' : '0.45';
+            });
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         function renderResults(results) {
             const table = document.getElementById('resultsTable');
+
+            // إعادة تفعيل كل الصفوف عند render جديد
+            document.querySelectorAll('.discount-stat-chip').forEach(chip => chip.style.opacity = '1');
+
             if (!results || results.length === 0) {
                 table.innerHTML =
                     '<tr><td colspan="6" class="p-8 text-center text-slate-500">لا توجد نتائج مطابقة لبحثك أو لا توجد عروض متاحة للمنتجات الموجودة.</td></tr>';
@@ -418,25 +493,24 @@
 
             table.innerHTML = results.flatMap(item => {
                 const productName = item.name_ar || item.name_en || '-';
-                const productCode = item.code || '';
                 const offers = item.offers || [];
 
                 if (offers.length === 0) {
                     return `<tr>
                         <td class="p-4">-</td>
-                        <td class="p-4 font-bold">${productName}</td>
+                        <td class="p-4 font-bold">${escapeForAttr(productName)}</td>
                         <td colspan="4" class="p-4 text-slate-500">لا توجد عروض حالياً</td>
                     </tr>`;
                 }
 
                 return offers.map(offer => `
-                    <tr class="${offer.is_lowest_price ? 'bg-sky-500/5' : ''}">
-                        <td>${offer.supplier}</td>
-                        <td class="font-bold">${productName}</td>
-                        <td><span class="badge-price">${offer.price} ج</span></td>
-                        <td><span class="${offer.is_best_discount ? 'text-green-400' : 'text-green-400'}">${offer.discount}%</span></td>
-                        <td><span class="badge-pill-neutral">${offer.upload_date || '-'}</span></td>
-                        <td>
+                    <tr class="${offer.is_lowest_price ? 'bg-sky-500/5' : ''}" data-discount="${offer.discount}">
+                        <td class="p-4">${escapeForAttr(offer.supplier)}</td>
+                        <td class="p-4 font-bold">${escapeForAttr(productName)}</td>
+                        <td class="p-4"><span class="badge-price">${offer.price} ج</span></td>
+                        <td class="p-4"><span class="${offer.is_best_discount ? 'text-green-400 font-bold' : 'text-green-400'}">${offer.discount}%</span></td>
+                        <td class="p-4"><span class="badge-pill-neutral">${escapeForAttr(offer.upload_date || '-')}</span></td>
+                        <td class="p-4">
                             <div class="flex items-center justify-center gap-2" dir="ltr">
                                 <button onclick="addFavorite(${item.id}, this)" class="text-rose-400 hover:text-rose-500 transition-transform hover:scale-110">
                                     ❤️

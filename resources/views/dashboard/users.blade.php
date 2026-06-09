@@ -91,6 +91,23 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V7.875a4.125 4.125 0 10-8.25 0V10.5m-1.5 0h11.25A1.125 1.125 0 0119.125 11.625v7.125A1.125 1.125 0 0118 19.875H6a1.125 1.125 0 01-1.125-1.125v-7.125A1.125 1.125 0 016.75 10.5z"/>
                                     </svg>
                                 </a>
+                                @if ($u->role === 'client')
+                                <a
+                                    href="{{ route('dashboard.users.devices', $u) }}"
+                                    class="inline-flex h-7 items-center gap-1.5 rounded-md border border-zinc-700 px-2 text-xs text-zinc-400 transition hover:border-sky-600 hover:text-sky-400"
+                                    title="إدارة الأجهزة"
+                                >
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/>
+                                    </svg>
+                                    الأجهزة
+                                    @php $devCount = $u->devices()->count(); @endphp
+                                    <span class="rounded-full px-1.5 py-0.5 text-[10px] font-bold
+                                        {{ $devCount >= 5 ? 'bg-rose-900/60 text-rose-300' : 'bg-zinc-800 text-zinc-400' }}">
+                                        {{ $devCount }}/5
+                                    </span>
+                                </a>
+                                @endif
                                 @if ($u->id !== auth()->id())
                                     <form method="POST" action="{{ route('dashboard.users.destroy', $u) }}" onsubmit="return confirm('حذف المستخدم؟');" class="inline">
                                         @csrf

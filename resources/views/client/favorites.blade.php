@@ -225,17 +225,22 @@
                 }
 
                 await axios.delete('/favorites/' + productId);
-                const row = button?.closest('tr');
+
+                // إزالة الصف من الـ DOM مباشرة بدون reload (مشكلة 2)
+                const row = button?.closest('tr[data-product-id]');
                 if (row) {
                     row.remove();
                 }
 
+                // تحديث العداد
                 const countEl = document.getElementById('favCount');
-                const currentCount = Number(countEl.textContent.match(/\d+/)?.[0] || 0) - 1;
+                const currentCount = Math.max(0, Number(countEl.textContent.match(/\d+/)?.[0] || 0) - 1);
                 countEl.textContent = `${currentCount} منتجات`;
 
-                const tableBody = document.querySelector('#favoritesTable tbody');
-                if (!tableBody || tableBody.querySelectorAll('tr').length === 0) {
+                // لو الجدول فاضي بعد الحذف، نعرض حالة الفراغ
+                // نستخدم querySelector على tbody بالـ id الصريح
+                const tbody = document.getElementById('favoritesTable');
+                if (tbody && tbody.querySelectorAll('tr[data-product-id]').length === 0) {
                     renderFavorites([]);
                 }
 

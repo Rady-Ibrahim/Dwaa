@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\Admin\DashboardSuppliersController;
 use App\Http\Controllers\Web\Admin\DashboardAnalyticsController;
 use App\Http\Controllers\Web\Admin\DashboardUploadsController;
 use App\Http\Controllers\Web\Admin\DashboardUsersController;
+use App\Http\Controllers\Web\Admin\DashboardUserDevicesController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\WebAuthController;
 use Illuminate\Http\Request;
@@ -40,6 +41,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/{user}/password', [DashboardUsersController::class, 'editPassword'])->name('dashboard.users.password.edit');
         Route::put('/users/{user}/password', [DashboardUsersController::class, 'updatePassword'])->name('dashboard.users.password.update');
         Route::delete('/users/{user}', [DashboardUsersController::class, 'destroy'])->name('dashboard.users.destroy');
+
+        // صفحة إدارة أجهزة المستخدم
+        Route::get('/users/{user}/devices', [DashboardUserDevicesController::class, 'show'])->name('dashboard.users.devices');
 
         Route::get('/activation-codes', [DashboardActivationCodesController::class, 'index'])->name('dashboard.activation-codes');
         Route::post('/activation-codes', [DashboardActivationCodesController::class, 'store'])->name('dashboard.activation-codes.store');

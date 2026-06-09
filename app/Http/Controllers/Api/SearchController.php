@@ -23,8 +23,29 @@ class SearchController extends Controller
             'date_filter' => $data['date_filter'] ?? null,
         ];
 
-        return response()->json(
-            $this->searchService->search($request->user(), $data['q'], 1000, [], $filters)
-        );
+        $searchResult = $this->searchService->search($request->user(), $data['q'], 1000, [], $filters);
+
+        // ── مشكلة 6: إحصائيات الموردين مجمعة حسب الخصم ────────────────────
+        // نجمع كل العروض من جميع المنتجات ونحسب عدد الموردين لكل قيمة خصم
+        $discountStats = [];
+        foreach ($searchResult['results'] as $product) {
+            foreach ($product['offers'] as $offer) {
+                $discount = (float) $offer['discount'];
+                // نقرّب لأقرب 0.5 لتجميع القيم المتقاربة
+                $key = number_format($discount, 1);
+                if (! isset($discountStats[$key])) {
+                    $discountStats[$key] = ['discount' => $discount, 'suppliers_count' => 0];
+                }
+                $discountStats[$key]['suppliers_count']++;
+            }
+        }
+
+        // ترتيب تنازلي حسب قيمة الخصم
+        usort($discountStats, fn($a, $b) => $b['discount'] <=> $a['discount']);
+
+        $searchResult['discount_stats'] = array_values($discountStats);
+        // ────────────────────────────────────────────────────────────────────
+
+        return response()->json($searchResult);
     }
 }

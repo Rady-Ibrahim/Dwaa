@@ -112,11 +112,24 @@
             btn.textContent = 'جاري الدخول...';
             errorEl.classList.add('hidden');
 
+            // ── Device Fingerprint ─────────────────────────────────────────
+            // UUID ثابت يُحفظ في localStorage لتعريف الجهاز بشكل دائم
+            let deviceFingerprint = localStorage.getItem('_mranko_device_id');
+            if (!deviceFingerprint) {
+                deviceFingerprint = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                    const r = Math.random() * 16 | 0;
+                    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                });
+                localStorage.setItem('_mranko_device_id', deviceFingerprint);
+            }
+            // ──────────────────────────────────────────────────────────────
+
             try {
                 const res = await axios.post(clientApiLoginUrl, {
                     phone,
                     password,
-                    device_name: 'web'
+                    device_name: navigator.userAgent.substring(0, 100),
+                    device_fingerprint: deviceFingerprint,
                 });
                 if (res.data?.token) {
                     setClientToken(res.data.token, remember);

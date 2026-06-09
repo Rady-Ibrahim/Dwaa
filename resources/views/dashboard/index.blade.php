@@ -62,7 +62,6 @@
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h3 class="text-lg font-semibold text-white">لمحة تحليلات</h3>
-                <p class="mt-1 text-sm text-zinc-500">عمليات البحث والمقارنة — يُحدَّث تلقائياً مع استخدام التطبيق</p>
             </div>
             <a href="{{ route('dashboard.analytics') }}" class="inline-flex w-fit max-w-full shrink-0 items-center justify-center gap-2 self-start rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 sm:self-auto" style="background: linear-gradient(135deg, #a61e45, #8B1538); box-shadow: 0 8px 28px -8px rgba(139, 21, 56, 0.55);">
                 التقرير التفصيلي
@@ -120,5 +119,4 @@
         </div>
     </div>
 
-    <p class="mt-10 text-center text-xs text-zinc-600">واجهة الإدارة متصلة بـ API التطبيق — إدارة متقدمة عبر Postman أو توسيع الواجهة لاحقاً.</p>
 @endsection

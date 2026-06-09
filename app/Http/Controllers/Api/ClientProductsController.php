@@ -72,12 +72,13 @@ class ClientProductsController extends Controller
         })->values()->all();
 
         return response()->json([
-            'suppliers' => $suppliers,
-            'data' => $offers,
-            'current_page' => $paginator->currentPage(),
-            'last_page' => $paginator->lastPage(),
-            'prev_page_url' => $paginator->previousPageUrl(),
-            'next_page_url' => $paginator->nextPageUrl(),
+            'suppliers'      => $suppliers,
+            'data'           => $offers,
+            'current_page'   => $paginator->currentPage(),
+            'last_page'      => $paginator->lastPage(),
+            'total'          => $paginator->total(),
+            'prev_page_url'  => $paginator->previousPageUrl(),
+            'next_page_url'  => $paginator->nextPageUrl(),
         ]);
     }
 }

@@ -387,10 +387,16 @@
                     }
                 });
 
-                // ── مشكلة 6: عرض إحصائيات الموردين حسب الخصم ───────────────
-                const discountStats = res.data.discount_stats || [];
-                const priceFilterActive = !!filters.price;
-                renderDiscountStats(discountStats, priceFilterActive);
+                // ── إحصائيات الموردين حسب الخصم — تظهر فقط بعد تطبيق فلتر ──
+                // تظهر لما المستخدم يضغط "تطبيق" أو يكتب سعر أو يختار تاريخ
+                const filtersActive = !!(filters.price || filters.date_filter);
+                if (filtersActive) {
+                    renderDiscountStats(res.data.discount_stats || []);
+                } else {
+                    // بحث عادي بدون فلتر — نخفي الـ bar
+                    discountStatsBar.style.display = 'none';
+                    discountStatsBar.innerHTML = '';
+                }
                 // ─────────────────────────────────────────────────────────────
 
                 renderResults(res.data.results);
@@ -422,6 +428,10 @@
         function resetFilters() {
             document.getElementById('priceFilter').value = '';
             document.getElementById('dateFilter').value = '';
+
+            // إخفاء الـ bar فور الـ reset
+            discountStatsBar.style.display = 'none';
+            discountStatsBar.innerHTML = '';
 
             const query = document.getElementById('searchInput').value.trim();
             if (query.length >= 3) {

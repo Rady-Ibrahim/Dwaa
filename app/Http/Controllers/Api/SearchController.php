@@ -25,14 +25,14 @@ class SearchController extends Controller
 
         $searchResult = $this->searchService->search($request->user(), $data['q'], 1000, [], $filters);
 
-        // ── مشكلة 6: إحصائيات الموردين مجمعة حسب الخصم ────────────────────
-        // نجمع كل العروض من جميع المنتجات ونحسب عدد الموردين لكل قيمة خصم
+        // ── إحصائيات الموردين مجمعة حسب الخصم ─────────────────────────────
+        // نجمع كل العروض ونحسب عدد الموردين لكل قيمة خصم بدقة كاملة
         $discountStats = [];
         foreach ($searchResult['results'] as $product) {
             foreach ($product['offers'] as $offer) {
                 $discount = (float) $offer['discount'];
-                // نقرّب لأقرب 0.5 لتجميع القيم المتقاربة
-                $key = number_format($discount, 1);
+                // نستخدم القيمة الفعلية كـ key — بدون تقريب يخلط القيم المختلفة
+                $key = (string) $discount;
                 if (! isset($discountStats[$key])) {
                     $discountStats[$key] = ['discount' => $discount, 'suppliers_count' => 0];
                 }

@@ -450,19 +450,28 @@
                 .replace(/>/g, '&gt;');
         }
 
-        // ── مشكلة 6: رسم شريط إحصائيات الخصومات ────────────────────────────
-        function renderDiscountStats(stats, forceShow) {
+        // ── رسم شريط إحصائيات الخصومات ─────────────────────────────────────
+        let activeDiscountFilter = null; // الخصم المختار حالياً (null = الكل)
+
+        function renderDiscountStats(stats) {
             if (!stats || stats.length === 0) {
                 discountStatsBar.style.display = 'none';
                 discountStatsBar.innerHTML = '';
                 return;
             }
 
-            // نعرض الـ bar فقط لما يكون المستخدم كتب سعر (specific) أو لما في نتائج
             discountStatsBar.innerHTML =
                 '<span class="text-slate-400 text-xs ml-2">الموردين حسب الخصم:</span>' +
+                // زر "الكل" للرجوع
+                `<span class="discount-stat-chip" id="discountChipAll"
+                      onclick="applyDiscountFilter(null)"
+                      style="background:rgba(148,163,184,0.12);color:#cbd5e1;border-color:rgba(148,163,184,0.2);"
+                      title="عرض كل النتائج">
+                    الكل
+                </span>` +
                 stats.map(stat => `
                     <span class="discount-stat-chip"
+                          data-discount-val="${stat.discount}"
                           onclick="applyDiscountFilter(${stat.discount})"
                           title="اضغط لعرض عروض خصم ${stat.discount}% فقط">
                         خصم ${stat.discount}%
@@ -471,29 +480,55 @@
                 `).join('');
 
             discountStatsBar.style.display = 'flex';
+            activeDiscountFilter = null;
         }
 
         function applyDiscountFilter(discountValue) {
-            // نُعبّئ خانة السعر بالقيمة المختارة ونعيد البحث — أو نفلتر الجدول مباشرة
-            // هنا نفلتر الصفوف الموجودة بالـ DOM مباشرة بدون API call إضافي
-            const rows = document.querySelectorAll('#resultsTable tr[data-discount]');
-            rows.forEach(row => {
-                const rowDiscount = parseFloat(row.dataset.discount || '0');
-                row.style.display = rowDiscount === discountValue ? '' : 'none';
-            });
+            activeDiscountFilter = discountValue;
 
-            // نبرز الـ chip المختار
+            const rows = document.querySelectorAll('#resultsTable tr[data-discount]');
+
+            if (discountValue === null) {
+                // إظهار الكل
+                rows.forEach(row => row.style.display = '');
+            } else {
+                // مقارنة بـ Math.abs للتعامل مع دقة الـ float
+                rows.forEach(row => {
+                    const rowDiscount = parseFloat(row.dataset.discount || '0');
+                    // نستخدم epsilon صغير للتعامل مع فروق الدقة العشرية
+                    row.style.display = Math.abs(rowDiscount - discountValue) < 0.001 ? '' : 'none';
+                });
+            }
+
+            // تحديث تمييز الـ chips
             document.querySelectorAll('.discount-stat-chip').forEach(chip => {
-                chip.style.opacity = chip.textContent.includes(`خصم ${discountValue}%`) ? '1' : '0.45';
+                const chipVal = chip.dataset.discountVal;
+                if (discountValue === null) {
+                    // الكل مختار
+                    chip.style.opacity = '1';
+                    chip.style.fontWeight = chip.id === 'discountChipAll' ? '700' : '';
+                } else if (chipVal !== undefined) {
+                    const match = Math.abs(parseFloat(chipVal) - discountValue) < 0.001;
+                    chip.style.opacity = match ? '1' : '0.4';
+                    chip.style.fontWeight = match ? '700' : '';
+                } else {
+                    // زر "الكل"
+                    chip.style.opacity = '0.4';
+                    chip.style.fontWeight = '';
+                }
             });
         }
-        // ─────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────────
 
         function renderResults(results) {
             const table = document.getElementById('resultsTable');
 
-            // إعادة تفعيل كل الصفوف عند render جديد
-            document.querySelectorAll('.discount-stat-chip').forEach(chip => chip.style.opacity = '1');
+            // إعادة ضبط الـ chips عند render جديد
+            activeDiscountFilter = null;
+            document.querySelectorAll('.discount-stat-chip').forEach(chip => {
+                chip.style.opacity = '1';
+                chip.style.fontWeight = '';
+            });
 
             if (!results || results.length === 0) {
                 table.innerHTML =
@@ -514,7 +549,7 @@
                 }
 
                 return offers.map(offer => `
-                    <tr class="${offer.is_lowest_price ? 'bg-sky-500/5' : ''}" data-discount="${offer.discount}">
+                    <tr class="${offer.is_lowest_price ? 'bg-sky-500/5' : ''}" data-discount="${parseFloat(offer.discount).toFixed(4)}">
                         <td class="p-4">${escapeForAttr(offer.supplier)}</td>
                         <td class="p-4 font-bold">${escapeForAttr(productName)}</td>
                         <td class="p-4"><span class="badge-price">${offer.price} ج</span></td>

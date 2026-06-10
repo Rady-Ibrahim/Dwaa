@@ -162,100 +162,105 @@
 
 @push('scripts')
 <script>
-    const adminApiBase = @json(url('/api/admin'));
+    // نستخدم fetch مباشرة بدل axios عشان axios عنده baseURL=/api
+    const deviceBaseUrl = '{{ url("/dashboard/users/{$user->id}/devices") }}';
+    const csrfToken     = document.querySelector('meta[name="csrf-token"]').content;
 
-    async function deleteDevice(userId, deviceId) {
-        if (!confirm('حذف هذا الجهاز؟ سيتمكن المستخدم من تسجيل الدخول من جهاز جديد بدلاً منه.')) return;
+    async function apiFetch(url, method) {
+        const res = await fetch(url, {
+            method: method || 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept':       'application/json',
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+        });
 
-        try {
-            await axios.delete(`${adminApiBase}/users/${userId}/devices/${deviceId}`, {
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-            });
-
-            // إزالة الصف من الجدول بدون reload
-            const row = document.getElementById(`device-row-${deviceId}`);
-            if (row) row.remove();
-
-            // تحديث العداد
-            updateCounter(-1);
-
-            showToast('تم حذف الجهاز بنجاح', 'success');
-        } catch (err) {
-            showToast(err.response?.data?.message || 'فشل حذف الجهاز', 'error');
+        if (!res.ok) {
+            const data = await res.json().catch(function() { return {}; });
+            throw new Error(data.message || 'HTTP ' + res.status);
         }
+
+        return res.json().catch(function() { return {}; });
     }
 
-    document.getElementById('resetAllBtn')?.addEventListener('click', async function () {
-        const userId = {{ $user->id }};
-        if (!confirm('حذف جميع الأجهزة المسجلة؟ سيحتاج المستخدم لتسجيل الدخول من جديد لتسجيل أجهزته.')) return;
+    // تعريف صريح على window عشان onclick inline يلاقيها
+    window.deleteDevice = function(userId, deviceId) {
+        if (!confirm('حذف هذا الجهاز؟ سيتمكن المستخدم من تسجيل الدخول من جهاز جديد بدلاً منه.')) return;
 
-        try {
-            const res = await axios.delete(`${adminApiBase}/users/${userId}/devices`, {
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+        apiFetch(deviceBaseUrl + '/' + deviceId)
+            .then(function(result) {
+                var row = document.getElementById('device-row-' + deviceId);
+                if (row) row.remove();
+                updateCounter(-1);
+                showToast('تم حذف الجهاز وإلغاء جلسته', 'success');
+            })
+            .catch(function(err) {
+                showToast(err.message || 'فشل حذف الجهاز', 'error');
             });
+    };
 
-            // إزالة كل الصفوف
-            document.querySelectorAll('[id^="device-row-"]').forEach(r => r.remove());
+    var resetBtn = document.getElementById('resetAllBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (!confirm('حذف جميع الأجهزة المسجلة؟ سيحتاج المستخدم لتسجيل الدخول من جديد.')) return;
 
-            // إخفاء الجدول وعرض رسالة الفراغ
-            const tbody = document.getElementById('devicesTableBody');
-            if (tbody) {
-                tbody.closest('table').closest('div').innerHTML = `
-                    <div class="p-16 text-center text-zinc-500">
-                        <p class="text-sm">تم مسح جميع الأجهزة المسجلة</p>
-                    </div>
-                `;
-            }
+            apiFetch(deviceBaseUrl)
+                .then(function(res) {
+                    document.querySelectorAll('[id^="device-row-"]').forEach(function(r) { r.remove(); });
 
-            // إخفاء زر مسح الكل
-            this.style.display = 'none';
+                    var tbody = document.getElementById('devicesTableBody');
+                    if (tbody) {
+                        var tableDiv = tbody.closest('div');
+                        if (tableDiv) {
+                            tableDiv.innerHTML = '<div class="p-16 text-center text-zinc-500"><p class="text-sm">تم مسح جميع الأجهزة المسجلة</p></div>';
+                        }
+                    }
 
-            // تحديث العداد للصفر
-            const counter = document.querySelector('.text-2xl');
-            if (counter) {
-                counter.textContent = `0 / {{ $max_devices }}`;
-                counter.className = counter.className.replace('text-rose-400', 'text-emerald-400');
-            }
+                    resetBtn.style.display = 'none';
 
-            showToast(`تم حذف ${res.data.deleted_count ?? ''} جهاز بنجاح`, 'success');
-        } catch (err) {
-            showToast(err.response?.data?.message || 'فشل مسح الأجهزة', 'error');
-        }
-    });
+                    var counter = document.querySelector('.text-2xl');
+                    if (counter) {
+                        counter.textContent = '0 / {{ $max_devices }}';
+                        counter.classList.remove('text-rose-400', 'text-emerald-400');
+                        counter.classList.add('text-emerald-400');
+                    }
+
+                    showToast('تم حذف ' + (res.deleted_count || '') + ' جهاز وإلغاء جلساتهم', 'success');
+                })
+                .catch(function(err) {
+                    showToast(err.message || 'فشل مسح الأجهزة', 'error');
+                });
+        });
+    }
 
     function updateCounter(delta) {
-        const counter = document.querySelector('.text-2xl');
+        var counter = document.querySelector('.text-2xl');
         if (!counter) return;
 
-        const parts = counter.textContent.trim().split('/');
-        const current = Math.max(0, parseInt(parts[0]) + delta);
-        const max = parseInt(parts[1]) || {{ $max_devices }};
-        counter.textContent = `${current} / ${max}`;
-        counter.className = counter.className
-            .replace('text-rose-400', current >= max ? 'text-rose-400' : 'text-emerald-400')
-            .replace('text-emerald-400', current >= max ? 'text-rose-400' : 'text-emerald-400');
+        var parts   = counter.textContent.trim().split('/');
+        var current = Math.max(0, parseInt(parts[0]) + delta);
+        var max     = parseInt(parts[1]) || {{ $max_devices }};
+        counter.textContent = current + ' / ' + max;
+        counter.classList.remove('text-rose-400', 'text-emerald-400');
+        counter.classList.add(current >= max ? 'text-rose-400' : 'text-emerald-400');
     }
 
     function showToast(message, type) {
-        const toast = document.createElement('div');
-        const bg = type === 'success' ? 'rgba(5,46,22,0.95)' : 'rgba(69,10,10,0.95)';
-        const border = type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
-        const color = type === 'success' ? '#4ade80' : '#f87171';
+        var existing = document.getElementById('devToast');
+        if (existing) existing.remove();
 
-        toast.style.cssText = `
-            position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
-            background:${bg};border:1px solid ${border};color:${color};
-            padding:0.75rem 1.5rem;border-radius:12px;font-size:0.875rem;
-            z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.5);
-            animation:fadeInUp 0.2s ease;
-        `;
+        var toast  = document.createElement('div');
+        toast.id   = 'devToast';
+        var bg     = type === 'success' ? 'rgba(5,46,22,0.95)'  : 'rgba(69,10,10,0.95)';
+        var border = type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
+        var color  = type === 'success' ? '#4ade80'             : '#f87171';
+
+        toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:' + bg + ';border:1px solid ' + border + ';color:' + color + ';padding:0.75rem 1.5rem;border-radius:12px;font-size:0.875rem;z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.5);white-space:nowrap;';
         toast.textContent = message;
-
-        const style = document.createElement('style');
-        style.textContent = '@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
-        document.head.appendChild(style);
         document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3500);
+        setTimeout(function() { toast.remove(); }, 3500);
     }
 </script>
 @endpush

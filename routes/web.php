@@ -44,6 +44,8 @@ Route::middleware('auth')->group(function () {
 
         // صفحة إدارة أجهزة المستخدم
         Route::get('/users/{user}/devices', [DashboardUserDevicesController::class, 'show'])->name('dashboard.users.devices');
+        Route::delete('/users/{user}/devices', [DashboardUserDevicesController::class, 'destroyAll'])->name('dashboard.users.devices.destroyAll');
+        Route::delete('/users/{user}/devices/{device}', [DashboardUserDevicesController::class, 'destroy'])->name('dashboard.users.devices.destroy');
 
         Route::get('/activation-codes', [DashboardActivationCodesController::class, 'index'])->name('dashboard.activation-codes');
         Route::post('/activation-codes', [DashboardActivationCodesController::class, 'store'])->name('dashboard.activation-codes.store');

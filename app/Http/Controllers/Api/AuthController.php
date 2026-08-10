@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
@@ -16,6 +17,11 @@ class AuthController extends Controller
      * الحد الأقصى لعدد الأجهزة المسجلة بشكل دائم لكل عميل.
      */
     private const MAX_REGISTERED_DEVICES = 5;
+
+    /**
+     * مدة بقاء كوكي client_token على المتصفح (بالدقائق) — 14 يوم.
+     */
+    private const TOKEN_COOKIE_MINUTES = 60 * 24 * 14;
 
     public function me(Request $request)
     {
@@ -153,7 +159,17 @@ class AuthController extends Controller
             ],
         ]);
 
-        return $response->cookie('client_token', $token, 1440, '/', null, false, false, false, 'lax');
+        return $response->cookie(
+            'client_token',
+            $token,
+            self::TOKEN_COOKIE_MINUTES,
+            '/',
+            null,
+            app()->environment('production'),
+            false,
+            false,
+            'lax'
+        );
     }
 
     public function logout(Request $request)
@@ -161,6 +177,47 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'تم تسجيل الخروج']);
+    }
+
+    /**
+     * تجديد التوكن تلقائياً: يُنشئ توكن جديد بدل القديم ويرجعه للواجهة.
+     * يُستدعى من الواجهة عند انتهاء الجلسة أو بشكل استباقي.
+     */
+    public function refresh(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'غير مصرح'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $current = $user->currentAccessToken();
+        $name = $current?->name ?: 'web';
+
+        $newToken = $user->createToken($name)->plainTextToken;
+
+        // إبطال التوكن القديم حتى لا يتراكم في جدول personal_access_tokens
+        $current?->delete();
+
+        Log::info('API token refreshed', [
+            'user_id'   => $user->id,
+            'device'    => $name,
+            'new_token' => substr($newToken, 0, 20) . '...',
+        ]);
+
+        return response()
+            ->json(['token' => $newToken])
+            ->cookie(
+                'client_token',
+                $newToken,
+                self::TOKEN_COOKIE_MINUTES,
+                '/',
+                null,
+                app()->environment('production'),
+                false,
+                false,
+                'lax'
+            );
     }
 
     /**

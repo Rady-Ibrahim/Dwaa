@@ -59,6 +59,25 @@
     <script>
         const clientApiLoginUrl = @json(url('/api/login'));
         const clientSearchUrl = @json(url('/client/search'));
+
+        // رسالة توضيحية عند إعادة التوجيه من الصفحات بسبب انتهاء الجلسة أو وقف الحساب
+        const loginNoticeParams = new URLSearchParams(window.location.search);
+        let loginNotice = '';
+        if (loginNoticeParams.has('expired')) {
+            loginNotice = 'انتهت جلستك، يرجى تسجيل الدخول من جديد.';
+        } else if (loginNoticeParams.has('blocked')) {
+            loginNotice = 'تم إيقاف الحساب أو فقدان الصلاحية. يرجى التواصل مع الإدارة.';
+        } else if (loginNoticeParams.has('subscription')) {
+            loginNotice = 'انتهى اشتراكك. يرجى تجديده من صفحة التفعيل ثم تسجيل الدخول.';
+        }
+        if (loginNotice) {
+            const loginErrorEl = document.getElementById('error');
+            if (loginErrorEl) {
+                loginErrorEl.textContent = loginNotice;
+                loginErrorEl.classList.remove('hidden');
+            }
+        }
+
         const phoneInput = document.getElementById('phone');
         const passwordInput = document.getElementById('password');
         const rememberInput = document.getElementById('rememberMe');

@@ -200,6 +200,30 @@
             color: var(--option-color);
         }
 
+        .platform-file-search {
+            width: 100%;
+            max-width: 260px;
+            height: 38px;
+            margin-bottom: 0.5rem;
+            padding: 0 0.85rem;
+            border-radius: 12px;
+            border: 1px solid rgba(var(--border-rgb),0.14);
+            background: rgba(var(--surface-rgb),0.82);
+            color: var(--text-soft2);
+            font-size: 0.82rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .platform-file-search:focus {
+            border-color: rgba(96,165,250,0.4);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+
+        .platform-file-search::placeholder {
+            color: var(--text-muted);
+        }
+
         .vs-box {
             display: flex;
             align-items: center;
@@ -449,6 +473,8 @@
                 </div>
                 <div class="panel-body hidden" id="panelAUploadWrap">
                     <h4 id="panelAUploadTitle">الملف الأول من المنصة</h4>
+                    <input type="text" id="platformUploadASearch" class="platform-file-search"
+                        placeholder="ابحث باسم الملف..." autocomplete="off" />
                     <select id="platformUploadA" class="platform-select">
                         <option value="">اختر ملف...</option>
                     </select>
@@ -472,6 +498,8 @@
                 </div>
                 <div class="panel-body hidden" id="panelBUploadWrap">
                     <h4 id="panelBUploadTitle">ملف من المنصة</h4>
+                    <input type="text" id="platformUploadBSearch" class="platform-file-search"
+                        placeholder="ابحث باسم الملف..." autocomplete="off" />
                     <select id="platformUploadB" class="platform-select">
                         <option value="">اختر ملف...</option>
                     </select>
@@ -656,13 +684,46 @@
             uploadSelectB.nextElementSibling.textContent = selectedUploadB ? getUploadLabel(selectedUploadB) : '';
         });
 
+        function bindUploadSearch(inputId, select) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            input.addEventListener('input', () => {
+                if (!platformUploads.length) return;
+                const q = input.value.trim().toLowerCase();
+                const prevValue = select.value;
+                const filtered = q
+                    ? platformUploads.filter((u) => uploadLabel(u).toLowerCase().includes(q))
+                    : platformUploads;
+                select.innerHTML = '<option value="">اختر ملف...</option>' + filtered.map((u) =>
+                    `<option value="${u.id}">${escapeHtml(uploadLabel(u))}</option>`
+                ).join('');
+                if (prevValue && filtered.some((u) => String(u.id) === String(prevValue))) {
+                    select.value = prevValue;
+                } else {
+                    select.value = '';
+                    select.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+        bindUploadSearch('platformUploadASearch', uploadSelectA);
+        bindUploadSearch('platformUploadBSearch', uploadSelectB);
+
         document.querySelectorAll('.mode-btn').forEach((btn) => {
             btn.addEventListener('click', () => setMode(btn.dataset.mode));
         });
 
+        function uploadLabel(u) {
+            const file = u.file_name || '';
+            const supplier = u.supplier || '';
+            if (file && supplier) return `${supplier} — ${file}`;
+            if (supplier) return supplier;
+            if (file) return file;
+            return `ملف رقم ${u.id}`;
+        }
+
         function getUploadLabel(id) {
             const u = platformUploads.find((x) => String(x.id) === String(id));
-            return u ? `${u.supplier || 'مورد'} — ${u.file_name || ''}` : '';
+            return u ? uploadLabel(u) : '';
         }
 
         function setMode(mode) {
@@ -709,7 +770,7 @@
                 const res = await axios.get('/compare-platform-uploads');
                 platformUploads = res.data?.uploads || [];
                 const optionsHtml = '<option value="">اختر ملف...</option>' + platformUploads.map((u) =>
-                    `<option value="${u.id}">${escapeHtml(`${u.supplier || 'مورد'} — ${u.file_name || ''}`)}</option>`
+                    `<option value="${u.id}">${escapeHtml(uploadLabel(u))}</option>`
                 ).join('');
                 uploadSelectA.innerHTML = optionsHtml;
                 uploadSelectB.innerHTML = optionsHtml;
@@ -717,6 +778,10 @@
                 selectedUploadB = null;
                 uploadSelectA.nextElementSibling.textContent = '';
                 uploadSelectB.nextElementSibling.textContent = '';
+                ['platformUploadASearch', 'platformUploadBSearch'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
             } catch (err) {
                 console.error('[compare-platform] failed to load uploads', err);
             }

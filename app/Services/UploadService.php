@@ -29,6 +29,7 @@ class UploadService
         $upload = Upload::query()->create([
             'supplier_id' => $supplierId,
             'file_path' => $path,
+            'original_name' => $file->getClientOriginalName(),
             'column_map' => $this->normalizeColumnMap($columnMap),
             'status' => 'pending',
         ]);

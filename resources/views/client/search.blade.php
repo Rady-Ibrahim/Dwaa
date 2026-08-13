@@ -260,7 +260,7 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(var(--overlay-rgb),0.06);
             border-radius: 22px;
-            overflow: hidden;
+            overflow-x: auto;
             box-shadow: 0 22px 40px rgba(2,6,23,0.25);
         }
 

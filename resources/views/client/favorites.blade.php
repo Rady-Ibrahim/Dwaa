@@ -115,7 +115,7 @@
             </div>
         </div>
 
-        <div id="favoritesTableContainer" class="custom-table-card overflow-hidden">
+        <div id="favoritesTableContainer" class="custom-table-card overflow-x-auto">
             <table class="fav-table w-full text-sm">
                 <thead>
                     <tr>

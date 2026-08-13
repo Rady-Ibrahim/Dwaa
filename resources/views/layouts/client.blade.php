@@ -402,6 +402,40 @@
                 padding-top: 1rem;
             }
         }
+
+        @media (max-width: 640px) {
+            .client-topbar {
+                padding: 0 0.75rem;
+            }
+
+            .client-topbar-inner {
+                gap: 0.5rem;
+            }
+
+            .topbar-left,
+            .topbar-right {
+                min-width: 0;
+                gap: 0.5rem;
+            }
+
+            .topbar-menu-btn,
+            .topbar-action-btn {
+                width: 38px;
+                height: 38px;
+            }
+
+            .brand-name {
+                font-size: 1.3rem;
+            }
+
+            .topbar-left {
+                flex: 0 0 auto;
+            }
+
+            .topbar-right {
+                flex: 0 0 auto;
+            }
+        }
     </style>
     @stack('styles')
 </head>

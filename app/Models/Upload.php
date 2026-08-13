@@ -14,6 +14,7 @@ class Upload extends Model
     protected $fillable = [
         'supplier_id',
         'file_path',
+        'original_name',
         'column_map',
         'status',
         'total_rows',

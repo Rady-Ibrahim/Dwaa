@@ -14,6 +14,8 @@ class RankingService
 
     public const SORT_DISCOUNT = 'discount';
 
+    private ?int $winnableCount = null;
+
     /**
      * Rebuild ranking rows for all active suppliers.
      */
@@ -77,31 +79,34 @@ class RankingService
 
     /**
      * Single grouped aggregation computing per-supplier active items count and
-     * the Discount Quality Index: average of each offer's discount divided by
-     * the best active discount across all suppliers for the same product,
-     * scaled to 0..100.
+     * the Discount Quality Index.
+     *
+     * المنتجات مربوطة بكل مورد على حدة (منتج الشيت = مورد واحد)، لذلك يتم احتساب
+     * "أعلى خصم" على مستوى الاسم المُطبّع (normalized_name) عبر كل الموردين،
+     * وعدد منتجات المورد = عدد الأسماء المُطبّعة التي يملك فيها أعلى خصم،
+     * والمؤشر = (عددها / إجمالي الأسماء التي عليها خصم) × 100.
      */
     private function aggregateQuery(): Builder
     {
-        $bestPerProduct = DB::table('offers')
-            ->selectRaw('product_id, MAX(discount) AS max_discount')
-            ->where(fn ($q) => $q->where('expires_at', '>', now())->orWhereNull('expires_at'))
-            ->groupBy('product_id');
+        $bestPerName = DB::table('offers as o')
+            ->join('products as p', 'p.id', '=', 'o.product_id')
+            ->selectRaw('p.normalized_name AS name, MAX(o.discount) AS max_discount')
+            ->where(fn ($q) => $q->where('o.expires_at', '>', now())->orWhereNull('o.expires_at'))
+            ->groupBy('p.normalized_name');
 
         return DB::table('offers as o')
+            ->join('products as p', 'p.id', '=', 'o.product_id')
             ->selectRaw(
                 'o.supplier_id,
                  COUNT(*) AS total_items,
-                 AVG(
+                 SUM(
                      CASE
-                         WHEN p.max_discount <= 0 THEN 0
-                         WHEN o.discount >= p.max_discount THEN 1
-                         WHEN o.discount <= 0 THEN 0
-                         ELSE (o.discount * 1.0) / p.max_discount
+                         WHEN bn.max_discount > 0 AND o.discount >= bn.max_discount THEN 1
+                         ELSE 0
                      END
-                 ) * 100 AS dqi'
+                 ) AS best_items'
             )
-            ->joinSub($bestPerProduct, 'p', 'p.product_id', '=', 'o.product_id')
+            ->joinSub($bestPerName, 'bn', 'bn.name', '=', 'p.normalized_name')
             ->where(fn ($q) => $q->where('o.expires_at', '>', now())->orWhereNull('o.expires_at'))
             ->groupBy('o.supplier_id');
     }
@@ -111,10 +116,36 @@ class RankingService
      */
     private function dqiValue($row): ?float
     {
-        if (! $row || (int) $row->total_items === 0 || $row->dqi === null) {
+        if (! $row || (int) $row->total_items === 0 || $row->best_items === null) {
             return null;
         }
 
-        return round((float) $row->dqi, 2);
+        $total = $this->winnableProductCount();
+
+        if ($total <= 0) {
+            return null;
+        }
+
+        return round(((float) $row->best_items / $total) * 100, 2);
+    }
+
+    /**
+     * إجمالي الأسماء المُطبّعة الفعّالة التي يوجد عليها خصم > 0 (يمكن "الفوز" بها).
+     */
+    private function winnableProductCount(): int
+    {
+        if ($this->winnableCount !== null) {
+            return $this->winnableCount;
+        }
+
+        $bestPerName = DB::table('offers as o')
+            ->join('products as p', 'p.id', '=', 'o.product_id')
+            ->selectRaw('p.normalized_name AS name, MAX(o.discount) AS max_discount')
+            ->where(fn ($q) => $q->where('o.expires_at', '>', now())->orWhereNull('o.expires_at'))
+            ->groupBy('p.normalized_name');
+
+        return $this->winnableCount = (int) DB::table($bestPerName)
+            ->where('max_discount', '>', 0)
+            ->count();
     }
 }

@@ -47,7 +47,7 @@
         </form>
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-zinc-800">
+    <div class="overflow-x-auto rounded-xl border border-zinc-800">
         <table class="min-w-full divide-y divide-zinc-800 text-sm">
             <thead class="bg-zinc-900/80 text-right text-xs uppercase text-zinc-500">
                 <tr>

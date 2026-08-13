@@ -65,7 +65,7 @@
     @endif
 
     {{-- جدول الأجهزة --}}
-    <div class="overflow-hidden rounded-xl border" style="border-color: var(--border-subtle);" id="devicesTable">
+    <div class="overflow-x-auto rounded-xl border" style="border-color: var(--border-subtle);" id="devicesTable">
         @if($devices->isEmpty())
             <div class="p-16 text-center text-zinc-500">
                 <svg class="mx-auto h-12 w-12 mb-4 opacity-20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">

@@ -19,7 +19,7 @@
                 <p class="mt-3 text-xs text-slate-500">إجمالي من رفعوا أو حدّثوا ملفاتهم</p>
             </div>
 
-            <div class="custom-table-card overflow-hidden lg:col-span-2">
+            <div class="custom-table-card overflow-x-auto lg:col-span-2">
                 <table class="w-full text-sm text-right">
                     <thead class="bg-slate-950/50 text-slate-400">
                         <tr>

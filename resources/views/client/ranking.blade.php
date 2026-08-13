@@ -74,7 +74,7 @@
             <span id="rankingMeta" class="text-xs text-slate-500 mr-auto"></span>
         </div>
 
-        <div class="custom-table-card overflow-hidden">
+        <div class="custom-table-card overflow-x-auto">
             <table class="w-full text-sm text-right">
                 <thead class="bg-slate-950/50 text-slate-400">
                     <tr>

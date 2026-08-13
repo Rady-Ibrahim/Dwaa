@@ -68,7 +68,7 @@ class ClientPlatformCompareController extends Controller
             'uploads' => $uploads->map(function (Upload $upload) {
                 return [
                     'id'            => $upload->id,
-                    'file_name'     => basename(str_replace('\\', '/', (string) $upload->file_path)),
+                    'file_name'     => $upload->original_name,
                     'supplier'      => $upload->supplier?->name,
                     'status'        => $upload->status,
                     'matched_count' => $upload->matched_count,
@@ -110,6 +110,9 @@ class ClientPlatformCompareController extends Controller
 
     /**
      * الوضع 3: مقارنة ملفين من الملفات المرفوعة من الأدمن مع بعضهما.
+     *
+     * المنتجات مربوطة بكل مورد على حدة (منتج الشيت = مورد واحد)، لذلك تتم
+     * المطابقة بين الملفين عبر الاسم المُطبّع (normalized_name) وليس product_id.
      */
     public function uploadsCompare(Request $request)
     {
@@ -122,30 +125,29 @@ class ClientPlatformCompareController extends Controller
             'upload_id_b' => ['required', 'exists:uploads,id', 'different:upload_id_a'],
         ]);
 
-        $socketA = Upload::with('supplier:id,name')->findOrFail($data['upload_id_a']);
         $socketB = Upload::with('supplier:id,name')->findOrFail($data['upload_id_b']);
 
-        $bestA = $this->bestOffersByProduct($data['upload_id_a']);
-        $bestB = $this->bestOffersByProduct($data['upload_id_b']);
+        $indexA = $this->buildUploadsIndex((int) $data['upload_id_a']);
+        $indexB = $this->buildUploadsIndex((int) $data['upload_id_b']);
 
-        $productIds = array_values(
-            array_unique(array_merge($bestA->keys()->all(), $bestB->keys()->all()))
+        $names = array_values(
+            array_unique(array_merge(array_keys($indexA), array_keys($indexB)))
         );
-
-        $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->get(['id', 'name_ar', 'name_en'])
-            ->keyBy('id');
 
         $lines = [];
 
-        foreach ($productIds as $productId) {
-            $name = $products->get($productId)
-                ? ($products->get($productId)->name_ar ?: $products->get($productId)->name_en)
-                : null;
+        foreach ($names as $name) {
+            $entryA = $indexA[$name] ?? null;
+            $entryB = $indexB[$name] ?? null;
 
-            $offerA = $bestA->get($productId);
-            $offerB = $bestB->get($productId);
+            $productA = $entryA['product'] ?? null;
+            $productB = $entryB['product'] ?? null;
+            $offerA   = $entryA['offer'] ?? null;
+            $offerB   = $entryB['offer'] ?? null;
+
+            $productName = $productA
+                ? ($productA->name_ar ?: $productA->name_en)
+                : ($productB->name_ar ?: $productB->name_en);
 
             if ($offerA && $offerB) {
                 $priceA      = $offerA->price !== null ? (float) $offerA->price : null;
@@ -154,13 +156,13 @@ class ClientPlatformCompareController extends Controller
                 $discountB   = $offerB->discount !== null ? (float) $offerB->discount : null;
 
                 $lines[] = [
-                    'query'          => $name,
+                    'query'          => $productName,
                     'sheet'          => [
-                        'name'     => $name,
+                        'name'     => $productName,
                         'price'    => $priceA,
                         'discount' => $discountA,
                     ],
-                    'matched_product' => $name,
+                    'matched_product' => $productName,
                     'similarity'      => 100.0,
                     'platform_best'   => [
                         'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
@@ -183,15 +185,15 @@ class ClientPlatformCompareController extends Controller
                 continue;
             }
 
-            if ($offerA && ! $offerB) {
+            if ($offerA) {
                 $lines[] = [
-                    'query'          => $name,
+                    'query'          => $productName,
                     'sheet'          => [
-                        'name'     => $name,
+                        'name'     => $productName,
                         'price'    => $offerA->price !== null ? (float) $offerA->price : null,
                         'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
                     ],
-                    'matched_product' => $name,
+                    'matched_product' => $productName,
                     'similarity'      => 100.0,
                     'platform_best'   => null,
                     'comparison'      => ['price_diff' => null, 'discount_diff' => null],
@@ -205,9 +207,9 @@ class ClientPlatformCompareController extends Controller
 
             // فقط موجود في الملف الثاني
             $lines[] = [
-                'query'          => $name,
+                'query'          => $productName,
                 'sheet'          => null,
-                'matched_product' => $name,
+                'matched_product' => $productName,
                 'similarity'      => 100.0,
                 'platform_best'   => [
                     'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
@@ -229,6 +231,48 @@ class ClientPlatformCompareController extends Controller
             'rows_read' => count($lines),
             'lines'     => $lines,
         ]);
+    }
+
+    /**
+     * بناء فهرس منتجات ملف مرفوع: normalized_name => أفضل عرض (أقل سعر) للمنتج.
+     *
+     * @return array<string, array{product: Product, offer: Offer}>
+     */
+    private function buildUploadsIndex(int $uploadId): array
+    {
+        $bestOffers = $this->bestOffersByProduct($uploadId);
+
+        $products = Product::query()
+            ->whereIn('id', $bestOffers->keys()->all())
+            ->get(['id', 'name_ar', 'name_en', 'normalized_name'])
+            ->keyBy('id');
+
+        $index = [];
+
+        foreach ($bestOffers as $productId => $offer) {
+            $product = $products->get($productId);
+
+            if (! $product) {
+                continue;
+            }
+
+            $key = trim((string) $product->normalized_name);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $existing = $index[$key] ?? null;
+
+            if (! $existing || (float) $offer->price < (float) $existing['offer']->price) {
+                $index[$key] = [
+                    'product' => $product,
+                    'offer'   => $offer,
+                ];
+            }
+        }
+
+        return $index;
     }
 
     /**

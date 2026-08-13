@@ -43,6 +43,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::post('/compare-files', ClientFileCompareController::class);
         Route::post('/compare-platform-file', ClientPlatformCompareController::class);
+        Route::get('/compare-platform-uploads', [ClientPlatformCompareController::class, 'uploads']);
+        Route::post('/compare-file-to-upload', [ClientPlatformCompareController::class, 'fileToUpload']);
+        Route::post('/compare-uploads', [ClientPlatformCompareController::class, 'uploadsCompare']);
         Route::get('/saved-comparisons', [SavedComparisonController::class, 'index']);
         Route::post('/saved-comparisons', [SavedComparisonController::class, 'store']);
         Route::get('/saved-comparisons/{saved_comparison}', [SavedComparisonController::class, 'show']);

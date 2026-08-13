@@ -4,69 +4,206 @@
 
 @section('content')
     <style>
-        /* تطبيق الخلفية التي اخترتها */
         body.search-scene {
-            background-image: radial-gradient(circle at top left, rgba(125, 211, 252, 0.1), rgba(15, 23, 42, 0.9)),
-                url('/images/abstract-digital-grid-black-background.jpg');
-            /* تأكد من مسار الصورة الصحيح */
-            background-size: cover;
-            background-position: center;
+            background:
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 22%),
+                radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.10), transparent 20%),
+                #041423;
             background-attachment: fixed;
+            background-size: cover;
         }
 
         .search-shell {
-            min-height: calc(100vh - 150px);
+            min-height: calc(100vh - 120px);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            /* جعل البحث في منتصف الصفحة */
             transition: all 0.5s ease;
+            padding: 1rem 0 2rem;
         }
 
-        /* عندما تظهر النتائج، يرتفع شريط البحث للأعلى قليلاً */
         .search-shell.has-results {
             justify-content: flex-start;
-            padding-top: 2rem;
+            padding-top: 1.5rem;
         }
 
         .search-container {
-            width: min(100%, 850px);
+            width: min(100%, 980px);
             position: relative;
             z-index: 10;
+            text-align: center;
+        }
+
+        .brand-header {
+            margin-bottom: 2rem;
+            display: inline-block;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .brand-header .brand-name {
+            margin: 0;
+            font-size: clamp(2.8rem, 5vw, 5.2rem);
+            font-weight: 900;
+            letter-spacing: -0.06em;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.1em;
+        }
+
+        .brand-header .brand-name .brand-red {
+            color: #ff4d5c;
+        }
+
+        .brand-header .brand-name .brand-blue {
+            color: #59d0ff;
+        }
+
+        .brand-header .brand-line {
+            margin: 0.9rem auto 0.7rem;
+            width: 4rem;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.8), rgba(255, 77, 92, 0.8));
+            border-radius: 999px;
+        }
+
+        .brand-header .brand-tagline {
+            margin: 0;
+            color: rgba(226, 232, 240, 0.82);
+            font-size: 1.15rem;
+            letter-spacing: 0.02em;
         }
 
         .search-box-wrapper {
             display: flex;
             align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 18px;
-            padding: 8px 12px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            transition: border-color 0.3s;
+            width: min(100%, 860px);
+            margin: 0 auto;
+            padding: 0.8rem 1rem 0.8rem 1.15rem;
+            border-radius: 26px;
+            background: rgba(13, 22, 36, 0.88);
+            border: 2px solid rgba(59, 130, 246, 0.4);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.16), 0 0 30px rgba(59, 130, 246, 0.18);
+            transition: all 0.2s ease;
         }
 
         .search-box-wrapper:focus-within {
-            border-color: #38bdf8;
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3), 0 0 32px rgba(59, 130, 246, 0.22);
+            border-color: rgba(96, 165, 250, 0.8);
         }
 
         .search-input {
             flex: 1;
-            background: transparent;
             border: none;
-            color: white;
-            padding: 12px 15px;
+            background: transparent;
+            color: #f8fafc;
             font-size: 1.1rem;
+            padding: 0.95rem 1rem;
             outline: none;
         }
 
         .search-input::placeholder {
-            color: rgba(226, 232, 240, 0.4);
+            color: rgba(148, 163, 184, 0.9);
         }
 
-        /* إحصائيات الخصومات (مشكلة 6) */
+        .search-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: rgba(59, 130, 246, 0.06);
+            color: #7dd3fc;
+            border: 1px solid rgba(125, 211, 252, 0.14);
+        }
+
+        .feature-grid {
+            width: min(100%, 980px);
+            margin: 2.2rem auto 0;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1.2rem;
+        }
+
+        .feature-card {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 24px;
+            padding: 1.5rem 1rem 1.2rem;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #e2e8f0;
+            box-shadow: 0 18px 35px rgba(2, 6, 23, 0.22);
+        }
+
+        .feature-card:nth-child(1) {
+            border-color: rgba(96, 165, 250, 0.28);
+        }
+
+        .feature-card:nth-child(2) {
+            border-color: rgba(52, 211, 153, 0.28);
+        }
+
+        .feature-card:nth-child(3) {
+            border-color: rgba(168, 85, 247, 0.28);
+        }
+
+        .feature-card:nth-child(4) {
+            border-color: rgba(244, 63, 94, 0.28);
+        }
+
+        .feature-card .icon-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            color: #7dd3fc;
+        }
+
+        .feature-card:nth-child(2) .icon-box {
+            background: rgba(34, 197, 94, 0.10);
+            border-color: rgba(34, 197, 94, 0.22);
+            color: #4ade80;
+        }
+
+        .feature-card:nth-child(3) .icon-box {
+            background: rgba(168, 85, 247, 0.12);
+            border-color: rgba(168, 85, 247, 0.24);
+            color: #d8b4fe;
+        }
+
+        .feature-card:nth-child(4) .icon-box {
+            background: rgba(244, 63, 94, 0.10);
+            border-color: rgba(244, 63, 94, 0.22);
+            color: #fda4af;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin: 0;
+            color: #f8fafc;
+        }
+
+        .feature-card p {
+            margin: 0.5rem 0 0;
+            font-size: 0.8rem;
+            line-height: 1.7;
+            color: #cbd5e1;
+        }
+
         .discount-stats-bar {
             display: flex;
             flex-wrap: wrap;
@@ -77,13 +214,14 @@
             border: 1px solid rgba(56, 189, 248, 0.15);
             border-radius: 12px;
             animation: fadeIn 0.3s ease;
+            justify-content: center;
         }
 
         .discount-stat-chip {
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
-            padding: 0.3rem 0.75rem;
+            padding: 0.35rem 0.8rem;
             border-radius: 999px;
             font-size: 0.78rem;
             font-weight: 600;
@@ -106,49 +244,10 @@
             color: #86efac;
         }
 
-        .brand-header {
-            display: inline-block;
-            margin-bottom: 2rem;
-            text-align: center;
-            line-height: 1.1;
-        }
-
-        .brand-header .brand-name {
-            font-size: 3rem;
-            font-weight: 900;
-            color: #f8fafc;
-            letter-spacing: 0.08em;
-            text-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
-            margin: 0;
-        }
-
-        .brand-header .brand-name span {
-            color: #991b1b;
-            letter-spacing: 0.15em;
-        }
-
-        .brand-header .brand-tagline {
-            margin: 0.75rem auto 0;
-            font-size: 1.05rem;
-            color: rgba(226, 232, 240, 0.82);
-            opacity: 0.95;
-            letter-spacing: 0.02em;
-        }
-
-        .brand-header .brand-line {
-            margin: 1rem auto 0.75rem;
-            width: 4rem;
-            height: 2px;
-            background: linear-gradient(90deg, rgba(56, 189, 248, 0.9), rgba(56, 189, 248, 0));
-            border-radius: 999px;
-        }
-
-        /* جدول النتائج */
         .results-container {
             width: min(100%, 1100px);
             margin-top: 2rem;
             display: none;
-            /* مخفي افتراضياً */
             animation: fadeIn 0.4s ease;
         }
 
@@ -157,19 +256,20 @@
         }
 
         .custom-table-card {
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(15, 23, 42, 0.72);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 22px;
             overflow: hidden;
+            box-shadow: 0 22px 40px rgba(2, 6, 23, 0.25);
         }
 
         .result-table thead {
-            background: rgba(56, 189, 248, 0.1);
+            background: rgba(15, 23, 42, 0.86);
         }
 
         .result-table th {
-            color: #38bdf8;
+            color: #7dd3fc;
             text-align: right;
             padding: 15px;
             font-size: 0.85rem;
@@ -179,7 +279,7 @@
 
         .result-table td {
             padding: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             color: #e2e8f0;
         }
 
@@ -226,12 +326,30 @@
             border-radius: 8px;
             font-weight: 600;
         }
+
+        @media (max-width: 980px) {
+            .feature-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .brand-header .brand-name {
+                font-size: 2.5rem;
+            }
+        }
     </style>
 
     <div class="search-shell" id="searchShell">
-        <div class="search-container text-center">
+        <div class="search-container">
             <div class="brand-header">
-                <h1 class="brand-name">Med <span>RANKO</span></h1>
+                <h1 class="brand-name">
+                    <span class="brand-blue">RANKO</span><span class="brand-red">Med</span>
+                </h1>
                 <div class="brand-line"></div>
                 <p class="brand-tagline">رتب صح .. ووفر أكتر</p>
             </div>
@@ -239,8 +357,8 @@
             <div class="search-box-wrapper">
                 <input type="text" id="searchInput" placeholder="ابحث باسم الصنف أو الدواء..." class="search-input"
                     oninput="debouncedSearch()">
-                <div class="px-3 text-slate-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                <div class="search-icon-wrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -248,10 +366,9 @@
                 </div>
             </div>
 
-            {{-- input ملف Excel مخفي — لا يزال مطلوباً لخاصية رفع الشيت --}}
-            <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" class="hidden" />
 
-            {{-- إحصائيات الخصومات (مشكلة 6) — تظهر فقط عند كتابة سعر --}}
+
+            <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" class="hidden" />
             <div id="discountStatsBar" class="discount-stats-bar" style="display:none;"></div>
         </div>
 
@@ -326,7 +443,6 @@
         </div>
     </div>
 
-    {{-- تم إزالة Overlay الخاصة بعرض تفاصيل المنتج (البيانات تظهر مباشرة في الجدول) --}}
 @endsection
 
 @push('scripts')

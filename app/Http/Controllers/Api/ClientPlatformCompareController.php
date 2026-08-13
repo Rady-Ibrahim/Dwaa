@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Offer;
 use App\Models\Product;
+use App\Models\Upload;
 use App\Services\ExcelSearchService;
 use App\Services\NormalizerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ClientPlatformCompareController extends Controller
 {
@@ -26,12 +29,215 @@ class ClientPlatformCompareController extends Controller
         private NormalizerService  $normalizer,
     ) {}
 
+    /**
+     * الوضع 1: مقارنة ملف يرفعه العميل مع المنصة ككل (المسارات النشطة).
+     */
     public function __invoke(Request $request)
     {
         if (function_exists('set_time_limit')) {
             @set_time_limit(600);
         }
 
+        $rows = $this->readRows($request);
+
+        if (empty($rows)) {
+            throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
+        }
+
+        $cache = $this->loadAllPlatformCache($rows);
+        $lines = $this->sortLines($this->buildLines($rows, $cache));
+
+        return response()->json([
+            'rows_read' => count($rows),
+            'lines'     => $lines,
+        ]);
+    }
+
+    /**
+     * قائمة الملفات المرفوعة من الأدمن (لاختيارها في أوضاع المقارنة).
+     */
+    public function uploads(Request $request)
+    {
+        $uploads = Upload::query()
+            ->with('supplier:id,name')
+            ->whereHas('offers')
+            ->orderByDesc('created_at')
+            ->get(['id', 'supplier_id', 'file_path', 'status', 'matched_count', 'created_at']);
+
+        return response()->json([
+            'uploads' => $uploads->map(function (Upload $upload) {
+                return [
+                    'id'            => $upload->id,
+                    'file_name'     => basename(str_replace('\\', '/', (string) $upload->file_path)),
+                    'supplier'      => $upload->supplier?->name,
+                    'status'        => $upload->status,
+                    'matched_count' => $upload->matched_count,
+                    'created_at'    => $upload->created_at?->toDateTimeString(),
+                ];
+            })->values(),
+        ]);
+    }
+
+    /**
+     * الوضع 2: مقارنة ملف يرفعه العميل مع ملف واحد محدد من الملفات المرفوعة من الأدمن.
+     */
+    public function fileToUpload(Request $request)
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(600);
+        }
+
+        $data = $request->validate([
+            'file'      => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'upload_id' => ['required', 'exists:uploads,id'],
+        ]);
+
+        $rows = $this->readRows($request);
+
+        if (empty($rows)) {
+            throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
+        }
+
+        $uploadId = (int) $data['upload_id'];
+        $cache    = $this->loadUploadCache($uploadId);
+        $lines    = $this->sortLines($this->buildLines($rows, $cache, $uploadId));
+
+        return response()->json([
+            'rows_read' => count($rows),
+            'lines'     => $lines,
+        ]);
+    }
+
+    /**
+     * الوضع 3: مقارنة ملفين من الملفات المرفوعة من الأدمن مع بعضهما.
+     */
+    public function uploadsCompare(Request $request)
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(600);
+        }
+
+        $data = $request->validate([
+            'upload_id_a' => ['required', 'exists:uploads,id'],
+            'upload_id_b' => ['required', 'exists:uploads,id', 'different:upload_id_a'],
+        ]);
+
+        $socketA = Upload::with('supplier:id,name')->findOrFail($data['upload_id_a']);
+        $socketB = Upload::with('supplier:id,name')->findOrFail($data['upload_id_b']);
+
+        $bestA = $this->bestOffersByProduct($data['upload_id_a']);
+        $bestB = $this->bestOffersByProduct($data['upload_id_b']);
+
+        $productIds = array_values(
+            array_unique(array_merge($bestA->keys()->all(), $bestB->keys()->all()))
+        );
+
+        $products = Product::query()
+            ->whereIn('id', $productIds)
+            ->get(['id', 'name_ar', 'name_en'])
+            ->keyBy('id');
+
+        $lines = [];
+
+        foreach ($productIds as $productId) {
+            $name = $products->get($productId)
+                ? ($products->get($productId)->name_ar ?: $products->get($productId)->name_en)
+                : null;
+
+            $offerA = $bestA->get($productId);
+            $offerB = $bestB->get($productId);
+
+            if ($offerA && $offerB) {
+                $priceA      = $offerA->price !== null ? (float) $offerA->price : null;
+                $discountA   = $offerA->discount !== null ? (float) $offerA->discount : null;
+                $priceB      = $offerB->price !== null ? (float) $offerB->price : null;
+                $discountB   = $offerB->discount !== null ? (float) $offerB->discount : null;
+
+                $lines[] = [
+                    'query'          => $name,
+                    'sheet'          => [
+                        'name'     => $name,
+                        'price'    => $priceA,
+                        'discount' => $discountA,
+                    ],
+                    'matched_product' => $name,
+                    'similarity'      => 100.0,
+                    'platform_best'   => [
+                        'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
+                        'area'     => $offerB->supplier?->area,
+                        'phone'    => $offerB->supplier?->phone1 ?: $offerB->supplier?->phone2,
+                        'price'    => $priceB,
+                        'discount' => $discountB,
+                    ],
+                    'comparison' => [
+                        'price_diff'    => ($priceA !== null && $priceB !== null)
+                            ? round($priceA - $priceB, 2) : null,
+                        'discount_diff' => ($discountA !== null && $discountB !== null)
+                            ? round($discountA - $discountB, 2) : null,
+                    ],
+                    'count'    => 1,
+                    'status'   => 'both',
+                    'skipped'  => false,
+                ];
+
+                continue;
+            }
+
+            if ($offerA && ! $offerB) {
+                $lines[] = [
+                    'query'          => $name,
+                    'sheet'          => [
+                        'name'     => $name,
+                        'price'    => $offerA->price !== null ? (float) $offerA->price : null,
+                        'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
+                    ],
+                    'matched_product' => $name,
+                    'similarity'      => 100.0,
+                    'platform_best'   => null,
+                    'comparison'      => ['price_diff' => null, 'discount_diff' => null],
+                    'count'    => 1,
+                    'status'   => 'only_a',
+                    'skipped'  => false,
+                ];
+
+                continue;
+            }
+
+            // فقط موجود في الملف الثاني
+            $lines[] = [
+                'query'          => $name,
+                'sheet'          => null,
+                'matched_product' => $name,
+                'similarity'      => 100.0,
+                'platform_best'   => [
+                    'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
+                    'area'     => $offerB->supplier?->area,
+                    'phone'    => $offerB->supplier?->phone1 ?: $offerB->supplier?->phone2,
+                    'price'    => $offerB->price !== null ? (float) $offerB->price : null,
+                    'discount' => $offerB->discount !== null ? (float) $offerB->discount : null,
+                ],
+                'comparison' => ['price_diff' => null, 'discount_diff' => null],
+                'count'    => 1,
+                'status'   => 'only_b',
+                'skipped'  => false,
+            ];
+        }
+
+        $lines = $this->sortLines($lines);
+
+        return response()->json([
+            'rows_read' => count($lines),
+            'lines'     => $lines,
+        ]);
+    }
+
+    /**
+     * قراءة صفوف الملف المرفوع وتنظيفه مؤقتاً بعد القراءة.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function readRows(Request $request): array
+    {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
         ]);
@@ -40,206 +246,257 @@ class ClientPlatformCompareController extends Controller
         $fullPath = Storage::disk('local')->path($path);
 
         try {
-            // ── 1. اقرأ صفوف الشيت ───────────────────────────────────────────
-            $rows = $this->excelSearchService->readRowsAutoForPlatformCompare($fullPath, self::MAX_ROWS);
-
-            if (empty($rows)) {
-                return response()->json([
-                    'rows_read' => 0,
-                    'lines'     => [],
-                    'error'     => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.',
-                ], 422);
-            }
-
-            // ── 2. استخرج الكلمة الأولى من كل اسم (للبحث الجماعي) ────────────
-            //    بدل 757 query → نجمع الـ keywords ونعمل queries أقل بكتير
-            $keywordMap = []; // normalized_first_word => [row_indices]
-            foreach ($rows as $idx => $row) {
-                $query = trim((string) $row['name']);
-                if (mb_strlen($query) < 3) {
-                    continue;
-                }
-                $normalized = $this->normalizer->normalize($query);
-                $firstWord  = explode(' ', $normalized)[0] ?? '';
-                if (mb_strlen($firstWord) < 2) {
-                    continue;
-                }
-                $keywordMap[$firstWord][] = $idx;
-            }
-
-            // ── 3. جلب المنتجات المرتبطة بكل keyword دفعة دفعة ──────────────
-            //    نجيب المنتجات مرة واحدة per chunk من الـ keywords
-            $productCache = []; // product_id => Product (مع offers)
-
-            $keywordChunks = array_chunk(array_keys($keywordMap), self::CHUNK_KEYWORDS);
-
-            foreach ($keywordChunks as $keywords) {
-                // بناء WHERE OR query: normalized_name LIKE 'word%' OR ...
-                $query = Product::query()
-                    ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                    ->where(function ($q) use ($keywords) {
-                        foreach ($keywords as $kw) {
-                            $q->orWhere('normalized_name', 'LIKE', $kw . '%');
-                        }
-                    })
-                    ->with([
-                        'offers' => function ($q) {
-                            $q->active()
-                                ->orderBy('price')
-                                ->with('supplier:id,name,area,phone1,phone2');
-                        },
-                    ])
-                    ->get();
-
-                foreach ($query as $product) {
-                    if ($product->offers->isNotEmpty()) {
-                        $productCache[$product->id] = $product;
-                    }
-                }
-            }
-
-            $cachedProducts = collect(array_values($productCache));
-
-            // ── 4. قارن كل صف مع المنتجات المجلوبة ──────────────────────────
-            $lines = [];
-
-            foreach ($rows as $row) {
-                $rawQuery = trim((string) $row['name']);
-
-                if (mb_strlen($rawQuery) < 3) {
-                    $lines[] = [
-                        'query'   => $rawQuery,
-                        'sheet'   => $row,
-                        'skipped' => true,
-                        'reason'  => 'min_length',
-                    ];
-                    continue;
-                }
-
-                $normalizedQuery = $this->normalizer->normalize($rawQuery);
-                $firstWord       = explode(' ', $normalizedQuery)[0] ?? '';
-
-                // فلتر المنتجات التي تبدأ بنفس الكلمة الأولى (تضييق نطاق المقارنة)
-                $candidates = $firstWord !== ''
-                    ? $cachedProducts->filter(fn(Product $p) =>
-                        str_starts_with((string) ($p->normalized_name ?? ''), $firstWord)
-                    )
-                    : $cachedProducts;
-
-                // لو مفيش candidates من الـ cache، اعمل fallback query مباشرة
-                if ($candidates->isEmpty() && mb_strlen($firstWord) >= 3) {
-                    // نجرب بـ LIKE contains بدل prefix
-                    $fallback = Product::query()
-                        ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                        ->where(function ($q) use ($firstWord, $normalizedQuery) {
-                            $q->where('normalized_name', 'LIKE', '%' . $firstWord . '%')
-                              ->orWhere('normalized_name', 'LIKE', '%' . $normalizedQuery . '%');
-                        })
-                        ->with([
-                            'offers' => function ($q) {
-                                $q->active()->orderBy('price')->with('supplier:id,name,area,phone1,phone2');
-                            },
-                        ])
-                        ->limit(20)
-                        ->get()
-                        ->filter(fn(Product $p) => $p->offers->isNotEmpty());
-
-                    $candidates = $fallback;
-
-                    // لو لسه فاضي، جرب الكلمتين الأولى مع contains
-                    if ($candidates->isEmpty() && mb_strlen($normalizedQuery) >= 6) {
-                        $partialQuery = mb_substr($normalizedQuery, 0, 8);
-                        $candidates = Product::query()
-                            ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                            ->where('normalized_name', 'LIKE', '%' . $partialQuery . '%')
-                            ->with([
-                                'offers' => function ($q) {
-                                    $q->active()->orderBy('price')->with('supplier:id,name,area,phone1,phone2');
-                                },
-                            ])
-                            ->limit(20)
-                            ->get()
-                            ->filter(fn(Product $p) => $p->offers->isNotEmpty());
-                    }
-                }
-
-                // إيجاد أفضل مطابقة
-                $bestScore   = 0.0;
-                $bestProduct = null;
-
-                foreach ($candidates as $product) {
-                    $score = $this->matchScore(
-                        $normalizedQuery,
-                        $rawQuery,
-                        (string) ($product->normalized_name ?? ''),
-                        (string) ($product->name_ar ?? ''),
-                        (string) ($product->name_en ?? ''),
-                    );
-
-                    if ($score > $bestScore) {
-                        $bestScore   = $score;
-                        $bestProduct = $product;
-                    }
-                }
-
-                if ($bestScore < self::MIN_SIMILARITY || $bestProduct === null) {
-                    $lines[] = $this->noMatchLine($row, $rawQuery);
-                    continue;
-                }
-
-                $bestOffer        = $bestProduct->offers->sortBy('price')->first();
-                $sheetPrice       = $row['price'];
-                $sheetDiscount    = $row['discount'];
-                $platformPrice    = $bestOffer ? (float) $bestOffer->price    : null;
-                $platformDiscount = $bestOffer ? (float) $bestOffer->discount : null;
-
-                $lines[] = [
-                    'query'               => $rawQuery,
-                    'sheet'               => $row,
-                    'search_results_count' => 1,
-                    'matched_product'     => $bestProduct->name_ar ?: $bestProduct->name_en,
-                    'similarity'          => round($bestScore, 1),
-                    'platform_best'       => [
-                        'supplier' => $bestOffer?->supplier?->name,
-                        'area'     => $bestOffer?->supplier?->area,
-                        'phone'    => $bestOffer?->supplier?->phone1 ?: $bestOffer?->supplier?->phone2,
-                        'price'    => $platformPrice,
-                        'discount' => $platformDiscount,
-                    ],
-                    'comparison' => [
-                        'price_diff'    => ($sheetPrice !== null && $platformPrice !== null)
-                            ? round($sheetPrice - $platformPrice, 2) : null,
-                        'discount_diff' => ($sheetDiscount !== null && $platformDiscount !== null)
-                            ? round($sheetDiscount - $platformDiscount, 2) : null,
-                    ],
-                    'count'   => $bestProduct->offers->count(),
-                    'skipped' => false,
-                ];
-            }
-
-            // ── 5. ترتيب: المطابقات أولاً ← بها عرض ← بالاسم ───────────────
-            usort($lines, function (array $a, array $b): int {
-                $aMatch = (int) (($a['count'] ?? 0) > 0);
-                $bMatch = (int) (($b['count'] ?? 0) > 0);
-                if ($aMatch !== $bMatch) {
-                    return $bMatch <=> $aMatch;
-                }
-                $aOffer = (int) (!empty($a['platform_best']['supplier']));
-                $bOffer = (int) (!empty($b['platform_best']['supplier']));
-                if ($aOffer !== $bOffer) {
-                    return $bOffer <=> $aOffer;
-                }
-                return strcmp((string) ($a['query'] ?? ''), (string) ($b['query'] ?? ''));
-            });
-
-            return response()->json([
-                'rows_read' => count($rows),
-                'lines'     => $lines,
-            ]);
-
+            return $this->excelSearchService->readRowsAutoForPlatformCompare($fullPath, self::MAX_ROWS);
         } finally {
             Storage::disk('local')->delete($path);
         }
+    }
+
+    /**
+     * الوضع 1: تحميل منتجات المنصة (بعروض نشطة) المطابقة لكلمات مفتاحية من الملف.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function loadAllPlatformCache(array $rows): Collection
+    {
+        $keywordMap = [];
+
+        foreach ($rows as $idx => $row) {
+            $query = trim((string) $row['name']);
+            if (mb_strlen($query) < 3) {
+                continue;
+            }
+            $normalized = $this->normalizer->normalize($query);
+            $firstWord  = explode(' ', $normalized)[0] ?? '';
+            if (mb_strlen($firstWord) < 2) {
+                continue;
+            }
+            $keywordMap[$firstWord][] = $idx;
+        }
+
+        $productCache = [];
+
+        $keywordChunks = array_chunk(array_keys($keywordMap), self::CHUNK_KEYWORDS);
+
+        foreach ($keywordChunks as $keywords) {
+            $query = Product::query()
+                ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                ->where(function ($q) use ($keywords) {
+                    foreach ($keywords as $kw) {
+                        $q->orWhere('normalized_name', 'LIKE', $kw . '%');
+                    }
+                })
+                ->with([
+                    'offers' => function ($q) {
+                        $q->active()
+                            ->orderBy('price')
+                            ->with('supplier:id,name,area,phone1,phone2');
+                    },
+                ])
+                ->get();
+
+            foreach ($query as $product) {
+                if ($product->offers->isNotEmpty()) {
+                    $productCache[$product->id] = $product;
+                }
+            }
+        }
+
+        return collect(array_values($productCache));
+    }
+
+    /**
+     * الوضع 2: تحميل منتجات ملف واحد محدد من ملفات الأدمن (بكل عروضه).
+     */
+    private function loadUploadCache(int $uploadId): Collection
+    {
+        return Product::query()
+            ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+            ->whereHas('offers', function ($q) use ($uploadId) {
+                $q->where('upload_id', $uploadId);
+            })
+            ->with([
+                'offers' => function ($q) use ($uploadId) {
+                    $q->where('upload_id', $uploadId)
+                        ->orderBy('price')
+                        ->with('supplier:id,name,area,phone1,phone2');
+                },
+            ])
+            ->get()
+            ->filter(fn (Product $p) => $p->offers->isNotEmpty());
+    }
+
+    /**
+     * بناء سطور المقارنة لكل صف من الملف مقابل مجموعة المنتجات المتاحة.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function buildLines(array $rows, Collection $cachedProducts, ?int $uploadId = null): array
+    {
+        $lines = [];
+
+        foreach ($rows as $row) {
+            $rawQuery = trim((string) $row['name']);
+
+            if (mb_strlen($rawQuery) < 3) {
+                $lines[] = [
+                    'query'   => $rawQuery,
+                    'sheet'   => $row,
+                    'skipped' => true,
+                    'reason'  => 'min_length',
+                ];
+                continue;
+            }
+
+            $normalizedQuery = $this->normalizer->normalize($rawQuery);
+            $firstWord       = explode(' ', $normalizedQuery)[0] ?? '';
+
+            $candidates = $firstWord !== ''
+                ? $cachedProducts->filter(fn (Product $p) =>
+                    str_starts_with((string) ($p->normalized_name ?? ''), $firstWord)
+                )
+                : $cachedProducts;
+
+            if ($candidates->isEmpty() && mb_strlen($firstWord) >= 3) {
+                $offerWith = $this->offerWithClosure($uploadId);
+
+                $fallback = Product::query()
+                    ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                    ->where(function ($q) use ($firstWord, $normalizedQuery) {
+                        $q->where('normalized_name', 'LIKE', '%' . $firstWord . '%')
+                          ->orWhere('normalized_name', 'LIKE', '%' . $normalizedQuery . '%');
+                    })
+                    ->with(['offers' => $offerWith])
+                    ->limit(20)
+                    ->get()
+                    ->filter(fn (Product $p) => $p->offers->isNotEmpty());
+
+                $candidates = $fallback;
+
+                if ($candidates->isEmpty() && mb_strlen($normalizedQuery) >= 6) {
+                    $partialQuery = mb_substr($normalizedQuery, 0, 8);
+                    $candidates = Product::query()
+                        ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                        ->where('normalized_name', 'LIKE', '%' . $partialQuery . '%')
+                        ->with(['offers' => $offerWith])
+                        ->limit(20)
+                        ->get()
+                        ->filter(fn (Product $p) => $p->offers->isNotEmpty());
+                }
+            }
+
+            $bestScore   = 0.0;
+            $bestProduct = null;
+
+            foreach ($candidates as $product) {
+                $score = $this->matchScore(
+                    $normalizedQuery,
+                    $rawQuery,
+                    (string) ($product->normalized_name ?? ''),
+                    (string) ($product->name_ar ?? ''),
+                    (string) ($product->name_en ?? ''),
+                );
+
+                if ($score > $bestScore) {
+                    $bestScore   = $score;
+                    $bestProduct = $product;
+                }
+            }
+
+            if ($bestScore < self::MIN_SIMILARITY || $bestProduct === null) {
+                $lines[] = $this->noMatchLine($row, $rawQuery);
+                continue;
+            }
+
+            $bestOffer        = $bestProduct->offers->sortBy('price')->first();
+            $sheetPrice       = $row['price'];
+            $sheetDiscount    = $row['discount'];
+            $platformPrice    = $bestOffer ? (float) $bestOffer->price    : null;
+            $platformDiscount = $bestOffer ? (float) $bestOffer->discount : null;
+
+            $lines[] = [
+                'query'               => $rawQuery,
+                'sheet'               => $row,
+                'search_results_count' => 1,
+                'matched_product'     => $bestProduct->name_ar ?: $bestProduct->name_en,
+                'similarity'          => round($bestScore, 1),
+                'platform_best'       => [
+                    'supplier' => $bestOffer?->supplier?->name,
+                    'area'     => $bestOffer?->supplier?->area,
+                    'phone'    => $bestOffer?->supplier?->phone1 ?: $bestOffer?->supplier?->phone2,
+                    'price'    => $platformPrice,
+                    'discount' => $platformDiscount,
+                ],
+                'comparison' => [
+                    'price_diff'    => ($sheetPrice !== null && $platformPrice !== null)
+                        ? round($sheetPrice - $platformPrice, 2) : null,
+                    'discount_diff' => ($sheetDiscount !== null && $platformDiscount !== null)
+                        ? round($sheetDiscount - $platformDiscount, 2) : null,
+                ],
+                'count'   => $bestProduct->offers->count(),
+                'status'  => 'both',
+                'skipped' => false,
+            ];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Closure لتحميل العروض حسب الوضع (كل عرض الملف المحدد، أو العروض النشطة).
+     */
+    private function offerWithClosure(?int $uploadId): callable
+    {
+        return function ($q) use ($uploadId) {
+            if ($uploadId !== null) {
+                $q->where('upload_id', $uploadId);
+            } else {
+                $q->active();
+            }
+            $q->orderBy('price')->with('supplier:id,name,area,phone1,phone2');
+        };
+    }
+
+    /**
+     * أفضل عرض (أقل سعر) لكل منتج داخل ملف مرفوع معين.
+     */
+    private function bestOffersByProduct(int $uploadId): Collection
+    {
+        return Offer::query()
+            ->where('upload_id', $uploadId)
+            ->with('supplier:id,name,area,phone1,phone2')
+            ->orderBy('price')
+            ->get()
+            ->groupBy('product_id')
+            ->map->first();
+    }
+
+    /**
+     * ترتيب السطور: المطابقات أولاً ← بها عرض ← بالاسم.
+     */
+    private function sortLines(array $lines): array
+    {
+        usort($lines, function (array $a, array $b): int {
+            $aMatch = (int) (($a['count'] ?? 0) > 0);
+            $bMatch = (int) (($b['count'] ?? 0) > 0);
+            if ($aMatch !== $bMatch) {
+                return $bMatch <=> $aMatch;
+            }
+            if (($a['status'] ?? '') === 'only_b') {
+                return 1;
+            }
+            if (($b['status'] ?? '') === 'only_b') {
+                return -1;
+            }
+            $aOffer = (int) (!empty($a['platform_best']['supplier']));
+            $bOffer = (int) (!empty($b['platform_best']['supplier']));
+            if ($aOffer !== $bOffer) {
+                return $bOffer <=> $aOffer;
+            }
+            return strcmp((string) ($a['query'] ?? ''), (string) ($b['query'] ?? ''));
+        });
+
+        return $lines;
     }
 
     /**
@@ -259,15 +516,12 @@ class ClientPlatformCompareController extends Controller
         if ($normalizedName !== '') {
             $normP = $this->drugNormalize($normalizedName);
 
-            // مقارنة بعد التطبيع الإملائي
             similar_text($normQ, $normP, $pct);
             $scores[] = $pct;
 
-            // مقارنة مباشرة بدون drug normalize
             similar_text($normalizedQuery, $normalizedName, $pct2);
             $scores[] = $pct2;
 
-            // مكافأة لو الكلمة الأولى في المنتج تبدأ بنفس بداية الاستعلام
             $qFirst = explode(' ', $normQ)[0] ?? '';
             $pFirst = explode(' ', $normP)[0]  ?? '';
             if ($qFirst !== '' && $pFirst !== '' && str_starts_with($pFirst, $qFirst)) {
@@ -325,6 +579,7 @@ class ClientPlatformCompareController extends Controller
                 'discount_diff' => null,
             ],
             'count'   => 0,
+            'status'  => 'no_match',
             'skipped' => false,
         ];
     }

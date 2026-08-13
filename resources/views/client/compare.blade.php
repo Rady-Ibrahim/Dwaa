@@ -4,198 +4,357 @@
 
 @section('content')
     <style>
-        /* تحسينات الجدول لتناسب الثيم الداكن */
+        .compare-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .compare-hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.2rem 1.3rem;
+            border-radius: 26px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 0 20px 35px rgba(2, 6, 23, 0.24);
+        }
+
+        .compare-hero-title {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 800;
+            color: #f8fafc;
+            font-size: 1.35rem;
+        }
+
+        .compare-hero-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.24);
+            color: #7dd3fc;
+        }
+
+        .compare-hero-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .compare-pill {
+            padding: 0.5rem 0.8rem;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.06);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            color: #cbd5e1;
+            font-size: 0.82rem;
+        }
+
+        .compare-upload-panel {
+            padding: 1.3rem;
+            border-radius: 28px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 0 20px 35px rgba(2, 6, 23, 0.24);
+        }
+
+        .file-drop-zone {
+            border: 2px dashed rgba(148, 163, 184, 0.2);
+            background: rgba(15, 23, 42, 0.42);
+            transition: all 0.25s ease;
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 22px;
+        }
+
+        .file-drop-zone:hover {
+            border-color: rgba(96, 165, 250, 0.7);
+            background: rgba(59, 130, 246, 0.04);
+        }
+
+        .file-drop-zone.active {
+            border-color: rgba(96, 165, 250, 0.8);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+        }
+
+        .file-drop-zone .inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.7rem;
+            color: #cbd5e1;
+        }
+
+        .file-drop-zone .icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            display: grid;
+            place-items: center;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.22);
+            color: #7dd3fc;
+            font-size: 1.8rem;
+        }
+
+        .compare-primary-btn {
+            border: none;
+            border-radius: 18px;
+            padding: 1rem 1.4rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #2563eb, #8b5cf6);
+            color: #fff;
+            box-shadow: 0 18px 28px rgba(80, 112, 255, 0.25);
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+
+        .compare-primary-btn:hover {
+            filter: brightness(1.06);
+            transform: translateY(-1px);
+        }
+
+        .compare-primary-btn:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+        }
+
+        .compare-table-wrap {
+            overflow: hidden;
+            border-radius: 28px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            box-shadow: 0 20px 35px rgba(2, 6, 23, 0.26);
+        }
+
+        .compare-filters {
+            padding: 1rem 1rem 0.8rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+            background: rgba(2, 6, 23, 0.18);
+        }
+
+        .compare-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.85rem;
+        }
+
+        .compare-filter-box {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            background: rgba(15, 23, 42, 0.78);
+            color: #e2e8f0;
+            padding: 0.8rem 0.9rem;
+            outline: none;
+        }
+
+        .compare-filter-box:focus {
+            border-color: rgba(96, 165, 250, 0.45);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+        }
+
         .compare-table thead th {
-            background: rgba(255, 255, 255, 0.02);
-            color: #94a3b8;
+            background: rgba(2, 6, 23, 0.45);
+            color: #cbd5e1;
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.74rem;
             letter-spacing: 0.05em;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
         }
 
         .compare-table tbody tr {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-            transition: all 0.2s;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+            transition: background 0.2s ease;
         }
 
         .compare-table tbody tr:hover {
-            background: rgba(56, 189, 248, 0.03);
+            background: rgba(59, 130, 246, 0.03);
         }
 
-        /* الكبسولات السعرية */
-        .pill-price {
+        .pill-price,
+        .pill-discount,
+        .pill-good,
+        .pill-bad,
+        .pill-neutral,
+        .pill-best-a,
+        .pill-best-b {
             display: inline-flex;
             align-items: center;
-            padding: 4px 10px;
-            border-radius: 8px;
-            background: rgba(56, 189, 248, 0.1);
-            color: #38bdf8;
+            justify-content: center;
+            min-width: 90px;
+            padding: 0.42rem 0.7rem;
+            border-radius: 10px;
             font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
         }
 
+        .pill-price {
+            background: rgba(56, 189, 248, 0.13);
+            color: #38bdf8;
+        }
+
         .pill-discount {
-            display: inline-flex;
-            padding: 2px 8px;
-            border-radius: 6px;
-            background: rgba(34, 197, 94, 0.1);
+            background: rgba(34, 197, 94, 0.12);
             color: #4ade80;
-            font-size: 0.8rem;
         }
 
         .pill-good {
-            background: rgba(34, 197, 94, 0.15);
+            background: rgba(34, 197, 94, 0.16);
             color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.22);
         }
 
         .pill-bad {
-            background: rgba(244, 63, 94, 0.15);
+            background: rgba(244, 63, 94, 0.16);
             color: #fb7185;
-            border: 1px solid rgba(244, 63, 94, 0.2);
+            border: 1px solid rgba(244, 63, 94, 0.22);
         }
 
         .pill-neutral {
-            background: rgba(148, 163, 184, 0.15);
+            background: rgba(148, 163, 184, 0.12);
             color: #cbd5e1;
             border: 1px solid rgba(148, 163, 184, 0.2);
         }
 
         .pill-best-a {
-            background: rgba(34, 197, 94, 0.15);
+            background: rgba(34, 197, 94, 0.16);
             color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.22);
         }
 
         .pill-best-b {
-            background: rgba(56, 189, 248, 0.15);
-            color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.2);
+            background: rgba(59, 130, 246, 0.14);
+            color: #7dd3fc;
+            border: 1px solid rgba(59, 130, 246, 0.26);
         }
 
-        /* منطقة رفع الملفات */
-        .file-drop-zone {
-            border: 2px dashed rgba(255, 255, 255, 0.1);
-            background: rgba(15, 23, 42, 0.3);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        select option {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
         }
 
-        .file-drop-zone:hover {
-            border-color: #38bdf8;
-            background: rgba(56, 189, 248, 0.02);
+        @media (max-width: 960px) {
+            .compare-filter-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
-        .file-drop-zone.active {
-            border-color: #38bdf8;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+        @media (max-width: 640px) {
+            .compare-hero {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .compare-filter-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 
-    <div class="space-y-6">
-        <div class="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center">⚖️</div>
-                <h4 class="text-xl font-bold text-white">مقارنة ملفات التوريد</h4>
+    <div class="compare-shell">
+        <div class="compare-hero">
+            <div class="compare-hero-title">
+                <div class="compare-hero-badge">⚖️</div>
+                <span>مقارنة ملفات التوريد</span>
             </div>
+            <div class="compare-hero-meta">
+                <span class="compare-pill">مقارنة ذكية</span>
+                <span class="compare-pill">MedRANKO</span>
+            </div>
+        </div>
 
+        <div class="compare-upload-panel">
             <form onsubmit="compareFiles(event)" class="space-y-6">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="space-y-3">
                         <input type="file" id="fileA" accept=".xlsx,.xls,.csv" required class="hidden" />
-                        <div onclick="document.getElementById('fileA').click()"
-                            class="file-drop-zone rounded-2xl p-6 cursor-pointer text-center group" id="dropZoneA">
-                            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">📄</div>
-                            <p id="fileAName" class="text-sm font-semibold text-slate-300">اسحب أو اختر الملف الأول</p>
-                            <p class="text-[10px] text-slate-500 mt-1 uppercase">XLSX, XLS, CSV ONLY</p>
+                        <div onclick="document.getElementById('fileA').click()" id="dropZoneA" class="file-drop-zone">
+                            <div class="inner">
+                                <div class="icon">📄</div>
+                                <div>
+                                    <p id="fileAName" class="font-semibold text-slate-200">اختر الملف الأول</p>
+                                    <div class="text-[10px] text-slate-500 uppercase mt-1">XLSX, XLS, CSV</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="space-y-3">
                         <input type="file" id="fileB" accept=".xlsx,.xls,.csv" required class="hidden" />
-                        <div onclick="document.getElementById('fileB').click()"
-                            class="file-drop-zone rounded-2xl p-6 cursor-pointer text-center group" id="dropZoneB">
-                            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">📄</div>
-                            <p id="fileBName" class="text-sm font-semibold text-slate-300">اسحب أو اختر الملف الثاني</p>
-                            <p class="text-[10px] text-slate-500 mt-1 uppercase">XLSX, XLS, CSV ONLY</p>
+                        <div onclick="document.getElementById('fileB').click()" id="dropZoneB" class="file-drop-zone">
+                            <div class="inner">
+                                <div class="icon"
+                                    style="background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.22); color: #d8b4fe;">
+                                    📄</div>
+                                <div>
+                                    <p id="fileBName" class="font-semibold text-slate-200">اختر الملف الثاني</p>
+                                    <div class="text-[10px] text-slate-500 uppercase mt-1">XLSX, XLS, CSV</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex justify-center pt-4">
-                    <button type="submit" id="compareBtn"
-                        class="px-10 py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-bold shadow-lg shadow-sky-900/20 transition-all flex items-center gap-3 active:scale-[0.97]">
-                        <span>بدء المقارنة الذكية</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
+                <div class="flex justify-center pt-2">
+                    <button type="submit" id="compareBtn" class="compare-primary-btn">
+                        بدء المقارنة الذكية
                     </button>
                 </div>
             </form>
         </div>
 
-        <style>
-            select option {
-                background-color: #0f172a !important; /* لون متناسق مع السايد بار */
-                color: #ffffff !important;
-            }
-        </style>
-        
-        <div class="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl">
-            <div class="p-6 border-b border-white/5 bg-slate-950/20">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
-                    
-                    <div class="relative group">
-                        <input id="compareSearchInput" type="text" placeholder="بحث باسم الصنف..."
-                            class="w-full rounded-xl bg-slate-900 border border-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/40 transition-all" />
-                    </div>
-        
-                    <div>
-                        <select id="priceWinnerFilter"
-                            class="w-full rounded-xl bg-slate-900 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer appearance-none">
-                            <option value="all" selected>فلتر السعر: الكل</option>
-                            <option value="A">سعر A أقل</option>
-                            <option value="B">سعر B أقل</option>
-                            <option value="equal">متساوي</option>
-                        </select>
-                    </div>
-        
-                    <div>
-                        <select id="discountWinnerFilter"
-                            class="w-full rounded-xl bg-slate-900 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer appearance-none">
-                            <option value="all" selected>فلتر الخصم: الكل</option>
-                            <option value="A">خصم A أعلى</option>
-                            <option value="B">خصم B أعلى</option>
-                            <option value="equal">متساوي</option>
-                        </select>
-                    </div>
-        
+        <div class="compare-table-wrap">
+            <div class="compare-filters">
+                <div class="compare-filter-grid">
+                    <input id="compareSearchInput" type="text" placeholder="بحث باسم الصنف..."
+                        class="compare-filter-box" />
+
+                    <select id="priceWinnerFilter" class="compare-filter-box">
+                        <option value="all" selected>فلتر السعر: الكل</option>
+                        <option value="A">سعر A أقل</option>
+                        <option value="B">سعر B أقل</option>
+                        <option value="equal">متساوي</option>
+                    </select>
+
+                    <select id="discountWinnerFilter" class="compare-filter-box">
+                        <option value="all" selected>فلتر الخصم: الكل</option>
+                        <option value="A">خصم A أعلى</option>
+                        <option value="B">خصم B أعلى</option>
+                        <option value="equal">متساوي</option>
+                    </select>
+
                     <div class="flex gap-2">
-                        <select id="supplierWinnerFilter"
-                            class="flex-1 rounded-xl bg-slate-900 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40 cursor-pointer appearance-none">
+                        <select id="supplierWinnerFilter" class="compare-filter-box flex-1">
                             <option value="all" selected>فلتر المورد: الكل</option>
                             <option value="A">المورد A الأفضل</option>
                             <option value="B">المورد B الأفضل</option>
                             <option value="equal">متساوي</option>
                         </select>
-        
-                        <button id="clearCompareFiltersBtn" 
-                            title="مسح كافة الفلاتر"
-                            class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-rose-500 border border-white/10 transition-all flex items-center justify-center group">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+
+                        <button id="clearCompareFiltersBtn" title="مسح كافة الفلاتر"
+                            class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-rose-500 border border-white/10 transition-all">
+                            🗑️
                         </button>
                     </div>
                 </div>
             </div>
-        
+
             <div class="overflow-x-auto">
                 <table class="compare-table w-full text-right border-collapse">
                     <thead>
-                        <tr class="bg-slate-950/50 text-slate-400 border-b border-white/5 text-xs uppercase tracking-wider">
+                        <tr>
                             <th class="p-5 font-semibold">الصنف</th>
                             <th class="p-5 font-semibold text-center" id="priceAHeader">سعر الملف 1</th>
                             <th class="p-5 font-semibold text-center" id="priceBHeader">سعر الملف 2</th>
@@ -213,14 +372,15 @@
                                         <span class="text-3xl opacity-40">📊</span>
                                     </div>
                                     <p class="text-slate-400 text-base">بانتظار رفع الملفات لبدء التحليل الفوري...</p>
-                                    <span class="text-xs text-slate-500">ارفع ملفات Excel للمقارنة بين الأسعار والخصومات</span>
+                                    <span class="text-xs text-slate-500">ارفع ملفات Excel للمقارنة بين الأسعار
+                                        والخصومات</span>
                                 </div>
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-        
+
             <div id="compareActions" class="p-6 bg-slate-950/30 border-t border-white/5 flex justify-end"></div>
             <div id="comparePagination" class="p-4 border-t border-white/5 bg-slate-950/10"></div>
         </div>
@@ -253,7 +413,6 @@
         const supplierWinnerFilter = document.getElementById('supplierWinnerFilter');
         const clearCompareFiltersBtn = document.getElementById('clearCompareFiltersBtn');
 
-        // تحديث المسميات عند الاختيار
         fileAInput.addEventListener('change', () => {
             if (fileAInput.files?.[0]) {
                 fileAName.textContent = fileAInput.files[0].name;
@@ -349,7 +508,7 @@
                     '<tr><td colspan="7" class="p-12 text-center text-rose-400">فشلت المقارنة. تأكد أن الملف يحتوي على هيدر واضح لاسم الصنف والسعر (والخصم اختياري).</td></tr>';
             } finally {
                 compareBtn.disabled = false;
-                compareBtn.innerHTML = '<span>بدء المقارنة الذكية</span>';
+                compareBtn.innerHTML = 'بدء المقارنة الذكية';
             }
         }
 
@@ -473,20 +632,20 @@
             if (priceA === priceB && discountA === discountB) {
                 return {
                     label: 'متساوي',
-                    className: 'pill-neutral',
+                    className: 'pill-neutral'
                 };
             }
 
             if (priceA < priceB || (priceA === priceB && discountA > discountB)) {
                 return {
                     label: `${fileALabel} الأفضل`,
-                    className: 'pill-best-a',
+                    className: 'pill-best-a'
                 };
             }
 
             return {
                 label: `${fileBLabel} الأفضل`,
-                className: 'pill-best-b',
+                className: 'pill-best-b'
             };
         }
 
@@ -510,22 +669,16 @@
         }
 
         async function saveComparisonManually() {
-            if (!latestCompareData) {
-                return;
-            }
-
+            if (!latestCompareData) return;
             if (latestSavedComparisonId) {
                 window.clientNotify('المقارنة محفوظة بالفعل', 'success');
                 return;
             }
-
             await persistComparison(true);
         }
 
         async function persistComparison(showToast = true) {
-            if (!latestCompareData) {
-                return;
-            }
+            if (!latestCompareData) return;
 
             const response = await axios.post('/saved-comparisons', {
                 title: getComparisonTitle(),

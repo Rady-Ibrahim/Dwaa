@@ -44,6 +44,9 @@ class Offer extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('expires_at', '>', now());
+        return $query->where(function (Builder $query) {
+            $query->where('expires_at', '>', now())
+                ->orWhereNull('expires_at');
+        });
     }
 }

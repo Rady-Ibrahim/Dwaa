@@ -373,9 +373,6 @@ class SearchService
     {
         /** @var Collection<int, Offer> $offers */
         $offers = $product->offers;
-        if ($product->supplier_id) {
-            $offers = $offers->where('supplier_id', $product->supplier_id)->values();
-        }
 
         // Apply single price filter
         if (isset($filters['price'])) {

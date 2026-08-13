@@ -57,6 +57,12 @@
         const activationInfoText = activationInfo.querySelector('span:last-child');
         const activationCodeInput = document.getElementById('code');
 
+        // تنبيه عند القدوم من صفحات مخصصة بسبب انتهاء الاشتراك
+        const activateParams = new URLSearchParams(window.location.search);
+        if (activateParams.has('expired')) {
+            window.clientNotify('انتهى اشتراكك، يرجى إدخال رمز التفعيل لتجديده.', 'warning');
+        }
+
         function formatDate(value) {
             if (!value) return null;
             const date = new Date(value);

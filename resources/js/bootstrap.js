@@ -104,9 +104,15 @@ axios.interceptors.response.use(
         }
 
         if (status === 402) {
-            redirectToLogin('subscription');
+            // انتهى الاشتراك أو غير مفعل → نوجهه لصفحة التفعيل بدلاً من تسجيل الدخول
+            window.location.replace('/client/activate?expired=1');
         } else if (status === 403) {
-            redirectToLogin('blocked');
+            // حساب موقوف → نعرض رسالة ونبقى في الصفحة بدلاً من تسجيل الدخول
+            if (typeof window.clientNotify === 'function') {
+                window.clientNotify('تم إيقاف الحساب أو فقدان الصلاحية. يرجى التواصل مع الإدارة.', 'error');
+            } else {
+                window.alert('تم إيقاف الحساب أو فقدان الصلاحية. يرجى التواصل مع الإدارة.');
+            }
         } else if (status === 419) {
             redirectToLogin('expired');
         }

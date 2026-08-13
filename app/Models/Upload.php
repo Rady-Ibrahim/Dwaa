@@ -39,4 +39,9 @@ class Upload extends Model
     {
         return $this->hasMany(UnmatchedProduct::class);
     }
+
+    public function offers(): HasMany
+    {
+        return $this->hasMany(Offer::class);
+    }
 }

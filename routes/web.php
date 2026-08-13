@@ -70,7 +70,7 @@ Route::middleware('auth')->group(function () {
 Route::view('/login', 'client.login')->name('client.login');
 Route::redirect('/client/login', '/login');
 
-Route::prefix('client')->group(function () {
+Route::middleware('client.auth')->prefix('client')->group(function () {
     Route::redirect('/', '/client/search');
     Route::view('/search', 'client.search')->name('client.search');
     Route::view('/compare', 'client.compare')->name('client.compare');
@@ -80,7 +80,7 @@ Route::prefix('client')->group(function () {
     Route::get('/saved-comparisons/{savedComparison}', function ($savedComparison) {
         return view('client.saved-comparison-show', ['savedComparisonId' => $savedComparison]);
     })->name('client.saved-comparisons.show');
-Route::view('/products', 'client.products')->name('client.products');
+    Route::view('/products', 'client.products')->name('client.products');
     Route::view('/password', 'client.password')->name('client.password');
     Route::view('/activate', 'client.activate')->name('client.activate');
 

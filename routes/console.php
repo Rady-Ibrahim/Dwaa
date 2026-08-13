@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('rankings:recalculate')->dailyAt('00:05');
+Schedule::command('uploads:prune-old --days=30')->weekly();

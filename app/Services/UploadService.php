@@ -11,7 +11,20 @@ class UploadService
 {
     public function storeUpload(int $supplierId, UploadedFile $file, array $columnMap): Upload
     {
-        $path = $file->store('uploads/'.now()->format('Y/m'), 'local');
+        // Remove physical files of prior uploads for this supplier that finished processing
+        // Keep DB records intact to preserve dashboard statistics.
+        $oldUploads = Upload::query()
+            ->where('supplier_id', $supplierId)
+            ->whereIn('status', ['done', 'failed'])
+            ->get();
+
+        foreach ($oldUploads as $old) {
+            if ($old->file_path && Storage::disk('local')->exists($old->file_path)) {
+                Storage::disk('local')->delete($old->file_path);
+            }
+        }
+
+        $path = $file->store('uploads/' . now()->format('Y/m'), 'local');
 
         $upload = Upload::query()->create([
             'supplier_id' => $supplierId,

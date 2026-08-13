@@ -80,8 +80,6 @@
                     <tr>
                         <th class="p-4">#</th>
                         <th class="p-4">المورد</th>
-                        <th class="p-4">المنطقة</th>
-                        <th class="p-4">تليفون</th>
                         <th class="p-4">عدد الأصناف</th>
                         <th class="p-4">مؤشر الخصم</th>
                     </tr>
@@ -121,7 +119,7 @@
             rankTabDiscount.classList.toggle('active', sort === 'discount');
 
             rankingTableBody.innerHTML =
-                '<tr><td colspan="6" class="p-6 text-center text-slate-400">جاري تحميل الترتيب...</td></tr>';
+                '<tr><td colspan="4" class="p-6 text-center text-slate-400">جاري تحميل الترتيب...</td></tr>';
 
             try {
                 const res = await axios.get('/ranking', {
@@ -131,7 +129,7 @@
             } catch (err) {
                 console.error(err);
                 rankingTableBody.innerHTML =
-                    '<tr><td colspan="6" class="p-6 text-center text-rose-400">فشل تحميل الترتيب.</td></tr>';
+                    '<tr><td colspan="4" class="p-6 text-center text-rose-400">فشل تحميل الترتيب.</td></tr>';
                 rankingMeta.textContent = '';
             }
         }
@@ -142,7 +140,7 @@
 
             if (!rows.length) {
                 rankingTableBody.innerHTML =
-                    '<tr><td colspan="6" class="p-6 text-center text-slate-500">لا توجد بيانات ترتيب بعد.</td></tr>';
+                    '<tr><td colspan="4" class="p-6 text-center text-slate-500">لا توجد بيانات ترتيب بعد.</td></tr>';
                 return;
             }
 
@@ -165,8 +163,6 @@
                             <span class="rank-badge ${badgeClass}">${idx + 1}</span>
                         </td>
                         <td class="p-4 font-semibold text-white">${escapeForAttr(row.supplier?.name || '-')}</td>
-                        <td class="p-4 text-slate-400">${escapeForAttr(row.supplier?.area || '-')}</td>
-                        <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">${escapeForAttr(row.supplier?.phone || '-')}</td>
                         <td class="p-4">
                             <div class="flex items-center gap-2">
                                 <span class="font-mono tabular-nums ${sortByDiscount ? 'text-slate-400' : 'text-sky-300'}">${count}</span>

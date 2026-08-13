@@ -57,6 +57,36 @@
         </div>
     </div>
 
+    {{-- موردين اليوم --}}
+    <div class="mt-6 rounded-2xl border border-white/[0.06] bg-[#18161c] p-6 shadow-lg">
+        <div class="mb-4 flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-950/50 text-emerald-400">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </span>
+            <div>
+                <h3 class="font-semibold text-white">موردين اليوم</h3>
+                <p class="text-xs text-zinc-500">الموردون الذين حدّثوا ملفاتهم اليوم</p>
+            </div>
+            <span class="ms-auto rounded-xl bg-emerald-500/15 px-3 py-1.5 text-lg font-bold tabular-nums text-emerald-300">
+                {{ $suppliersTodayList->count() }}
+            </span>
+        </div>
+        @if ($suppliersTodayList->isNotEmpty())
+            <ul class="divide-y divide-white/[0.05]">
+                @foreach ($suppliersTodayList as $row)
+                    <li class="flex items-center justify-between gap-3 py-2.5 text-sm">
+                        <span class="font-medium text-zinc-200">{{ $row['name'] }}</span>
+                        <span class="text-xs text-zinc-500">
+                            {{ $row['uploads'] }} ملف — {{ $row['last_upload_at']?->format('H:i') }}
+                        </span>
+                    </li>
+                @endforeach
+            </ul>
+        @else
+            <p class="py-6 text-center text-sm text-zinc-500">لا يوجد موردون حدّثوا ملفاتهم اليوم.</p>
+        @endif
+    </div>
+
     {{-- تحليلات مختصرة --}}
     <div class="mt-10">
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

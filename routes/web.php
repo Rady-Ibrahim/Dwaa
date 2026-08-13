@@ -1,12 +1,13 @@
 <?php
 
 use App\Http\Controllers\Web\Admin\DashboardActivationCodesController;
-use App\Http\Controllers\Web\Admin\DashboardMappingWebController;
-use App\Http\Controllers\Web\Admin\DashboardSuppliersController;
 use App\Http\Controllers\Web\Admin\DashboardAnalyticsController;
+use App\Http\Controllers\Web\Admin\DashboardMappingWebController;
+use App\Http\Controllers\Web\Admin\DashboardSearchLogsController;
+use App\Http\Controllers\Web\Admin\DashboardSuppliersController;
 use App\Http\Controllers\Web\Admin\DashboardUploadsController;
-use App\Http\Controllers\Web\Admin\DashboardUsersController;
 use App\Http\Controllers\Web\Admin\DashboardUserDevicesController;
+use App\Http\Controllers\Web\Admin\DashboardUsersController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\WebAuthController;
 use Illuminate\Http\Request;
@@ -56,6 +57,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/analytics', DashboardAnalyticsController::class)->name('dashboard.analytics');
 
+        Route::get('/analytics/search-logs', [DashboardSearchLogsController::class, 'index'])->name('dashboard.analytics.search-logs');
+        Route::get('/analytics/users/{user}/search-logs', [DashboardSearchLogsController::class, 'userHistory'])->name('dashboard.analytics.users.search-logs');
+
         Route::get('/mapping', [DashboardController::class, 'mapping'])->name('dashboard.mapping');
         Route::get('/mapping/products/search', [DashboardMappingWebController::class, 'searchProducts'])->name('dashboard.mapping.search');
         Route::post('/mapping/{unmatched_product}/link', [DashboardMappingWebController::class, 'link'])->name('dashboard.mapping.link');
@@ -81,6 +85,8 @@ Route::middleware('client.auth')->prefix('client')->group(function () {
         return view('client.saved-comparison-show', ['savedComparisonId' => $savedComparison]);
     })->name('client.saved-comparisons.show');
     Route::view('/products', 'client.products')->name('client.products');
+    Route::view('/ranking', 'client.ranking')->name('client.ranking');
+    Route::view('/suppliers-today', 'client.suppliers-today')->name('client.suppliers-today');
     Route::view('/password', 'client.password')->name('client.password');
     Route::view('/activate', 'client.activate')->name('client.activate');
 

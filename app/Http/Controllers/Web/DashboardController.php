@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Advertisement;
 use App\Models\ComparisonLog;
 use App\Models\Product;
 use App\Models\SearchLog;
+use App\Models\Setting;
 use App\Models\Supplier;
 use App\Models\UnmatchedProduct;
 use App\Models\Upload;
 use App\Models\User;
-use App\Models\Advertisement;
-use App\Models\Setting;
 use App\Services\NormalizerService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -26,6 +26,26 @@ class DashboardController extends Controller
             'pending_unmatched' => UnmatchedProduct::query()->where('status', 'pending')->count(),
             'uploads_today' => Upload::query()->whereDate('created_at', today())->count(),
         ];
+
+        $suppliersToday = Upload::query()
+            ->with('supplier:id,name,area,phone1,phone2')
+            ->where('status', 'done')
+            ->whereDate('updated_at', today())
+            ->orderByDesc('updated_at')
+            ->get()
+            ->groupBy('supplier_id');
+
+        $suppliersTodayList = $suppliersToday
+            ->map(function ($items) {
+                return [
+                    'name' => $items->first()->supplier?->name ?? '—',
+                    'uploads' => $items->count(),
+                    'last_upload_at' => $items->max('updated_at'),
+                ];
+            })
+            ->sortByDesc('last_upload_at')
+            ->take(8)
+            ->values();
 
         $totalSearches = SearchLog::query()->forQueryAggregates()->count();
         $totalComparisons = ComparisonLog::query()->count();
@@ -58,7 +78,8 @@ class DashboardController extends Controller
             'topQueries',
             'maxTop',
             'searchTrend',
-            'trendMax'
+            'trendMax',
+            'suppliersTodayList'
         ));
     }
 
@@ -143,10 +164,10 @@ class DashboardController extends Controller
     public function updateSettings(Request $request)
     {
         $data = $request->all();
-        
+
         // Handle boolean fields properly
         $data['ticker_enabled'] = isset($data['ticker_enabled']) ? true : false;
-        
+
         $request->validate([
             'advertisements' => 'array',
             'advertisements.*' => 'nullable|string|max:255',
@@ -162,9 +183,9 @@ class DashboardController extends Controller
         Advertisement::query()->delete();
 
         // Create new advertisements
-        if (!empty($request->advertisements)) {
+        if (! empty($request->advertisements)) {
             foreach ($request->advertisements as $index => $message) {
-                if (!empty(trim($message ?? ''))) {
+                if (! empty(trim($message ?? ''))) {
                     Advertisement::create([
                         'message' => trim($message),
                         'is_active' => $data['ticker_enabled'],

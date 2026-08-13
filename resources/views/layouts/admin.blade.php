@@ -75,6 +75,7 @@
         $nav = [
             ['route' => 'dashboard', 'label' => 'الرئيسية', 'match' => 'dashboard'],
             ['route' => 'dashboard.analytics', 'label' => 'التحليلات', 'match' => 'dashboard.analytics'],
+            ['route' => 'dashboard.analytics.search-logs', 'label' => 'سجل بحث العملاء', 'match' => 'dashboard.analytics.search-logs*'],
             ['route' => 'dashboard.products', 'label' => 'المنتجات', 'match' => 'dashboard.products'],
             ['route' => 'dashboard.suppliers', 'label' => 'الموردون', 'match' => 'dashboard.suppliers'],
             ['route' => 'dashboard.users', 'label' => 'المستخدمون', 'match' => 'dashboard.users'],

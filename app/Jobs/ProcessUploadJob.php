@@ -5,9 +5,9 @@ namespace App\Jobs;
 use App\Concerns\HasExcelHeaderAliases;
 use App\Imports\SupplierOfferImport;
 use App\Models\Offer;
-use App\Models\Product;
 use App\Models\Upload;
 use App\Services\NormalizerService;
+use App\Services\RankingService;
 use App\Services\SupplierOfferProductResolver;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,7 +32,7 @@ class ProcessUploadJob implements ShouldQueue
 
     public function __construct(public Upload $upload) {}
 
-    public function handle(NormalizerService $normalizer, SupplierOfferProductResolver $resolver): void
+    public function handle(NormalizerService $normalizer, SupplierOfferProductResolver $resolver, RankingService $rankingService): void
     {
         $this->upload->update([
             'status' => 'processing',
@@ -119,6 +119,8 @@ class ProcessUploadJob implements ShouldQueue
             'unmatched_count' => 0,
             'finished_at' => now(),
         ]);
+
+        $rankingService->recalculateForSupplier($this->upload->supplier_id);
     }
 
     /**
@@ -226,7 +228,7 @@ class ProcessUploadJob implements ShouldQueue
     {
         $spreadsheetRow = $row->getDelegate();
         $columnLetter = Coordinate::stringFromColumnIndex($zeroBasedColumnIndex + 1);
-        $address = $columnLetter . $spreadsheetRow->getRowIndex();
+        $address = $columnLetter.$spreadsheetRow->getRowIndex();
         $cell = $spreadsheetRow->getWorksheet()->getCell($address);
         $value = $cell->getValue();
 

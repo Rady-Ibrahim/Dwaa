@@ -1,22 +1,25 @@
 <?php
 
-use App\Http\Controllers\Api\Admin\UserDevicesController;
 use App\Http\Controllers\Api\ActivationController;
 use App\Http\Controllers\Api\Admin\ActivationCodeController;
 use App\Http\Controllers\Api\Admin\AnalyticsController;
+use App\Http\Controllers\Api\Admin\MappingController;
+use App\Http\Controllers\Api\Admin\SearchLogsController;
+use App\Http\Controllers\Api\Admin\SupplierController;
+use App\Http\Controllers\Api\Admin\UploadController;
+use App\Http\Controllers\Api\Admin\UserAdminController;
+use App\Http\Controllers\Api\Admin\UserDevicesController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClientExcelSearchController;
 use App\Http\Controllers\Api\ClientFileCompareController;
 use App\Http\Controllers\Api\ClientPlatformCompareController;
 use App\Http\Controllers\Api\ClientProductsController;
-use App\Http\Controllers\Api\SavedComparisonController;
-use App\Http\Controllers\Api\Admin\MappingController;
-use App\Http\Controllers\Api\Admin\SupplierController;
-use App\Http\Controllers\Api\Admin\UploadController;
-use App\Http\Controllers\Api\Admin\UserAdminController;
-use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\PasswordController;
+use App\Http\Controllers\Api\RankingController;
+use App\Http\Controllers\Api\SavedComparisonController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\SuppliersTodayController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -52,6 +55,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/saved-comparisons/{saved_comparison}', [SavedComparisonController::class, 'destroy']);
 
         Route::get('/products', [ClientProductsController::class, 'index']);
+
+        Route::get('/ranking', [RankingController::class, 'index']);
+        Route::get('/suppliers/today', [SuppliersTodayController::class, 'index']);
     });
 
     Route::middleware(['is_active', 'role:admin'])->prefix('admin')->group(function () {
@@ -90,5 +96,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/analytics/searches-no-results', [AnalyticsController::class, 'searchesNoResults']);
         Route::get('/analytics/searches-no-offers', [AnalyticsController::class, 'searchesNoOffers']);
         Route::get('/analytics/comparisons-by-user', [AnalyticsController::class, 'comparisonsByUser']);
+        Route::get('/analytics/search-logs', [SearchLogsController::class, 'index']);
+        Route::get('/analytics/users/{user}/search-logs', [SearchLogsController::class, 'userHistory']);
     });
 });

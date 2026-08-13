@@ -371,6 +371,13 @@
             <a href="/client/products" class="client-side-link {{ request()->is('client/products') ? 'active' : '' }}">
                 <span>📦</span> كل المنتجات
             </a>
+            <a href="/client/ranking" class="client-side-link {{ request()->is('client/ranking') ? 'active' : '' }}">
+                <span>🏆</span> الترتيب
+            </a>
+            <a href="/client/suppliers-today"
+                class="client-side-link {{ request()->is('client/suppliers-today') ? 'active' : '' }}">
+                <span>🕐</span> موردين اليوم
+            </a>
             <a href="/client/compare" class="client-side-link {{ request()->is('client/compare') ? 'active' : '' }}">
                 <span>⚖️</span> المقارنة الذكية
             </a>

@@ -5,7 +5,7 @@
 @section('content')
     <style>
         .badge-price {
-            background: rgba(56, 189, 248, 0.15);
+            background: rgba(56,189,248,0.15);
             color: #38bdf8;
             padding: 4px 10px;
             border-radius: 8px;
@@ -22,8 +22,8 @@
 
         <style>
             select option {
-                background-color: #0f172a !important;
-                color: #ffffff !important;
+                background-color: var(--option-bg) !important;
+                color: var(--option-color) !important;
             }
 
             /* تصغير حجم المدخلات لتناسب الصف الواحد */

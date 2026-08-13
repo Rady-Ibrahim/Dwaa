@@ -5,20 +5,20 @@
 @section('content')
     <style>
         .fav-card {
-            background: rgba(15, 23, 42, 0.4);
+            background: rgba(var(--surface-rgb),0.4);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(var(--overlay-rgb),0.05);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .fav-card:hover {
-            border-color: rgba(244, 63, 94, 0.3);
+            border-color: rgba(244,63,94,0.3);
             transform: translateY(-2px);
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(var(--surface-rgb),0.6);
         }
 
         .empty-state {
-            background: linear-gradient(145deg, rgba(15, 23, 42, 0.4), rgba(30, 41, 59, 0.2));
+            background: linear-gradient(145deg, rgba(var(--surface-rgb),0.4), rgba(30,41,59,0.2));
         }
 
         .fav-table {
@@ -35,18 +35,18 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             padding: 1rem 1.25rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(var(--overlay-rgb),0.08);
         }
 
         .fav-table tbody tr {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(var(--surface-rgb),0.7);
+            border: 1px solid rgba(var(--overlay-rgb),0.08);
             border-radius: 1.5rem;
         }
 
         .fav-table td {
             padding: 1rem 1.25rem;
-            color: #e2e8f0;
+            color: var(--text-soft2);
             vertical-align: middle;
         }
 
@@ -68,14 +68,14 @@
             width: 42px;
             height: 42px;
             border-radius: 14px;
-            background: rgba(248, 113, 113, 0.14);
-            color: #fda4af;
+            background: rgba(248,113,113,0.14);
+            color: var(--danger-soft);
             transition: all 0.2s ease;
         }
 
         .fav-delete-btn:hover {
-            background: rgba(248, 113, 113, 0.25);
-            color: #fecaca;
+            background: rgba(248,113,113,0.25);
+            color: var(--danger-pale);
         }
 
         .fav-pill {
@@ -89,13 +89,13 @@
         }
 
         .fav-pill.price {
-            background: rgba(56, 189, 248, 0.12);
+            background: rgba(56,189,248,0.12);
             color: #38bdf8;
         }
 
         .fav-pill.discount {
-            background: rgba(16, 185, 129, 0.12);
-            color: #4ade80;
+            background: rgba(16,185,129,0.12);
+            color: var(--success-soft);
         }
     </style>
 

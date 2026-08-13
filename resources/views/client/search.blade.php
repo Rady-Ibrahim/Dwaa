@@ -6,9 +6,9 @@
     <style>
         body.search-scene {
             background:
-                radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 22%),
-                radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.10), transparent 20%),
-                #041423;
+                radial-gradient(circle at top left, rgba(59,130,246,0.12), transparent 22%),
+                radial-gradient(circle at bottom right, rgba(168,85,247,0.10), transparent 20%),
+                var(--client-bg);
             background-attachment: fixed;
             background-size: cover;
         }
@@ -47,7 +47,7 @@
             font-size: clamp(2.8rem, 5vw, 5.2rem);
             font-weight: 900;
             letter-spacing: -0.06em;
-            color: #f8fafc;
+            color: var(--text-main);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -55,24 +55,24 @@
         }
 
         .brand-header .brand-name .brand-red {
-            color: #ff4d5c;
+            color: var(--brand-red);
         }
 
         .brand-header .brand-name .brand-blue {
-            color: #59d0ff;
+            color: var(--brand-blue);
         }
 
         .brand-header .brand-line {
             margin: 0.9rem auto 0.7rem;
             width: 4rem;
             height: 2px;
-            background: linear-gradient(90deg, rgba(59, 130, 246, 0.8), rgba(255, 77, 92, 0.8));
+            background: linear-gradient(90deg, rgba(59,130,246,0.8), var(--brand-red));
             border-radius: 999px;
         }
 
         .brand-header .brand-tagline {
             margin: 0;
-            color: rgba(226, 232, 240, 0.82);
+            color: var(--text-soft2);
             font-size: 1.15rem;
             letter-spacing: 0.02em;
         }
@@ -84,29 +84,29 @@
             margin: 0 auto;
             padding: 0.8rem 1rem 0.8rem 1.15rem;
             border-radius: 26px;
-            background: rgba(13, 22, 36, 0.88);
-            border: 2px solid rgba(59, 130, 246, 0.4);
-            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.16), 0 0 30px rgba(59, 130, 246, 0.18);
+            background: rgba(var(--surface-rgb),0.88);
+            border: 2px solid rgba(59,130,246,0.4);
+            box-shadow: inset 0 0 0 1px rgba(59,130,246,0.16), 0 0 30px rgba(59,130,246,0.18);
             transition: all 0.2s ease;
         }
 
         .search-box-wrapper:focus-within {
-            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3), 0 0 32px rgba(59, 130, 246, 0.22);
-            border-color: rgba(96, 165, 250, 0.8);
+            box-shadow: inset 0 0 0 1px rgba(59,130,246,0.3), 0 0 32px rgba(59,130,246,0.22);
+            border-color: rgba(96,165,250,0.8);
         }
 
         .search-input {
             flex: 1;
             border: none;
             background: transparent;
-            color: #f8fafc;
+            color: var(--text-main);
             font-size: 1.1rem;
             padding: 0.95rem 1rem;
             outline: none;
         }
 
         .search-input::placeholder {
-            color: rgba(148, 163, 184, 0.9);
+            color: rgba(var(--border-rgb),0.9);
         }
 
         .search-icon-wrap {
@@ -115,9 +115,9 @@
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: rgba(59, 130, 246, 0.06);
-            color: #7dd3fc;
-            border: 1px solid rgba(125, 211, 252, 0.14);
+            background: rgba(59,130,246,0.06);
+            color: var(--accent-soft);
+            border: 1px solid rgba(125,211,252,0.14);
         }
 
         .feature-grid {
@@ -129,8 +129,8 @@
         }
 
         .feature-card {
-            background: rgba(15, 23, 42, 0.72);
-            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(var(--surface-rgb),0.72);
+            border: 1px solid rgba(var(--border-rgb),0.18);
             border-radius: 24px;
             padding: 1.5rem 1rem 1.2rem;
             min-height: 180px;
@@ -139,24 +139,24 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            color: #e2e8f0;
-            box-shadow: 0 18px 35px rgba(2, 6, 23, 0.22);
+            color: var(--text-soft2);
+            box-shadow: 0 18px 35px rgba(2,6,23,0.22);
         }
 
         .feature-card:nth-child(1) {
-            border-color: rgba(96, 165, 250, 0.28);
+            border-color: rgba(96,165,250,0.28);
         }
 
         .feature-card:nth-child(2) {
-            border-color: rgba(52, 211, 153, 0.28);
+            border-color: rgba(52,211,153,0.28);
         }
 
         .feature-card:nth-child(3) {
-            border-color: rgba(168, 85, 247, 0.28);
+            border-color: rgba(168,85,247,0.28);
         }
 
         .feature-card:nth-child(4) {
-            border-color: rgba(244, 63, 94, 0.28);
+            border-color: rgba(244,63,94,0.28);
         }
 
         .feature-card .icon-box {
@@ -167,41 +167,41 @@
             place-items: center;
             margin-bottom: 1rem;
             font-size: 1.8rem;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.25);
-            color: #7dd3fc;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.25);
+            color: var(--accent-soft);
         }
 
         .feature-card:nth-child(2) .icon-box {
-            background: rgba(34, 197, 94, 0.10);
-            border-color: rgba(34, 197, 94, 0.22);
-            color: #4ade80;
+            background: rgba(34,197,94,0.10);
+            border-color: rgba(34,197,94,0.22);
+            color: var(--success-soft);
         }
 
         .feature-card:nth-child(3) .icon-box {
-            background: rgba(168, 85, 247, 0.12);
-            border-color: rgba(168, 85, 247, 0.24);
-            color: #d8b4fe;
+            background: rgba(168,85,247,0.12);
+            border-color: rgba(168,85,247,0.24);
+            color: var(--violet-soft);
         }
 
         .feature-card:nth-child(4) .icon-box {
-            background: rgba(244, 63, 94, 0.10);
-            border-color: rgba(244, 63, 94, 0.22);
-            color: #fda4af;
+            background: rgba(244,63,94,0.10);
+            border-color: rgba(244,63,94,0.22);
+            color: var(--danger-soft);
         }
 
         .feature-card h3 {
             font-size: 1.25rem;
             font-weight: 800;
             margin: 0;
-            color: #f8fafc;
+            color: var(--text-main);
         }
 
         .feature-card p {
             margin: 0.5rem 0 0;
             font-size: 0.8rem;
             line-height: 1.7;
-            color: #cbd5e1;
+            color: var(--text-soft);
         }
 
         .discount-stats-bar {
@@ -210,8 +210,8 @@
             gap: 0.5rem;
             margin-top: 0.75rem;
             padding: 0.75rem 1rem;
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid rgba(56, 189, 248, 0.15);
+            background: rgba(var(--surface-rgb),0.5);
+            border: 1px solid rgba(56,189,248,0.15);
             border-radius: 12px;
             animation: fadeIn 0.3s ease;
             justify-content: center;
@@ -225,23 +225,23 @@
             border-radius: 999px;
             font-size: 0.78rem;
             font-weight: 600;
-            background: rgba(34, 197, 94, 0.12);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            background: rgba(34,197,94,0.12);
+            color: var(--success-soft);
+            border: 1px solid rgba(34,197,94,0.2);
             cursor: pointer;
             transition: all 0.15s;
         }
 
         .discount-stat-chip:hover {
-            background: rgba(34, 197, 94, 0.25);
+            background: rgba(34,197,94,0.25);
         }
 
         .discount-stat-chip .chip-count {
-            background: rgba(34, 197, 94, 0.2);
+            background: rgba(34,197,94,0.2);
             border-radius: 999px;
             padding: 0 0.4rem;
             font-size: 0.72rem;
-            color: #86efac;
+            color: var(--success-soft);
         }
 
         .results-container {
@@ -256,20 +256,20 @@
         }
 
         .custom-table-card {
-            background: rgba(15, 23, 42, 0.72);
+            background: rgba(var(--surface-rgb),0.72);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(var(--overlay-rgb),0.06);
             border-radius: 22px;
             overflow: hidden;
-            box-shadow: 0 22px 40px rgba(2, 6, 23, 0.25);
+            box-shadow: 0 22px 40px rgba(2,6,23,0.25);
         }
 
         .result-table thead {
-            background: rgba(15, 23, 42, 0.86);
+            background: rgba(var(--surface-rgb),0.86);
         }
 
         .result-table th {
-            color: #7dd3fc;
+            color: var(--accent-soft);
             text-align: right;
             padding: 15px;
             font-size: 0.85rem;
@@ -279,8 +279,8 @@
 
         .result-table td {
             padding: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            color: #e2e8f0;
+            border-bottom: 1px solid rgba(var(--overlay-rgb),0.04);
+            color: var(--text-soft2);
         }
 
         @keyframes fadeIn {
@@ -296,7 +296,7 @@
         }
 
         .badge-price {
-            background: rgba(56, 189, 248, 0.15);
+            background: rgba(56,189,248,0.15);
             color: #38bdf8;
             padding: 4px 10px;
             border-radius: 8px;
@@ -304,24 +304,24 @@
         }
 
         .badge-price-good {
-            background: rgba(34, 197, 94, 0.15);
-            color: #4ade80;
+            background: rgba(34,197,94,0.15);
+            color: var(--success-soft);
             padding: 4px 10px;
             border-radius: 8px;
             font-weight: 600;
         }
 
         .badge-price-bad {
-            background: rgba(244, 63, 94, 0.15);
-            color: #fb7185;
+            background: rgba(244,63,94,0.15);
+            color: var(--danger-soft);
             padding: 4px 10px;
             border-radius: 8px;
             font-weight: 600;
         }
 
         .badge-pill-neutral {
-            background: rgba(148, 163, 184, 0.15);
-            color: #cbd5e1;
+            background: rgba(var(--border-rgb),0.15);
+            color: var(--text-soft);
             padding: 4px 10px;
             border-radius: 8px;
             font-weight: 600;
@@ -386,9 +386,9 @@
 
                         <style>
                             select option {
-                                background-color: #0f172a !important;
+                                background-color: var(--option-bg) !important;
                                 /* لون الصفحة الداكن */
-                                color: #ffffff !important;
+                                color: var(--option-color) !important;
                             }
 
                             .filter-slim {

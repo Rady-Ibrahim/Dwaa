@@ -32,6 +32,7 @@
     </script>
     <style>
         :root {
+            color-scheme: dark;
             --client-bg: #041423;
             --client-bg-soft: #071d2f;
             --client-panel: rgba(15, 23, 42, 0.72);
@@ -44,6 +45,70 @@
             --client-danger: #f43f5e;
             --client-success: #22c55e;
             --client-warning: #f59e0b;
+            --client-topbar-bg: rgba(7, 16, 29, 0.82);
+            --client-btn-bg: rgba(15, 23, 42, 0.8);
+            --client-btn-border: rgba(148, 163, 184, 0.16);
+            --client-btn-color: #e2e8f0;
+            --client-sidebar-bg: linear-gradient(180deg, rgba(5, 14, 24, 0.98), rgba(7, 18, 31, 0.96));
+            --client-sidebar-shadow: -18px 0 42px rgba(2, 6, 23, 0.45);
+            --surface-rgb: 15, 23, 42;
+            --border-rgb: 148, 163, 184;
+            --overlay-rgb: 255, 255, 255;
+            --text-main: #f8fafc;
+            --text-soft2: #e2e8f0;
+            --text-soft: #cbd5e1;
+            --text-muted: #94a3b8;
+            --accent-soft: #7dd3fc;
+            --accent-pale: #e0f2fe;
+            --danger-soft: #fda4af;
+            --danger-pale: #fecaca;
+            --warn-soft: #fcd34d;
+            --success-soft: #86efac;
+            --violet-soft: #d8b4fe;
+            --option-bg: #0f172a;
+            --option-color: #ffffff;
+            --brand-red: #ff5d78;
+            --brand-blue: #59d0ff;
+        }
+
+        html.theme-light {
+            color-scheme: light;
+            --client-bg: #eef2f7;
+            --client-bg-soft: #e2e8f0;
+            --client-panel: rgba(255, 255, 255, 0.78);
+            --client-panel-strong: rgba(255, 255, 255, 0.97);
+            --client-border: rgba(15, 23, 42, 0.14);
+            --client-text: #0f172a;
+            --client-text-soft: #475569;
+            --client-accent: #0284c7;
+            --client-accent-2: #7c3aed;
+            --client-danger: #e11d48;
+            --client-success: #16a34a;
+            --client-warning: #d97706;
+            --client-topbar-bg: rgba(255, 255, 255, 0.85);
+            --client-btn-bg: rgba(255, 255, 255, 0.9);
+            --client-btn-border: rgba(15, 23, 42, 0.12);
+            --client-btn-color: #0f172a;
+            --client-sidebar-bg: linear-gradient(180deg, #ffffff, #f8fafc);
+            --client-sidebar-shadow: -18px 0 42px rgba(15, 23, 42, 0.12);
+            --surface-rgb: 255, 255, 255;
+            --border-rgb: 148, 163, 184;
+            --overlay-rgb: 15, 23, 42;
+            --text-main: #0f172a;
+            --text-soft2: #334155;
+            --text-soft: #475569;
+            --text-muted: #64748b;
+            --accent-soft: #0284c7;
+            --accent-pale: #0369a1;
+            --danger-soft: #e11d48;
+            --danger-pale: #be123c;
+            --warn-soft: #d97706;
+            --success-soft: #16a34a;
+            --violet-soft: #7c3aed;
+            --option-bg: #ffffff;
+            --option-color: #0f172a;
+            --brand-red: #e11d48;
+            --brand-blue: #0284c7;
         }
 
         * {
@@ -62,6 +127,7 @@
                 var(--client-bg);
             color: var(--client-text);
             font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .client-topbar {
@@ -70,7 +136,7 @@
             z-index: 40;
             height: 78px;
             padding: 0 1.5rem 0 1.25rem;
-            background: rgba(7, 16, 29, 0.82);
+            background: var(--client-topbar-bg);
             border-bottom: 1px solid rgba(148, 163, 184, 0.12);
             backdrop-filter: blur(16px);
             display: flex;
@@ -111,7 +177,7 @@
             place-items: center;
             background: linear-gradient(135deg, rgba(244, 63, 94, 0.18), rgba(139, 92, 246, 0.18));
             border: 1px solid rgba(244, 63, 94, 0.35);
-            color: #fca5a5;
+            color: var(--danger-pale);
             box-shadow: 0 10px 30px rgba(168, 85, 247, .15);
         }
 
@@ -119,15 +185,15 @@
             font-weight: 800;
             font-size: clamp(1.4rem, 2vw, 2.3rem);
             letter-spacing: -0.04em;
-            color: #f8fafc;
+            color: var(--text-main);
         }
 
         .brand-name .brand-red {
-            color: #ff5d78;
+            color: var(--brand-red);
         }
 
         .brand-name .brand-blue {
-            color: #3dd0ff;
+            color: var(--brand-blue);
         }
 
         .topbar-menu-btn,
@@ -137,9 +203,9 @@
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            color: #e2e8f0;
+            background: var(--client-btn-bg);
+            border: 1px solid var(--client-btn-border);
+            color: var(--client-btn-color);
             transition: all 0.2s ease;
         }
 
@@ -147,20 +213,31 @@
         .topbar-action-btn:hover {
             background: rgba(59, 130, 246, 0.14);
             border-color: rgba(96, 165, 250, 0.36);
-            color: #7dd3fc;
+            color: var(--accent-soft);
             transform: translateY(-1px);
         }
 
         .topbar-action-btn.primary {
             background: rgba(59, 130, 246, 0.12);
             border-color: rgba(59, 130, 246, 0.32);
-            color: #7dd3fc;
+            color: var(--accent-soft);
         }
 
         .topbar-action-btn.warning {
             background: rgba(244, 63, 94, 0.1);
             border-color: rgba(244, 63, 94, 0.3);
-            color: #fda4af;
+            color: var(--danger-soft);
+        }
+
+        .topbar-action-btn.theme-btn {
+            background: rgba(148, 163, 184, 0.08);
+            border-color: var(--client-btn-border);
+            color: var(--text-soft);
+        }
+
+        .topbar-action-btn.theme-btn:hover {
+            color: var(--warn-soft);
+            border-color: rgba(245, 158, 11, 0.4);
         }
 
         .client-side {
@@ -169,14 +246,14 @@
             right: 0;
             width: 290px;
             height: 100vh;
-            background: linear-gradient(180deg, rgba(5, 14, 24, 0.98), rgba(7, 18, 31, 0.96));
+            background: var(--client-sidebar-bg);
             border-right: 1px solid rgba(148, 163, 184, 0.12);
             z-index: 50;
             transform: translateX(105%);
             transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
-            box-shadow: -18px 0 42px rgba(2, 6, 23, 0.45);
+            box-shadow: var(--client-sidebar-shadow);
         }
 
         @media (max-width: 980px) {
@@ -209,15 +286,15 @@
             font-weight: 900;
             font-size: 1.6rem;
             letter-spacing: -0.05em;
-            color: #f8fafc;
+            color: var(--text-main);
         }
 
         .brand-logo-text .brand-mini .brand-red {
-            color: #ff5d78;
+            color: var(--brand-red);
         }
 
         .brand-logo-text .brand-mini .brand-blue {
-            color: #48d4ff;
+            color: var(--brand-blue);
         }
 
         .brand-logo-text img {
@@ -234,20 +311,20 @@
             margin: 0.38rem 0.8rem;
             padding: 0.88rem 1rem;
             border-radius: 14px;
-            color: #cbd5e1;
+            color: var(--text-soft);
             font-weight: 600;
             transition: all 0.2s ease;
             text-decoration: none;
         }
 
         .client-side-link:hover {
-            background: rgba(148, 163, 184, 0.05);
-            color: #f8fafc;
+            background: rgba(148, 163, 184, 0.08);
+            color: var(--text-main);
         }
 
         .client-side-link.active {
             background: linear-gradient(90deg, rgba(96, 165, 250, 0.16), rgba(59, 130, 246, 0.04));
-            color: #e0f2fe;
+            color: var(--accent-pale);
             border: 1px solid rgba(96, 165, 250, 0.25);
             box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.08);
         }
@@ -415,23 +492,6 @@
                                 d="M4 6h16M4 12h16m-7 6h7" />
                         </svg>
                     </button>
-
-                    <div class="flex items-center gap-3">
-                        <div class="topbar-action-btn primary" title="الملف الشخصي">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </div>
-                        <div class="topbar-action-btn" title="الإشعارات">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
-                            </svg>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="topbar-brand">
@@ -440,6 +500,19 @@
                 </div>
 
                 <div class="topbar-right">
+                    <button type="button" id="themeToggle" class="topbar-action-btn theme-btn" title="تبديل المظهر"
+                        aria-label="تبديل المظهر">
+                        <svg id="themeIconSun" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <svg id="themeIconMoon" class="h-4 w-4 hidden" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
                     <a href="/client/password" class="topbar-action-btn primary" title="الإعدادات">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
@@ -493,6 +566,30 @@
             link.addEventListener('click', closeSidebar);
         });
 
+        // Theme Toggle Logic
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const themeIconSun = document.getElementById('themeIconSun');
+        const themeIconMoon = document.getElementById('themeIconMoon');
+
+        const applyTheme = (theme) => {
+            const light = theme === 'light';
+            document.documentElement.classList.toggle('theme-light', light);
+            if (themeIconSun) themeIconSun.classList.toggle('hidden', light);
+            if (themeIconMoon) themeIconMoon.classList.toggle('hidden', !light);
+        };
+
+        const storedTheme = localStorage.getItem('client-theme');
+        const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        applyTheme(storedTheme ? storedTheme : (systemPrefersLight ? 'light' : 'dark'));
+
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', () => {
+                const next = document.documentElement.classList.contains('theme-light') ? 'dark' : 'light';
+                localStorage.setItem('client-theme', next);
+                applyTheme(next);
+            });
+        }
+
         // Profile Menu Logic
         const profileBtn = document.getElementById('profileMenuBtn');
         const profileMenu = document.getElementById('profileMenu');
@@ -507,6 +604,99 @@
         }
     </script>
     @stack('scripts')
+
+    <style id="clientLightThemeOverrides">
+        html.theme-light [class*="text-white"] {
+            color: #0f172a !important;
+        }
+
+        html.theme-light [class*="bg-sky-"][class*="text-white"],
+        html.theme-light [class*="bg-blue-"][class*="text-white"],
+        html.theme-light [class*="bg-red-"][class*="text-white"],
+        html.theme-light [class*="bg-rose-"][class*="text-white"],
+        html.theme-light [class*="bg-emerald-"][class*="text-white"],
+        html.theme-light [class*="bg-green-"][class*="text-white"],
+        html.theme-light [class*="bg-amber-"][class*="text-white"],
+        html.theme-light [class*="bg-violet-"][class*="text-white"],
+        html.theme-light [class*="bg-indigo-"][class*="text-white"],
+        html.theme-light [class*="bg-purple-"][class*="text-white"] {
+            color: #ffffff !important;
+        }
+
+        html.theme-light [class*="text-slate-200"],
+        html.theme-light [class*="text-slate-300"] {
+            color: #334155 !important;
+        }
+
+        html.theme-light [class*="text-slate-400"],
+        html.theme-light [class*="text-slate-500"],
+        html.theme-light [class*="text-slate-600"] {
+            color: #475569 !important;
+        }
+
+        html.theme-light [class*="text-slate-700"],
+        html.theme-light [class*="text-slate-800"] {
+            color: #1e293b !important;
+        }
+
+        html.theme-light [class*="text-red-400"],
+        html.theme-light [class*="text-red-500"] {
+            color: #dc2626 !important;
+        }
+
+        html.theme-light [class*="text-rose-400"],
+        html.theme-light [class*="text-rose-500"] {
+            color: #e11d48 !important;
+        }
+
+        html.theme-light [class*="text-emerald-300"],
+        html.theme-light [class*="text-emerald-400"],
+        html.theme-light [class*="text-green-400"] {
+            color: #059669 !important;
+        }
+
+        html.theme-light [class*="text-sky-300"],
+        html.theme-light [class*="text-sky-400"] {
+            color: #0284c7 !important;
+        }
+
+        html.theme-light [class*="text-amber-300"],
+        html.theme-light [class*="text-amber-500"] {
+            color: #d97706 !important;
+        }
+
+        html.theme-light [class*="text-blue-600"] {
+            color: #2563eb !important;
+        }
+
+        html.theme-light [class*="bg-slate-6"],
+        html.theme-light [class*="bg-slate-7"],
+        html.theme-light [class*="bg-slate-8"],
+        html.theme-light [class*="bg-slate-9"],
+        html.theme-light [class*="bg-slate-950"] {
+            background-color: #f1f5f9 !important;
+        }
+
+        html.theme-light [class*="bg-black"] {
+            background-color: rgb(15 23 42 / 0.15) !important;
+        }
+
+        html.theme-light [class*="bg-white/"] {
+            background-color: rgb(15 23 42 / 0.06) !important;
+        }
+
+        html.theme-light [class*="border-white/"] {
+            border-color: rgb(15 23 42 / 0.12) !important;
+        }
+
+        html.theme-light [class*="border-slate-600"] {
+            border-color: #cbd5e1 !important;
+        }
+
+        html.theme-light [class*="divide-white/"] {
+            border-color: rgb(15 23 42 / 0.08) !important;
+        }
+    </style>
 </body>
 
 </html>

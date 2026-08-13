@@ -5,9 +5,9 @@
 @section('content')
     <style>
         select option {
-            background-color: #0f172a !important;
+            background-color: var(--option-bg) !important;
             /* نفس لون السايد بار slate-900 */
-            color: #ffffff !important;
+            color: var(--option-color) !important;
         }
     </style>
 

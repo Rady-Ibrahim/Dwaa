@@ -17,9 +17,9 @@
             gap: 1rem;
             padding: 1.2rem 1.3rem;
             border-radius: 26px;
-            background: rgba(15, 23, 42, 0.72);
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            box-shadow: 0 20px 35px rgba(2, 6, 23, 0.24);
+            background: rgba(var(--surface-rgb),0.72);
+            border: 1px solid rgba(var(--border-rgb),0.14);
+            box-shadow: 0 20px 35px rgba(2,6,23,0.24);
         }
 
         .compare-hero-title {
@@ -27,7 +27,7 @@
             align-items: center;
             gap: 0.8rem;
             font-weight: 800;
-            color: #f8fafc;
+            color: var(--text-main);
             font-size: 1.35rem;
         }
 
@@ -37,9 +37,9 @@
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.24);
-            color: #7dd3fc;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.24);
+            color: var(--accent-soft);
         }
 
         .compare-hero-meta {
@@ -52,23 +52,23 @@
         .compare-pill {
             padding: 0.5rem 0.8rem;
             border-radius: 999px;
-            background: rgba(148, 163, 184, 0.06);
-            border: 1px solid rgba(148, 163, 184, 0.12);
-            color: #cbd5e1;
+            background: rgba(var(--border-rgb),0.06);
+            border: 1px solid rgba(var(--border-rgb),0.12);
+            color: var(--text-soft);
             font-size: 0.82rem;
         }
 
         .compare-upload-panel {
             padding: 1.3rem;
             border-radius: 28px;
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            box-shadow: 0 20px 35px rgba(2, 6, 23, 0.24);
+            background: rgba(var(--surface-rgb),0.7);
+            border: 1px solid rgba(var(--border-rgb),0.14);
+            box-shadow: 0 20px 35px rgba(2,6,23,0.24);
         }
 
         .file-drop-zone {
-            border: 2px dashed rgba(148, 163, 184, 0.2);
-            background: rgba(15, 23, 42, 0.42);
+            border: 2px dashed rgba(var(--border-rgb),0.2);
+            background: rgba(var(--surface-rgb),0.42);
             transition: all 0.25s ease;
             min-height: 180px;
             display: flex;
@@ -80,13 +80,13 @@
         }
 
         .file-drop-zone:hover {
-            border-color: rgba(96, 165, 250, 0.7);
-            background: rgba(59, 130, 246, 0.04);
+            border-color: rgba(96,165,250,0.7);
+            background: rgba(59,130,246,0.04);
         }
 
         .file-drop-zone.active {
-            border-color: rgba(96, 165, 250, 0.8);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+            border-color: rgba(96,165,250,0.8);
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
         }
 
         .file-drop-zone .inner {
@@ -94,7 +94,7 @@
             flex-direction: column;
             align-items: center;
             gap: 0.7rem;
-            color: #cbd5e1;
+            color: var(--text-soft);
         }
 
         .file-drop-zone .icon {
@@ -103,9 +103,9 @@
             border-radius: 20px;
             display: grid;
             place-items: center;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.22);
-            color: #7dd3fc;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.22);
+            color: var(--accent-soft);
             font-size: 1.8rem;
         }
 
@@ -116,7 +116,7 @@
             font-weight: 800;
             background: linear-gradient(90deg, #2563eb, #8b5cf6);
             color: #fff;
-            box-shadow: 0 18px 28px rgba(80, 112, 255, 0.25);
+            box-shadow: 0 18px 28px rgba(80,112,255,0.25);
             transition: transform 0.15s ease, filter 0.15s ease;
         }
 
@@ -133,15 +133,15 @@
         .compare-table-wrap {
             overflow: hidden;
             border-radius: 28px;
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            box-shadow: 0 20px 35px rgba(2, 6, 23, 0.26);
+            background: rgba(var(--surface-rgb),0.7);
+            border: 1px solid rgba(var(--border-rgb),0.14);
+            box-shadow: 0 20px 35px rgba(2,6,23,0.26);
         }
 
         .compare-filters {
             padding: 1rem 1rem 0.8rem;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-            background: rgba(2, 6, 23, 0.18);
+            border-bottom: 1px solid rgba(var(--border-rgb),0.08);
+            background: rgba(var(--surface-rgb),0.18);
         }
 
         .compare-filter-grid {
@@ -153,34 +153,34 @@
         .compare-filter-box {
             width: 100%;
             border-radius: 16px;
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            background: rgba(15, 23, 42, 0.78);
-            color: #e2e8f0;
+            border: 1px solid rgba(var(--border-rgb),0.14);
+            background: rgba(var(--surface-rgb),0.78);
+            color: var(--text-soft2);
             padding: 0.8rem 0.9rem;
             outline: none;
         }
 
         .compare-filter-box:focus {
-            border-color: rgba(96, 165, 250, 0.45);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+            border-color: rgba(96,165,250,0.45);
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
         }
 
         .compare-table thead th {
-            background: rgba(2, 6, 23, 0.45);
-            color: #cbd5e1;
+            background: rgba(var(--surface-rgb),0.45);
+            color: var(--text-soft);
             text-transform: uppercase;
             font-size: 0.74rem;
             letter-spacing: 0.05em;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+            border-bottom: 1px solid rgba(var(--border-rgb),0.08);
         }
 
         .compare-table tbody tr {
-            border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+            border-bottom: 1px solid rgba(var(--border-rgb),0.06);
             transition: background 0.2s ease;
         }
 
         .compare-table tbody tr:hover {
-            background: rgba(59, 130, 246, 0.03);
+            background: rgba(59,130,246,0.03);
         }
 
         .pill-price,
@@ -201,48 +201,48 @@
         }
 
         .pill-price {
-            background: rgba(56, 189, 248, 0.13);
+            background: rgba(56,189,248,0.13);
             color: #38bdf8;
         }
 
         .pill-discount {
-            background: rgba(34, 197, 94, 0.12);
-            color: #4ade80;
+            background: rgba(34,197,94,0.12);
+            color: var(--success-soft);
         }
 
         .pill-good {
-            background: rgba(34, 197, 94, 0.16);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.22);
+            background: rgba(34,197,94,0.16);
+            color: var(--success-soft);
+            border: 1px solid rgba(34,197,94,0.22);
         }
 
         .pill-bad {
-            background: rgba(244, 63, 94, 0.16);
-            color: #fb7185;
-            border: 1px solid rgba(244, 63, 94, 0.22);
+            background: rgba(244,63,94,0.16);
+            color: var(--danger-soft);
+            border: 1px solid rgba(244,63,94,0.22);
         }
 
         .pill-neutral {
-            background: rgba(148, 163, 184, 0.12);
-            color: #cbd5e1;
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(var(--border-rgb),0.12);
+            color: var(--text-soft);
+            border: 1px solid rgba(var(--border-rgb),0.2);
         }
 
         .pill-best-a {
-            background: rgba(34, 197, 94, 0.16);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.22);
+            background: rgba(34,197,94,0.16);
+            color: var(--success-soft);
+            border: 1px solid rgba(34,197,94,0.22);
         }
 
         .pill-best-b {
-            background: rgba(59, 130, 246, 0.14);
-            color: #7dd3fc;
-            border: 1px solid rgba(59, 130, 246, 0.26);
+            background: rgba(59,130,246,0.14);
+            color: var(--accent-soft);
+            border: 1px solid rgba(59,130,246,0.26);
         }
 
         select option {
-            background-color: #0f172a !important;
-            color: #ffffff !important;
+            background-color: var(--option-bg) !important;
+            color: var(--option-color) !important;
         }
 
         @media (max-width: 960px) {

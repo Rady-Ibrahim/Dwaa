@@ -5,9 +5,9 @@
 @section('content')
     <style>
         .settings-card {
-            background: rgba(15, 23, 42, 0.5);
+            background: rgba(var(--surface-rgb),0.5);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(var(--overlay-rgb),0.08);
             border-radius: 24px;
         }
 
@@ -16,15 +16,15 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.85rem 1.25rem;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(var(--overlay-rgb),0.03);
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(var(--overlay-rgb),0.02);
             transition: all 0.3s ease;
         }
 
         .info-row:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.05);
+            background: rgba(var(--overlay-rgb),0.05);
+            border-color: rgba(var(--overlay-rgb),0.05);
         }
 
         /* كلاس مخصص لضمان ظهور الأرقام بالإنجليزية وتنسيق ltr */
@@ -40,8 +40,8 @@
 
         .form-input {
             width: 100%;
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(var(--surface-rgb),0.7);
+            border: 1px solid rgba(var(--overlay-rgb),0.1);
             border-radius: 14px;
             padding: 0.85rem 3.5rem 0.85rem 1rem;
             color: white;
@@ -51,7 +51,7 @@
         .form-input:focus {
             outline: none;
             border-color: #38bdf8;
-            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+            box-shadow: 0 0 0 4px rgba(56,189,248,0.1);
         }
 
         .eye-toggle {

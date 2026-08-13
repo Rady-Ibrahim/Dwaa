@@ -11,16 +11,16 @@
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s ease;
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            background: rgba(15, 23, 42, 0.6);
-            color: #cbd5e1;
+            border: 1px solid rgba(var(--border-rgb),0.16);
+            background: rgba(var(--surface-rgb),0.6);
+            color: var(--text-soft);
         }
 
         .rank-tab.active {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.12));
-            border-color: rgba(96, 165, 250, 0.45);
-            color: #e0f2fe;
-            box-shadow: 0 0 24px rgba(59, 130, 246, 0.18);
+            background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.12));
+            border-color: rgba(96,165,250,0.45);
+            color: var(--accent-pale);
+            box-shadow: 0 0 24px rgba(59,130,246,0.18);
         }
 
         .rank-badge {
@@ -31,27 +31,27 @@
             place-items: center;
             font-weight: 800;
             font-size: 0.85rem;
-            background: rgba(148, 163, 184, 0.12);
-            color: #cbd5e1;
-            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: rgba(var(--border-rgb),0.12);
+            color: var(--text-soft);
+            border: 1px solid rgba(var(--border-rgb),0.16);
         }
 
         .rank-badge.top-1 {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(251, 191, 36, 0.1));
-            border-color: rgba(245, 158, 11, 0.5);
-            color: #fcd34d;
+            background: linear-gradient(135deg, rgba(245,158,11,0.25), rgba(251,191,36,0.1));
+            border-color: rgba(245,158,11,0.5);
+            color: var(--warn-soft);
         }
 
         .rank-badge.top-2 {
-            background: rgba(148, 163, 184, 0.2);
-            border-color: rgba(203, 213, 225, 0.35);
-            color: #e2e8f0;
+            background: rgba(var(--border-rgb),0.2);
+            border-color: rgba(203,213,225,0.35);
+            color: var(--text-soft2);
         }
 
         .rank-badge.top-3 {
-            background: rgba(217, 119, 6, 0.2);
-            border-color: rgba(217, 119, 6, 0.45);
-            color: #fbbf24;
+            background: rgba(217,119,6,0.2);
+            border-color: rgba(217,119,6,0.45);
+            color: var(--warn-soft);
         }
     </style>
 

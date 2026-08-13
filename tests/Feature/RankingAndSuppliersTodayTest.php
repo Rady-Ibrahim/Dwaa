@@ -188,7 +188,9 @@ class RankingAndSuppliersTodayTest extends TestCase
         $this->withCookie('client_token', $token)
             ->get('/client/ranking')
             ->assertOk()
-            ->assertSee('ترتيب الموردين');
+            ->assertSee('ترتيب الموردين')
+            ->assertSee('themeToggle')
+            ->assertSee('clientLightThemeOverrides');
 
         $this->withCookie('client_token', $token)
             ->get('/client/suppliers-today')

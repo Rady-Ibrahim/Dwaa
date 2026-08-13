@@ -15,9 +15,9 @@
             overflow: hidden;
             padding: 1.6rem 1.5rem;
             border-radius: 28px;
-            background: linear-gradient(135deg, rgba(14, 116, 144, 0.9), rgba(59, 130, 246, 0.76), rgba(139, 92, 246, 0.72));
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            box-shadow: 0 28px 50px rgba(15, 23, 42, 0.45);
+            background: linear-gradient(135deg, rgba(14,116,144,0.9), rgba(59,130,246,0.76), rgba(139,92,246,0.72));
+            border: 1px solid rgba(var(--border-rgb),0.18);
+            box-shadow: 0 28px 50px rgba(15,23,42,0.45);
         }
 
         .dashboard-hero::before {
@@ -27,7 +27,7 @@
             width: 260px;
             height: 260px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.10);
+            background: rgba(var(--overlay-rgb),0.10);
             filter: blur(10px);
         }
 
@@ -47,24 +47,24 @@
 
         .dashboard-brand .med {
             font-size: clamp(2rem, 3vw, 2.7rem);
-            color: #f8fafc;
+            color: var(--text-main);
         }
 
         .dashboard-brand .ranko {
             font-size: clamp(1.7rem, 2.4vw, 2.3rem);
-            color: rgba(255, 255, 255, 0.82);
+            color: var(--text-soft2);
         }
 
         .dashboard-hero h3 {
             margin: 0;
             font-size: clamp(1.7rem, 2vw, 2.4rem);
             font-weight: 800;
-            color: #f8fafc;
+            color: var(--text-main);
         }
 
         .dashboard-hero p {
             margin: 0.6rem 0 0;
-            color: rgba(224, 242, 254, 0.8);
+            color: var(--accent-pale);
             font-size: 0.95rem;
         }
 
@@ -76,10 +76,10 @@
 
         .metric-card,
         .summary-card {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(148, 163, 184, 0.14);
+            background: rgba(var(--surface-rgb),0.7);
+            border: 1px solid rgba(var(--border-rgb),0.14);
             border-radius: 22px;
-            box-shadow: 0 18px 35px rgba(2, 6, 23, 0.25);
+            box-shadow: 0 18px 35px rgba(2,6,23,0.25);
         }
 
         .metric-card {
@@ -92,14 +92,14 @@
             justify-content: space-between;
             gap: 0.75rem;
             margin-bottom: 0.8rem;
-            color: #cbd5e1;
+            color: var(--text-soft);
             font-size: 0.82rem;
         }
 
         .metric-card .value {
             font-size: clamp(1.8rem, 2.6vw, 2.5rem);
             font-weight: 900;
-            color: #f8fafc;
+            color: var(--text-main);
             letter-spacing: -0.04em;
         }
 
@@ -109,9 +109,9 @@
             border-radius: 12px;
             display: grid;
             place-items: center;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.24);
-            color: #7dd3fc;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.24);
+            color: var(--accent-soft);
         }
 
         .summary-card {
@@ -122,12 +122,12 @@
             margin: 0 0 1rem;
             font-size: 1.2rem;
             font-weight: 800;
-            color: #f8fafc;
+            color: var(--text-main);
         }
 
         .summary-card p {
             margin: 0.55rem 0;
-            color: #cbd5e1;
+            color: var(--text-soft);
             font-size: 0.96rem;
         }
 

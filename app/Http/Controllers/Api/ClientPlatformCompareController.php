@@ -174,7 +174,14 @@ class ClientPlatformCompareController extends Controller
                     continue;
                 }
 
-                $score = $this->drugOverlapScore($nameA, $nameB);
+                $priceA = $entryA['offer']->price;
+                $priceB = $entryB['offer']->price;
+
+                $score = $this->applyPriceScore(
+                    $priceA !== null ? (float) $priceA : null,
+                    $priceB !== null ? (float) $priceB : null,
+                    $this->drugOverlapScore($nameA, $nameB),
+                );
 
                 if ($score > $bestScore) {
                     $bestScore = $score;
@@ -218,8 +225,10 @@ class ClientPlatformCompareController extends Controller
      * الصيغة العامة. فلا يُقبل ربط اسمين مختلفين تمامًا (مثل اتورستات ↔
      * اتوريزا) ولا الأسماء التي تشترك فقط في بادئة قصيرة (مثل اكس ↔ اكساميد).
      *
-     * القاسم = الأصغر بين عدد الكلمتين، فالاسم الأقصر فرع/اختصار للآخر يعتبر
-     * تطابقًا تامًا.
+     * القاسم = الأكبر بين عدد الكلمتين. فيُعطى تطابقًا تامًا (100) فقط عندما
+     * تتطابق كل كلمات المحتوى في الاسمين، أما إذا احتوى أحدهما على كلمة محتوى
+     * إضافية (متغير/تركيبة أخرى مثل "اكسستر" أو "بلس") فلا يُقبل كتطابق كامل،
+     * ويُترك حسم الالتباس لفلتر السعر الذي يفضّل المنتجات المتساوية السعر.
      */
     private function drugOverlapScore(string $nameA, string $nameB): float
     {
@@ -248,7 +257,7 @@ class ClientPlatformCompareController extends Controller
             return 0.0;
         }
 
-        return round((count($shared) / min(count($tokensA), count($tokensB))) * 100, 1);
+        return round((count($shared) / max(count($tokensA), count($tokensB))) * 100, 1);
     }
 
     /**
@@ -601,13 +610,19 @@ class ClientPlatformCompareController extends Controller
             $bestScore   = 0.0;
             $bestProduct = null;
 
+            $sheetPrice = $row['price'] ?? null;
+
             foreach ($candidates as $product) {
+                $bestOfferPrice = $product->offers->sortBy('price')->first()?->price;
+
                 $score = $this->matchScore(
                     $normalizedQuery,
                     $rawQuery,
                     (string) ($product->normalized_name ?? ''),
                     (string) ($product->name_ar ?? ''),
                     (string) ($product->name_en ?? ''),
+                    $sheetPrice !== null ? (float) $sheetPrice : null,
+                    $bestOfferPrice !== null ? (float) $bestOfferPrice : null,
                 );
 
                 if ($score > $bestScore) {
@@ -740,7 +755,13 @@ class ClientPlatformCompareController extends Controller
 
     /**
      * حساب نسبة التشابه بين اسم من الشيت واسم منتج من الـ DB.
-     * + تطبيع الاختلافات الإملائية الشائعة في أسماء الأدوية
+     *
+     * بخلاف النسخة القديمة التي كانت تعتمد على similar_text (تُعطي نتائج
+     * مضللة في العربية لأنها تحتسب الأحرف المشتركة بين أي اسمين مثل اتورستات ↔
+     * اتوريزا)، تُعتمد هنا نسبة تداخل كلمات المحتوى الحرفية بعد تجريد الأرقام
+     * واستبعاد كلمات الصيغة العامة، مع فلتر سعر يؤكد المطابقة عندما تتساوى
+     * الأسعار (المتعارف عليه في السوق أن سعر المنتج الواحد موحد) ويرفضها
+     * عندما تتباعد الأسعار بشكل كبير.
      */
     private function matchScore(
         string $normalizedQuery,
@@ -748,51 +769,58 @@ class ClientPlatformCompareController extends Controller
         string $normalizedName,
         string $nameAr,
         string $nameEn,
+        ?float $sheetPrice = null,
+        ?float $productPrice = null,
     ): float {
-        $normQ  = $this->drugNormalize($normalizedQuery);
         $scores = [];
 
         if ($normalizedName !== '') {
-            $normP = $this->drugNormalize($normalizedName);
-
-            similar_text($normQ, $normP, $pct);
-            $scores[] = $pct;
-
-            similar_text($normalizedQuery, $normalizedName, $pct2);
-            $scores[] = $pct2;
-
-            $qFirst = explode(' ', $normQ)[0] ?? '';
-            $pFirst = explode(' ', $normP)[0]  ?? '';
-            if ($qFirst !== '' && $pFirst !== '' && str_starts_with($pFirst, $qFirst)) {
-                $scores[] = min(100.0, max($pct, $pct2) + 15);
-            }
+            $scores[] = $this->drugOverlapScore($normalizedQuery, $normalizedName);
         }
 
         if ($nameAr !== '') {
-            $normAr = $this->drugNormalize($this->normalizer->normalize($nameAr));
-            similar_text($normQ, $normAr, $pct);
-            $scores[] = $pct;
+            $scores[] = $this->drugOverlapScore($normalizedQuery, $this->normalizer->normalize($nameAr));
         }
 
         if ($nameEn !== '') {
-            similar_text(strtolower($rawQuery), strtolower($nameEn), $pct);
-            $scores[] = $pct;
+            $scores[] = $this->drugOverlapScore($normalizedQuery, $nameEn);
         }
 
-        return $scores ? max($scores) : 0.0;
+        $nameScore = $scores ? max($scores) : 0.0;
+
+        if ($nameScore <= 0.0) {
+            return 0.0;
+        }
+
+        return $this->applyPriceScore($sheetPrice, $productPrice, $nameScore);
     }
 
     /**
-     * تطبيع إملائي إضافي خاص بأسماء الأدوية العربية.
-     * يوحّد الاختلافات الشائعة (اي/ي، ة/ه، كا/ك ...) لتحسين المطابقة.
+     * فلتر السعر: يؤكد المطابقة عندما يتساوى السعر، ويرفضها عندما يتباعد بشدة.
+     *
+     * القاعدة: منتج دوائي واحد في السوق له سعر واحد (مُحدَّد رسميًا في الغالب)،
+     * فالأسعار المتساوية دليل على نفس المنتج. عندما يكون التطابق جزئيًا (الاسم
+     * ضمن اسم أطول، مثل "بانادول" داخل "بانادول اكسستر") فهذا غالبًا متغير/تركيبة
+     * مختلفة، لذا يُشترط تقارب سعري قوي لقبولها؛ أما التطابق التام للاسم (100)
+     * فلا يُرفض بتغيّر السعر لأنه بلا شك نفس المنتج.
      */
-    private function drugNormalize(string $text): string
+    private function applyPriceScore(?float $sheetPrice, ?float $productPrice, float $nameScore): float
     {
-        return str_replace(
-            ['اي', 'ايي', 'ائ', 'أي', 'وى', 'ى',  'ة',  'ه',  'اى',  'كا', 'جا', 'سا'],
-            ['ي',  'ي',   'ي',  'ي',  'وي', 'ي',  'ه',  'ه',  'اي',  'ك',  'ج',  'س'],
-            $text
-        );
+        if ($sheetPrice === null || $productPrice === null || $sheetPrice <= 0 || $productPrice <= 0) {
+            return $nameScore;
+        }
+
+        $ratio = min($sheetPrice, $productPrice) / max($sheetPrice, $productPrice);
+
+        if ($ratio >= 0.95) {
+            return min(100.0, $nameScore + 10);
+        }
+
+        if ($nameScore < 100.0) {
+            return max(0.0, $nameScore - 20);
+        }
+
+        return $nameScore;
     }
 
     /**

@@ -21,8 +21,19 @@ class ClientPlatformCompareController extends Controller
     /** الحد الأدنى لنسبة التشابه للقبول */
     private const MIN_SIMILARITY = 45.0;
 
-    /** حجم الـ chunk لمعالجة المنتجات على دفعات */
-    private const CHUNK_KEYWORDS = 50;
+    /** الحد الأدنى لنسبة تداخل كلمات المحتوى للقبول في مقارنة الملفات */
+    private const MIN_NAME_OVERLAP = 60.0;
+
+    /** كلمات عامة (صيغة/وحدة/عملة/ضجيج) تُستبعد من مطابقة أسماء الأدوية */
+    private const DRUG_STOP_WORDS = [
+        'اقراص', 'قرص', 'كبسول', 'كبسولة', 'حبوب', 'شراب', 'حقن', 'قطرات', 'قطرة', 'قطره',
+        'نقط', 'مرهم', 'كريم', 'جل', 'بخاخ', 'سبراي', 'محلول', 'معلق', 'لبوس', 'تحاميل',
+        'امبول', 'امبولات', 'شريط', 'باكت', 'علبة', 'زجاجة', 'مسحوق', 'بودرة', 'سيروم',
+        'لوشن', 'مجم', 'ملجم', 'مليجرام', 'جرام', 'ملى', 'مللى', 'مل', 'سم', 'لتر', 'كجم',
+        'فموي', 'وريدي', 'موضعي', 'مستمر', 'معجل', 'مؤخر', 'سعر', 'جنيه', 'جنية',
+        'مع', 'وزن', 'عبوة', 'محيط', 'العين', 'مطهر', 'غسول', 'جديد', 'احمر', 'اكسترا', 'ال',
+        'جيل', 'كبير', 'صغير', 'كبيره', 'صغيره',
+    ];
 
     public function __construct(
         private ExcelSearchService $excelSearchService,
@@ -113,6 +124,9 @@ class ClientPlatformCompareController extends Controller
      *
      * المنتجات مربوطة بكل مورد على حدة (منتج الشيت = مورد واحد)، لذلك تتم
      * المطابقة بين الملفين عبر الاسم المُطبّع (normalized_name) وليس product_id.
+     * تتم المطابقة الحرفية أولًا (كما كانت سابقًا) ثم المطابقة الضبابية
+     * بنفس منطق المقارنة الذكية (matchScore) للمتبقي حتى لا تضيع المطابقات
+     * عندما يكتب الموردان نفس الدواء باختلاف بسيط.
      */
     public function uploadsCompare(Request $request)
     {
@@ -127,102 +141,64 @@ class ClientPlatformCompareController extends Controller
 
         $socketB = Upload::with('supplier:id,name')->findOrFail($data['upload_id_b']);
 
-        $indexA = $this->buildUploadsIndex((int) $data['upload_id_a']);
-        $indexB = $this->buildUploadsIndex((int) $data['upload_id_b']);
-
-        $names = array_values(
-            array_unique(array_merge(array_keys($indexA), array_keys($indexB)))
-        );
+        $entriesA = $this->buildUploadsIndex((int) $data['upload_id_a']);
+        $entriesB = $this->buildUploadsIndex((int) $data['upload_id_b']);
 
         $lines = [];
+        $usedB = [];
+        $usedA = [];
 
-        foreach ($names as $name) {
-            $entryA = $indexA[$name] ?? null;
-            $entryB = $indexB[$name] ?? null;
+        // Pass 1: مطابقة حرفية (نفس السلوك القديم) للحفاظ على النتائج الموجودة.
+        foreach ($entriesA as $name => $entryA) {
+            if (! isset($entriesB[$name])) {
+                continue;
+            }
 
-            $productA = $entryA['product'] ?? null;
-            $productB = $entryB['product'] ?? null;
-            $offerA   = $entryA['offer'] ?? null;
-            $offerB   = $entryB['offer'] ?? null;
+            $usedA[$name] = true;
+            $usedB[$name] = true;
 
-            $productName = $productA
-                ? ($productA->name_ar ?: $productA->name_en)
-                : ($productB->name_ar ?: $productB->name_en);
+            $lines[] = $this->buildPairLine($entryA, $entriesB[$name], $socketB, 100.0);
+        }
 
-            if ($offerA && $offerB) {
-                $priceA      = $offerA->price !== null ? (float) $offerA->price : null;
-                $discountA   = $offerA->discount !== null ? (float) $offerA->discount : null;
-                $priceB      = $offerB->price !== null ? (float) $offerB->price : null;
-                $discountB   = $offerB->discount !== null ? (float) $offerB->discount : null;
+        // Pass 2: مطابقة ضبابية للمتبقي من A ضد المتبقي من B.
+        foreach ($entriesA as $nameA => $entryA) {
+            if (isset($usedA[$nameA])) {
+                continue;
+            }
 
-                $lines[] = [
-                    'query'          => $productName,
-                    'sheet'          => [
-                        'name'     => $productName,
-                        'price'    => $priceA,
-                        'discount' => $discountA,
-                    ],
-                    'matched_product' => $productName,
-                    'similarity'      => 100.0,
-                    'platform_best'   => [
-                        'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
-                        'area'     => $offerB->supplier?->area,
-                        'phone'    => $offerB->supplier?->phone1 ?: $offerB->supplier?->phone2,
-                        'price'    => $priceB,
-                        'discount' => $discountB,
-                    ],
-                    'comparison' => [
-                        'price_diff'    => ($priceA !== null && $priceB !== null)
-                            ? round($priceA - $priceB, 2) : null,
-                        'discount_diff' => ($discountA !== null && $discountB !== null)
-                            ? round($discountA - $discountB, 2) : null,
-                    ],
-                    'count'    => 1,
-                    'status'   => 'both',
-                    'skipped'  => false,
-                ];
+            $bestKey   = null;
+            $bestScore = 0.0;
+
+            foreach ($entriesB as $nameB => $entryB) {
+                if (isset($usedB[$nameB])) {
+                    continue;
+                }
+
+                $score = $this->drugOverlapScore($nameA, $nameB);
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestKey   = $nameB;
+                }
+            }
+
+            if ($bestKey === null || $bestScore < self::MIN_NAME_OVERLAP) {
+                $lines[] = $this->buildOnlyALine($entryA);
 
                 continue;
             }
 
-            if ($offerA) {
-                $lines[] = [
-                    'query'          => $productName,
-                    'sheet'          => [
-                        'name'     => $productName,
-                        'price'    => $offerA->price !== null ? (float) $offerA->price : null,
-                        'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
-                    ],
-                    'matched_product' => $productName,
-                    'similarity'      => 100.0,
-                    'platform_best'   => null,
-                    'comparison'      => ['price_diff' => null, 'discount_diff' => null],
-                    'count'    => 1,
-                    'status'   => 'only_a',
-                    'skipped'  => false,
-                ];
+            $usedB[$bestKey] = true;
+            $lines[] = $this->buildPairLine($entryA, $entriesB[$bestKey], $socketB, round($bestScore, 1));
+        }
 
+        // Pass 3: المتبقي من B فقط.
+        foreach ($entriesB as $nameB => $entryB) {
+            if (isset($usedB[$nameB])) {
                 continue;
             }
 
-            // فقط موجود في الملف الثاني
-            $lines[] = [
-                'query'          => $productName,
-                'sheet'          => null,
-                'matched_product' => $productName,
-                'similarity'      => 100.0,
-                'platform_best'   => [
-                    'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
-                    'area'     => $offerB->supplier?->area,
-                    'phone'    => $offerB->supplier?->phone1 ?: $offerB->supplier?->phone2,
-                    'price'    => $offerB->price !== null ? (float) $offerB->price : null,
-                    'discount' => $offerB->discount !== null ? (float) $offerB->discount : null,
-                ],
-                'comparison' => ['price_diff' => null, 'discount_diff' => null],
-                'count'    => 1,
-                'status'   => 'only_b',
-                'skipped'  => false,
-            ];
+            $lines[] = $this->buildOnlyBLine($entryB, $socketB);
         }
 
         $lines = $this->sortLines($lines);
@@ -231,6 +207,188 @@ class ClientPlatformCompareController extends Controller
             'rows_read' => count($lines),
             'lines'     => $lines,
         ]);
+    }
+
+    /**
+     * نسبة تداخل كلمات المحتوى بين اسمين (0-100).
+     *
+     * بخلاف similar_text التي تُعطي نتائج مضللة في العربية (تحتسب الأحرف
+     * المشتركة بين أي اسمين)، تعتمد هذه النسبة على المطابقة الحرفية التامة
+     * لكلمات الدواء المميزة (اسم التركيبة) بعد تجريد الأرقام واستبعاد كلمات
+     * الصيغة العامة. فلا يُقبل ربط اسمين مختلفين تمامًا (مثل اتورستات ↔
+     * اتوريزا) ولا الأسماء التي تشترك فقط في بادئة قصيرة (مثل اكس ↔ اكساميد).
+     *
+     * القاسم = الأصغر بين عدد الكلمتين، فالاسم الأقصر فرع/اختصار للآخر يعتبر
+     * تطابقًا تامًا.
+     */
+    private function drugOverlapScore(string $nameA, string $nameB): float
+    {
+        $tokensA = $this->contentTokens($nameA);
+        $tokensB = $this->contentTokens($nameB);
+
+        if (empty($tokensA) || empty($tokensB)) {
+            return 0.0;
+        }
+
+        $shared = [];
+
+        foreach ($tokensA as $tokenA) {
+            if (in_array($tokenA, $tokensB, true)) {
+                $shared[] = $tokenA;
+            }
+        }
+
+        if (empty($shared)) {
+            return 0.0;
+        }
+
+        $longestShared = max(array_map('mb_strlen', $shared));
+
+        if ($longestShared < 4) {
+            return 0.0;
+        }
+
+        return round((count($shared) / min(count($tokensA), count($tokensB))) * 100, 1);
+    }
+
+    /**
+     * كلمات المحتوى المميزة في اسم دواء.
+     *
+     * يُقسَّم الاسم إلى متتاليات حروف فقط (تُجرَّد الأرقام والرموز تمامًا،
+     * فيصبح "اتورستات20قرص" = "اتورستات" و"80ق" بلا محتوى)، ثم تُستبعد
+     * كلمات الصيغة العامة والأحرف المفردة.
+     */
+    private function contentTokens(string $name): array
+    {
+        preg_match_all('/\p{L}+/u', $name, $matches);
+
+        $out = [];
+
+        foreach ($matches[0] as $run) {
+            $lower = mb_strtolower($run);
+
+            if (mb_strlen($lower) < 2) {
+                continue;
+            }
+
+            if (in_array($lower, self::DRUG_STOP_WORDS, true)) {
+                continue;
+            }
+
+            $out[] = $lower;
+        }
+
+        return $out;
+    }
+
+    /**
+     * بناء سطر "مطابقة" بين منتج من الملف الأول ومنتج من الملف الثاني.
+     *
+     * @param  array{product: Product, offer: Offer}  $entryA
+     * @param  array{product: Product, offer: Offer}  $entryB
+     * @param  Upload  $socketB
+     */
+    private function buildPairLine(array $entryA, array $entryB, Upload $socketB, float $similarity): array
+    {
+        $productA = $entryA['product'];
+        $productB = $entryB['product'];
+        $offerA   = $entryA['offer'];
+        $offerB   = $entryB['offer'];
+
+        $nameA = $productA->name_ar ?: $productA->name_en;
+        $nameB = $productB->name_ar ?: $productB->name_en;
+
+        $priceA    = $offerA->price !== null ? (float) $offerA->price : null;
+        $discountA = $offerA->discount !== null ? (float) $offerA->discount : null;
+        $priceB    = $offerB->price !== null ? (float) $offerB->price : null;
+        $discountB = $offerB->discount !== null ? (float) $offerB->discount : null;
+
+        return [
+            'query'          => $nameA,
+            'sheet'          => [
+                'name'     => $nameA,
+                'price'    => $priceA,
+                'discount' => $discountA,
+            ],
+            'matched_product' => $nameB,
+            'similarity'      => $similarity,
+            'platform_best'   => [
+                'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
+                'area'     => $offerB->supplier?->area,
+                'phone'    => $offerB->supplier?->phone1 ?: $offerB->supplier?->phone2,
+                'price'    => $priceB,
+                'discount' => $discountB,
+            ],
+            'comparison' => [
+                'price_diff'    => ($priceA !== null && $priceB !== null)
+                    ? round($priceA - $priceB, 2) : null,
+                'discount_diff' => ($discountA !== null && $discountB !== null)
+                    ? round($discountA - $discountB, 2) : null,
+            ],
+            'count'    => 1,
+            'status'   => 'both',
+            'skipped'  => false,
+        ];
+    }
+
+    /**
+     * بناء سطر "موجود فقط في الملف الأول".
+     *
+     * @param  array{product: Product, offer: Offer}  $entryA
+     */
+    private function buildOnlyALine(array $entryA): array
+    {
+        $productA = $entryA['product'];
+        $offerA   = $entryA['offer'];
+
+        $nameA = $productA->name_ar ?: $productA->name_en;
+
+        return [
+            'query'          => $nameA,
+            'sheet'          => [
+                'name'     => $nameA,
+                'price'    => $offerA->price !== null ? (float) $offerA->price : null,
+                'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
+            ],
+            'matched_product' => $nameA,
+            'similarity'      => 0.0,
+            'platform_best'   => null,
+            'comparison'      => ['price_diff' => null, 'discount_diff' => null],
+            'count'    => 1,
+            'status'   => 'only_a',
+            'skipped'  => false,
+        ];
+    }
+
+    /**
+     * بناء سطر "موجود فقط في الملف الثاني".
+     *
+     * @param  array{product: Product, offer: Offer}  $entryB
+     */
+    private function buildOnlyBLine(array $entryB, Upload $socketB): array
+    {
+        $productB = $entryB['product'];
+        $offerB   = $entryB['offer'];
+
+        $nameB = $productB->name_ar ?: $productB->name_en;
+
+        return [
+            'query'          => $nameB,
+            'sheet'          => null,
+            'matched_product' => $nameB,
+            'similarity'      => 0.0,
+            'platform_best'   => [
+                'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
+                'area'     => $offerB->supplier?->area,
+                'phone'    => $offerB->supplier?->phone1 ?: $offerB->supplier?->phone2,
+                'price'    => $offerB->price !== null ? (float) $offerB->price : null,
+                'discount' => $offerB->discount !== null ? (float) $offerB->discount : null,
+            ],
+            'comparison' => ['price_diff' => null, 'discount_diff' => null],
+            'count'    => 1,
+            'status'   => 'only_b',
+            'skipped'  => false,
+        ];
     }
 
     /**
@@ -297,65 +455,69 @@ class ClientPlatformCompareController extends Controller
     }
 
     /**
-     * الوضع 1: تحميل منتجات المنصة (بعروض نشطة) المطابقة لكلمات مفتاحية من الملف.
+     * الوضع 1: منتجات المنصة النشطة المطابقة لكلمات مفتاحية من الملف.
+     *
+     * كانت النسخة القديمة تبحث بـ LIKE عن الكلمات داخل جدول المنتجات الكامل ثم
+     * تحمّل عروض كل النتائج — ما كان يستنزف الذاكرة ويمرر قائمة ids ضخمة داخل
+     * IN في نفس الـ query. هنا نحمّل مرة واحدة فقط كل المنتجات ذات العروض
+     * النشطة (عددها محدود) ونطبق نفس الفلترة بالكلمات في PHP.
      *
      * @param  array<int, array<string, mixed>>  $rows
      */
     private function loadAllPlatformCache(array $rows): Collection
     {
-        $keywordMap = [];
+        $keywords = [];
 
-        foreach ($rows as $idx => $row) {
+        foreach ($rows as $row) {
             $query = trim((string) $row['name']);
             if (mb_strlen($query) < 3) {
                 continue;
             }
             $normalized = $this->normalizer->normalize($query);
             $firstWord  = explode(' ', $normalized)[0] ?? '';
-            if (mb_strlen($firstWord) < 2) {
-                continue;
+            if (mb_strlen($firstWord) >= 2) {
+                $keywords[$firstWord] = true;
             }
-            $keywordMap[$firstWord][] = $idx;
 
             // Keep a second, broader token so file-vs-platform compare does not drop valid results
             // when the product name in the sheet includes extra words/dosage fragments.
             foreach (preg_split('/\s+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
                 if (mb_strlen($token) >= 3) {
-                    $keywordMap[$token][] = $idx;
+                    $keywords[$token] = true;
                 }
             }
         }
 
-        $productCache = [];
+        $candidates = Product::query()
+            ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+            ->whereHas('offers', fn ($q) => $q->active())
+            ->with([
+                'offers' => function ($q) {
+                    $q->active()
+                        ->orderBy('price')
+                        ->with('supplier:id,name,area,phone1,phone2');
+                },
+            ])
+            ->get()
+            ->filter(fn (Product $p) => $p->offers->isNotEmpty());
 
-        $keywordChunks = array_chunk(array_keys($keywordMap), self::CHUNK_KEYWORDS);
-
-        foreach ($keywordChunks as $keywords) {
-            $query = Product::query()
-                ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                ->where(function ($q) use ($keywords) {
-                    foreach ($keywords as $kw) {
-                        $q->orWhere('normalized_name', 'LIKE', $kw . '%')
-                            ->orWhere('normalized_name', 'LIKE', '%' . $kw . '%');
-                    }
-                })
-                ->with([
-                    'offers' => function ($q) {
-                        $q->active()
-                            ->orderBy('price')
-                            ->with('supplier:id,name,area,phone1,phone2');
-                    },
-                ])
-                ->get();
-
-            foreach ($query as $product) {
-                if ($product->offers->isNotEmpty()) {
-                    $productCache[$product->id] = $product;
-                }
-            }
+        if (empty($keywords)) {
+            return $candidates;
         }
 
-        return collect(array_values($productCache));
+        $keywordList = array_keys($keywords);
+
+        return $candidates->filter(function (Product $p) use ($keywordList) {
+            $name = (string) $p->normalized_name;
+
+            foreach ($keywordList as $kw) {
+                if (str_starts_with($name, $kw) || str_contains($name, $kw)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
     }
 
     /**

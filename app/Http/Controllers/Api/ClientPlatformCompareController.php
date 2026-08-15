@@ -316,6 +316,14 @@ class ClientPlatformCompareController extends Controller
                 continue;
             }
             $keywordMap[$firstWord][] = $idx;
+
+            // Keep a second, broader token so file-vs-platform compare does not drop valid results
+            // when the product name in the sheet includes extra words/dosage fragments.
+            foreach (preg_split('/\s+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
+                if (mb_strlen($token) >= 3) {
+                    $keywordMap[$token][] = $idx;
+                }
+            }
         }
 
         $productCache = [];
@@ -327,7 +335,8 @@ class ClientPlatformCompareController extends Controller
                 ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
                 ->where(function ($q) use ($keywords) {
                     foreach ($keywords as $kw) {
-                        $q->orWhere('normalized_name', 'LIKE', $kw . '%');
+                        $q->orWhere('normalized_name', 'LIKE', $kw . '%')
+                            ->orWhere('normalized_name', 'LIKE', '%' . $kw . '%');
                     }
                 })
                 ->with([
@@ -367,7 +376,7 @@ class ClientPlatformCompareController extends Controller
                 },
             ])
             ->get()
-            ->filter(fn (Product $p) => $p->offers->isNotEmpty());
+            ->filter(fn(Product $p) => $p->offers->isNotEmpty());
     }
 
     /**
@@ -396,9 +405,7 @@ class ClientPlatformCompareController extends Controller
             $firstWord       = explode(' ', $normalizedQuery)[0] ?? '';
 
             $candidates = $firstWord !== ''
-                ? $cachedProducts->filter(fn (Product $p) =>
-                    str_starts_with((string) ($p->normalized_name ?? ''), $firstWord)
-                )
+                ? $cachedProducts->filter(fn(Product $p) => $this->matchesPlatformProductCandidate($normalizedQuery, $firstWord, $p))
                 : $cachedProducts;
 
             if ($candidates->isEmpty() && mb_strlen($firstWord) >= 3) {
@@ -408,12 +415,12 @@ class ClientPlatformCompareController extends Controller
                     ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
                     ->where(function ($q) use ($firstWord, $normalizedQuery) {
                         $q->where('normalized_name', 'LIKE', '%' . $firstWord . '%')
-                          ->orWhere('normalized_name', 'LIKE', '%' . $normalizedQuery . '%');
+                            ->orWhere('normalized_name', 'LIKE', '%' . $normalizedQuery . '%');
                     })
                     ->with(['offers' => $offerWith])
                     ->limit(20)
                     ->get()
-                    ->filter(fn (Product $p) => $p->offers->isNotEmpty());
+                    ->filter(fn(Product $p) => $p->offers->isNotEmpty());
 
                 $candidates = $fallback;
 
@@ -425,7 +432,7 @@ class ClientPlatformCompareController extends Controller
                         ->with(['offers' => $offerWith])
                         ->limit(20)
                         ->get()
-                        ->filter(fn (Product $p) => $p->offers->isNotEmpty());
+                        ->filter(fn(Product $p) => $p->offers->isNotEmpty());
                 }
             }
 
@@ -484,6 +491,32 @@ class ClientPlatformCompareController extends Controller
         }
 
         return $lines;
+    }
+
+    private function matchesPlatformProductCandidate(string $normalizedQuery, string $firstWord, Product $product): bool
+    {
+        $productName = (string) ($product->normalized_name ?? '');
+        if ($productName === '') {
+            return false;
+        }
+
+        if ($firstWord !== '' && (str_starts_with($productName, $firstWord) || str_contains($productName, $firstWord))) {
+            return true;
+        }
+
+        foreach (preg_split('/\s+/u', $normalizedQuery, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
+            if (mb_strlen($token) < 3) {
+                continue;
+            }
+
+            if (str_contains($productName, $token)) {
+                return true;
+            }
+        }
+
+        similar_text($normalizedQuery, $productName, $pct);
+
+        return $pct >= 35.0;
     }
 
     /**
@@ -595,7 +628,7 @@ class ClientPlatformCompareController extends Controller
     {
         return str_replace(
             ['اي', 'ايي', 'ائ', 'أي', 'وى', 'ى',  'ة',  'ه',  'اى',  'كا', 'جا', 'سا'],
-            ['ي',  'ي',   'ي',  'ي',  'وي', 'ي',  'ه',  'ه',  'اي',  'ك',  'ج',  'س' ],
+            ['ي',  'ي',   'ي',  'ي',  'وي', 'ي',  'ه',  'ه',  'اي',  'ك',  'ج',  'س'],
             $text
         );
     }

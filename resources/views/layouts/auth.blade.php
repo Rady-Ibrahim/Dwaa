@@ -8,64 +8,53 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     @include('partials.vite-assets')
     @stack('styles')
     <style>
-        body {
-            font-family: 'Tajawal', 'Instrument Sans', system-ui, sans-serif;
+        .bg-medical-dark {
             background-image: url("{{ asset('images/image.png') }}");
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed;
+        }
+        body {
+            font-family: 'Tajawal', 'Instrument Sans', system-ui, sans-serif;
         }
         ::selection {
-            background: rgba(37, 99, 235, 0.15);
+            background: rgba(225, 29, 72, 0.2);
         }
     </style>
 </head>
-<body class="flex min-h-screen items-center justify-center p-6 text-slate-800 antialiased">
+<body class="bg-medical-dark relative flex min-h-screen items-center justify-center overflow-hidden p-4 text-slate-200 antialiased lg:justify-start lg:pr-28">
 
-    <main class="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 md:grid-cols-2">
-
-        {{-- اليمين في RTL: بطاقة تسجيل الدخول --}}
-        <section class="order-1 w-full">
-            <div class="rounded-2xl bg-white p-8 shadow-xl md:p-10">
-                <div class="mb-8 text-center">
-                    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-blue-700 shadow-lg shadow-blue-500/30 ring-4 ring-blue-50">
-                        <svg class="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Zm0 2.25c-3.42 0-7.13 1.9-7.13 4.93V20.5h14.26v-1.32c0-3.03-3.71-4.93-7.13-4.93Z"></path>
-                        </svg>
-                    </div>
-                    <h2 class="text-2xl font-bold text-slate-800">@yield('auth_title', 'تسجيل الدخول')</h2>
+    <main class="relative z-10 my-auto w-full max-w-md">
+        <div class="rounded-3xl border border-slate-800/80 bg-[#0c101c]/80 p-8 shadow-2xl shadow-rose-950/30 backdrop-blur-xl sm:p-10">
+            <div class="mb-8 text-center">
+                <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-rose-600/30 bg-slate-900/90 text-rose-500 shadow-lg shadow-rose-950/50">
+                    <i class="fa-solid fa-user text-2xl"></i>
                 </div>
-
-                @yield('auth_form')
-
-                @if (empty($hideAuthFooter))
-                    <div class="my-6 flex items-center gap-3">
-                        <span class="h-px flex-1 bg-slate-200"></span>
-                        <span class="text-sm font-medium text-slate-400">أو</span>
-                        <span class="h-px flex-1 bg-slate-200"></span>
-                    </div>
-
-                    <a href="{{ route('client.password') }}" class="inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-blue-700 transition hover:text-blue-900 hover:underline">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"></path>
-                        </svg>
-                        نسيت كلمة المرور؟
-                    </a>
-                @endif
+                <h2 class="text-2xl font-bold tracking-wide text-white">@yield('auth_title', 'تسجيل الدخول')</h2>
+                <div class="mx-auto mt-2 h-1 w-10 rounded-full bg-rose-600"></div>
             </div>
 
-            <p class="mt-7 text-center text-xs text-slate-400">© 2024 MedRANKO جميع الحقوق محفوظة</p>
-        </section>
+            @yield('auth_form')
 
-        {{-- اليسار في RTL: قسم الهوية والمميزات --}}
-        <aside class="order-2 w-full">
-            @include('partials.auth-brand')
-        </aside>
+            @if (empty($hideAuthFooter))
+                <div class="my-6 flex items-center gap-3">
+                    <span class="h-px flex-1 bg-slate-800"></span>
+                    <span class="text-sm font-medium text-slate-500">أو</span>
+                    <span class="h-px flex-1 bg-slate-800"></span>
+                </div>
 
+                <a href="{{ route('client.password') }}" class="inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-400 hover:underline">
+                    <i class="fa-solid fa-lock text-sm"></i>
+                    نسيت كلمة المرور؟
+                </a>
+            @endif
+        </div>
+
+        <p class="mt-6 text-center text-xs font-medium text-slate-500">© 2024 MedRANKO جميع الحقوق محفوظة</p>
     </main>
 
     @stack('scripts')

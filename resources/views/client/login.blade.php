@@ -6,63 +6,48 @@
 @section('auth_title', 'تسجيل دخول العميل')
 
 @section('auth_form')
-    <div id="loginForm" class="space-y-5">
+    <div id="loginForm" class="space-y-6">
         <div>
-            <label for="phone" class="mb-1.5 block text-sm font-semibold text-slate-700">رقم الهاتف</label>
+            <label for="phone" class="mb-2 block text-xs font-semibold text-slate-300">رقم الهاتف</label>
             <div class="relative">
-                <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"></path>
-                    </svg>
-                </span>
-                <input type="tel" id="phone" inputmode="tel" autocomplete="username" dir="rtl"
+                <input type="tel" id="phone" inputmode="tel" autocomplete="username" dir="ltr"
                     placeholder="01xxxxxxxxx"
-                    class="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-11 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-3.5 pl-4 pr-10 text-right text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-600/20"
                     required>
+                <i
+                    class="fa-solid fa-phone pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
             </div>
         </div>
 
         <div>
-            <label for="password" class="mb-1.5 block text-sm font-semibold text-slate-700">كلمة المرور</label>
+            <label for="password" class="mb-2 block text-xs font-semibold text-slate-300">كلمة المرور</label>
             <div class="relative">
-                <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"></path>
-                    </svg>
-                </span>
                 <input type="password" id="password" autocomplete="current-password" placeholder="••••••••"
-                    class="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-11 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-500"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-3.5 pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-600/20"
                     required>
+                <i
+                    class="fa-solid fa-lock pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
                 <button type="button" id="togglePassword"
-                    class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-blue-600"
+                    class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-200"
                     aria-label="إظهار كلمة المرور" title="إظهار/إخفاء كلمة المرور">
-                    <svg id="eyeOpenIcon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12s3.75-7.5 9.75-7.5S21.75 12 21.75 12 18 19.5 12 19.5 2.25 12 2.25 12Z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                    <svg id="eyeClosedIcon" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.42-4.42M9.88 5.09A9.77 9.77 0 0 1 12 4.5c6 0 9.75 7.5 9.75 7.5a17.57 17.57 0 0 1-4.27 5.3M6.53 6.53A17.59 17.59 0 0 0 2.25 12s3.75 7.5 9.75 7.5a9.7 9.7 0 0 0 4.12-.91"></path>
-                    </svg>
+                    <i id="eyeOpenIcon" class="fa-solid fa-eye text-sm"></i>
                 </button>
             </div>
         </div>
 
-        <label class="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600">
+        <label class="flex cursor-pointer items-center gap-2 pt-1 text-xs font-medium text-slate-300">
             <input type="checkbox" id="rememberMe"
-                class="h-4 w-4 rounded border-slate-300 text-blue-600 accent-blue-600 focus:ring-blue-500">
+                class="h-4 w-4 rounded border-slate-700 bg-slate-900 text-rose-600 accent-rose-600 focus:ring-rose-500">
             تذكرني
         </label>
 
         <button type="button" id="loginBtn"
-            class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 font-bold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700 active:scale-[0.99]">
+            class="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-rose-600/30 transition duration-200 hover:bg-rose-700 active:scale-[0.99]">
             <span>دخول</span>
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M19 12H5"></path>
-                <path d="m12 19-7-7 7-7"></path>
-            </svg>
+            <i class="fa-solid fa-arrow-left text-xs"></i>
         </button>
 
-        <p id="error" class="hidden mt-2 text-sm font-medium text-red-500"></p>
+        <p id="error" class="hidden mt-2 text-sm font-medium text-rose-400"></p>
     </div>
 @endsection
 

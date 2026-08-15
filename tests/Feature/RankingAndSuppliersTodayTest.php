@@ -121,6 +121,26 @@ class RankingAndSuppliersTodayTest extends TestCase
         $this->assertSame('مورد ب', $matched['platform_best']['supplier']);
     }
 
+    public function test_ranking_refresh_recomputes_and_throttles(): void
+    {
+        $supplier = Supplier::factory()->create(['is_active' => true]);
+        $product = Product::factory()->create();
+        $this->makeActiveOffer($supplier, $product, 15);
+
+        Sanctum::actingAs($this->clientUser());
+
+        $this->postJson('/api/ranking/refresh')
+            ->assertOk()
+            ->assertJsonPath('count', 1);
+
+        $this->assertNotNull(
+            SupplierRanking::where('supplier_id', $supplier->id)->first()->discount_quality_index
+        );
+
+        // ممنوع التحديث المتكرر قبل مرور 60 ثانية
+        $this->postJson('/api/ranking/refresh')->assertStatus(429);
+    }
+
     public function test_ranking_endpoint_sorts_by_items(): void
     {
         $big = Supplier::factory()->create(['is_active' => true]);

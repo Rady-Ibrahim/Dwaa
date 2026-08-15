@@ -57,6 +57,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/products', [ClientProductsController::class, 'index']);
 
         Route::get('/ranking', [RankingController::class, 'index']);
+        Route::post('/ranking/refresh', [RankingController::class, 'refresh']);
         Route::get('/suppliers/today', [SuppliersTodayController::class, 'index']);
     });
 

@@ -47,7 +47,7 @@ class RankingService
      */
     public function recalculateForSupplier(int $supplierId): void
     {
-        $row = $this->aggregateQuery()->where('supplier_id', $supplierId)->first();
+        $row = $this->aggregateQuery()->where('o.supplier_id', $supplierId)->first();
 
         SupplierRanking::query()->updateOrCreate(
             ['supplier_id' => $supplierId],

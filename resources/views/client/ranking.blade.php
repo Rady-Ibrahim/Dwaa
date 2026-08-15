@@ -71,6 +71,9 @@
             <button id="rankTabDiscount" class="rank-tab" onclick="loadRanking('discount')">
                 💰 حسب مؤشر الخصم
             </button>
+            <button id="rankingRefreshBtn" class="rank-tab" onclick="refreshRanking()" title="إعادة احتساب مؤشر الجودة الآن">
+                🔄 تحديث
+            </button>
             <span id="rankingMeta" class="text-xs text-slate-500 mr-auto"></span>
         </div>
 
@@ -181,6 +184,25 @@
                         </td>
                     </tr>`;
             }).join('');
+        }
+
+        async function refreshRanking() {
+            const btn = document.getElementById('rankingRefreshBtn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = '⏳ جاري التحديث...';
+            try {
+                const res = await axios.post('/ranking/refresh');
+                if (window.clientNotify) clientNotify(res.data?.message || 'تم التحديث', 'success');
+                await loadRanking(activeRankingSort);
+            } catch (err) {
+                if (window.clientNotify) {
+                    clientNotify(err.response?.data?.message || 'فشل التحديث، حاول مرة أخرى', 'error');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 تحديث';
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => loadRanking('items'));

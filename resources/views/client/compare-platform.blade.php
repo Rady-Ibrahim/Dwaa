@@ -7,7 +7,7 @@
         .platform-compare-shell {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.4rem;
         }
 
         .platform-compare-shell .hidden {
@@ -19,14 +19,18 @@
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
-            padding: 0.25rem 0.25rem 0.5rem;
+            padding: 0.65rem 0.9rem 0.8rem;
+            border-radius: 14px;
+            background: linear-gradient(90deg, #2f0713, #5e0d1d, #2f0713);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
         }
 
         .platform-topbar .title-wrap {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             font-weight: 800;
             color: var(--text-main);
         }
@@ -37,8 +41,8 @@
             border-radius: 10px;
             display: grid;
             place-items: center;
-            background: rgba(56,189,248,0.08);
-            border: 1px solid rgba(56,189,248,0.22);
+            background: rgba(239, 35, 60, 0.08);
+            border: 1px solid rgba(239, 35, 60, 0.26);
             color: var(--accent-soft);
         }
 
@@ -53,8 +57,8 @@
         .platform-topbar .meta .pill {
             padding: 0.5rem 0.9rem;
             border-radius: 999px;
-            border: 1px solid rgba(var(--border-rgb),0.15);
-            background: rgba(var(--surface-rgb),0.7);
+            border: 1px solid rgba(239, 35, 60, 0.30);
+            background: rgba(22, 22, 22, 0.8);
         }
 
         .compare-modes {
@@ -68,9 +72,9 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.7rem 1.1rem;
-            border-radius: 14px;
-            border: 1px solid rgba(var(--border-rgb),0.18);
-            background: rgba(var(--surface-rgb),0.72);
+            border-radius: 12px;
+            border: 1px solid rgba(239, 35, 60, 0.28);
+            background: rgba(18, 18, 18, 0.7);
             color: var(--text-soft);
             font-weight: 700;
             font-size: 0.9rem;
@@ -79,12 +83,12 @@
         }
 
         .mode-btn:hover {
-            border-color: rgba(96,165,250,0.35);
+            border-color: rgba(255, 105, 120, 0.6);
         }
 
         .mode-btn.active {
-            background: linear-gradient(135deg, rgba(37,99,235,0.28), rgba(124,58,237,0.24));
-            border-color: rgba(99,102,241,0.6);
+            background: linear-gradient(135deg, rgba(68, 10, 19, 0.9), rgba(110, 13, 29, 0.8));
+            border-color: rgba(173, 27, 52, 0.9);
             color: #fff;
         }
 
@@ -96,12 +100,12 @@
 
         .compare-panel {
             position: relative;
-            background: linear-gradient(180deg, rgba(var(--surface-rgb),0.78), rgba(var(--surface-rgb),0.62));
-            border: 1px solid rgba(var(--border-rgb),0.18);
-            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(18, 18, 18, 0.78), rgba(12, 12, 12, 0.72));
+            border: 1px solid rgba(239, 35, 60, 0.34);
+            border-radius: 20px;
             min-height: 270px;
             padding: 1.5rem 1.4rem;
-            box-shadow: 0 25px 45px rgba(2,8,23,0.32);
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.18);
         }
 
         .compare-panel .panel-header {
@@ -116,12 +120,12 @@
             width: 52px;
             height: 52px;
             border-radius: 16px;
-            background: rgba(168,85,247,0.1);
-            border: 1px solid rgba(168,85,247,0.25);
+            background: rgba(239, 35, 60, 0.08);
+            border: 1px solid rgba(239, 35, 60, 0.25);
             display: grid;
             place-items: center;
             font-size: 1.7rem;
-            color: var(--violet-soft);
+            color: var(--danger-soft);
         }
 
         .compare-panel .panel-body {
@@ -135,7 +139,7 @@
         }
 
         .compare-panel h4 {
-            font-size: 1.7rem;
+            font-size: 1.6rem;
             font-weight: 800;
             color: var(--text-main);
             margin: 0;
@@ -155,8 +159,8 @@
             min-width: 150px;
             padding: 0.8rem 1.1rem;
             border-radius: 14px;
-            border: 1px solid rgba(var(--border-rgb),0.18);
-            background: rgba(var(--surface-rgb),0.82);
+            border: 1px solid rgba(239, 35, 60, 0.28);
+            background: rgba(239, 35, 60, 0.06);
             color: var(--text-soft2);
             font-weight: 700;
             cursor: pointer;
@@ -164,8 +168,8 @@
         }
 
         .compare-panel .file-input-label:hover {
-            border-color: rgba(96,165,250,0.35);
-            background: rgba(59,130,246,0.08);
+            border-color: rgba(255, 105, 120, 0.6);
+            background: rgba(239, 35, 60, 0.10);
         }
 
         .compare-panel .file-name {
@@ -179,9 +183,9 @@
             width: 100%;
             max-width: 260px;
             padding: 0.75rem 1rem;
-            border-radius: 14px;
-            border: 1px solid rgba(var(--border-rgb),0.18);
-            background: rgba(var(--surface-rgb),0.82);
+            border-radius: 12px;
+            border: 1px solid rgba(239, 35, 60, 0.18);
+            background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             font-weight: 600;
             font-size: 0.9rem;
@@ -191,8 +195,8 @@
         }
 
         .platform-select:focus {
-            border-color: rgba(96,165,250,0.4);
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+            border-color: rgba(239, 35, 60, 0.42);
+            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
         }
 
         .platform-select option {
@@ -206,9 +210,9 @@
             height: 38px;
             margin-bottom: 0.5rem;
             padding: 0 0.85rem;
-            border-radius: 12px;
-            border: 1px solid rgba(var(--border-rgb),0.14);
-            background: rgba(var(--surface-rgb),0.82);
+            border-radius: 10px;
+            border: 1px solid rgba(239, 35, 60, 0.18);
+            background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             font-size: 0.82rem;
             outline: none;
@@ -216,8 +220,8 @@
         }
 
         .platform-file-search:focus {
-            border-color: rgba(96,165,250,0.4);
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+            border-color: rgba(239, 35, 60, 0.42);
+            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
         }
 
         .platform-file-search::placeholder {
@@ -237,12 +241,12 @@
             border-radius: 999px;
             display: grid;
             place-items: center;
-            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(59,130,246,0.18));
-            border: 2px solid rgba(168,85,247,0.45);
-            color: var(--text-soft2);
+            background: linear-gradient(135deg, rgba(74, 10, 19, 0.9), rgba(121, 17, 32, 0.8));
+            border: 2px solid rgba(176, 39, 59, 0.75);
+            color: #fff;
             font-size: 2.4rem;
             font-weight: 900;
-            box-shadow: 0 0 32px rgba(139,92,246,0.22);
+            box-shadow: 0 0 20px rgba(121, 17, 32, 0.3);
         }
 
         .main-action {
@@ -253,14 +257,14 @@
 
         .compare-submit {
             width: 100%;
-            border: none;
-            padding: 1rem 1.4rem;
-            border-radius: 18px;
-            background: linear-gradient(90deg, #2563eb, #7c3aed);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 1rem 1.3rem;
+            border-radius: 14px;
+            background: linear-gradient(90deg, #1b070d, #4f0a19, #1b070d);
             color: #fff;
             font-weight: 800;
             font-size: 1rem;
-            box-shadow: 0 18px 28px rgba(80,112,255,0.28);
+            box-shadow: 0 16px 24px rgba(33, 4, 10, 0.45);
             transition: transform 0.2s ease, filter 0.2s ease;
         }
 
@@ -282,9 +286,9 @@
         }
 
         .mini-stat {
-            background: rgba(var(--surface-rgb),0.72);
-            border: 1px solid rgba(var(--border-rgb),0.12);
-            border-radius: 18px;
+            background: rgba(18, 18, 18, 0.75);
+            border: 1px solid rgba(239, 35, 60, 0.22);
+            border-radius: 16px;
             padding: 1rem 1rem;
             min-height: 110px;
         }
@@ -323,15 +327,15 @@
             border-radius: 10px;
             display: grid;
             place-items: center;
-            background: rgba(59,130,246,0.1);
-            border: 1px solid rgba(59,130,246,0.22);
+            background: rgba(239, 35, 60, 0.08);
+            border: 1px solid rgba(239, 35, 60, 0.22);
             color: var(--accent-soft);
         }
 
         .compare-results {
-            background: rgba(var(--surface-rgb),0.7);
-            border: 1px solid rgba(var(--border-rgb),0.14);
-            border-radius: 24px;
+            background: rgba(18, 18, 18, 0.75);
+            border: 1px solid rgba(239, 35, 60, 0.22);
+            border-radius: 18px;
             overflow: hidden;
             margin-top: 0.3rem;
         }
@@ -342,14 +346,14 @@
             justify-content: space-between;
             gap: 1rem;
             padding: 1rem 1.2rem;
-            border-bottom: 1px solid rgba(var(--border-rgb),0.1);
+            border-bottom: 1px solid rgba(239, 35, 60, 0.15);
         }
 
         .results-header input {
             width: min(320px, 100%);
             height: 44px;
-            border: 1px solid rgba(var(--border-rgb),0.14);
-            background: rgba(var(--surface-rgb),0.82);
+            border: 1px solid rgba(239, 35, 60, 0.18);
+            background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             border-radius: 12px;
             padding: 0 0.9rem;
@@ -357,18 +361,18 @@
         }
 
         .results-header input:focus {
-            border-color: rgba(96,165,250,0.4);
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+            border-color: rgba(239, 35, 60, 0.42);
+            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
         }
 
         .save-btn {
             padding: 0.75rem 1rem;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
+            background: linear-gradient(90deg, #7b0e23, #b91233, #7b0e23);
             color: #fff;
             font-weight: 700;
-            box-shadow: 0 12px 24px rgba(59,130,246,0.18);
+            box-shadow: 0 12px 22px rgba(120, 16, 35, 0.24);
         }
 
         .save-btn[hidden] {
@@ -385,18 +389,18 @@
         table.platform-table td {
             text-align: right;
             padding: 0.9rem 0.9rem;
-            border-bottom: 1px solid rgba(var(--border-rgb),0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             font-size: 0.9rem;
         }
 
         table.platform-table thead th {
-            background: rgba(var(--surface-rgb),0.92);
+            background: rgba(15, 15, 15, 0.9);
             color: var(--text-soft);
             font-weight: 700;
         }
 
         table.platform-table tbody tr:hover {
-            background: rgba(59,130,246,0.03);
+            background: rgba(239, 35, 60, 0.02);
         }
 
         .status-up {
@@ -606,19 +610,34 @@
 
         const MODE_HEADERS = {
             [MODE.PLATFORM]: {
-                fromName: 'الصنف من الملف', fromPrice: 'سعر الملف', fromDiscount: 'خصم الملف',
-                supplier: 'أفضل مورد', toPrice: 'سعر المنصة', toDiscount: 'خصم المنصة',
-                statFrom: 'الملف', statTo: 'المنصة',
+                fromName: 'الصنف من الملف',
+                fromPrice: 'سعر الملف',
+                fromDiscount: 'خصم الملف',
+                supplier: 'أفضل مورد',
+                toPrice: 'سعر المنصة',
+                toDiscount: 'خصم المنصة',
+                statFrom: 'الملف',
+                statTo: 'المنصة',
             },
             [MODE.UPLOAD]: {
-                fromName: 'الصنف من ملفي', fromPrice: 'سعر ملفي', fromDiscount: 'خصم ملفي',
-                supplier: 'مورد ملف المنصة', toPrice: 'سعر المنصة', toDiscount: 'خصم المنصة',
-                statFrom: 'ملفي', statTo: 'ملف المنصة',
+                fromName: 'الصنف من ملفي',
+                fromPrice: 'سعر ملفي',
+                fromDiscount: 'خصم ملفي',
+                supplier: 'مورد ملف المنصة',
+                toPrice: 'سعر المنصة',
+                toDiscount: 'خصم المنصة',
+                statFrom: 'ملفي',
+                statTo: 'ملف المنصة',
             },
             [MODE.UPLOADS]: {
-                fromName: 'الصنف من الأول', fromPrice: 'سعر الأول', fromDiscount: 'خصم الأول',
-                supplier: 'مورد الثاني', toPrice: 'سعر الثاني', toDiscount: 'خصم الثاني',
-                statFrom: 'الملف الأول', statTo: 'الملف الثاني',
+                fromName: 'الصنف من الأول',
+                fromPrice: 'سعر الأول',
+                fromDiscount: 'خصم الأول',
+                supplier: 'مورد الثاني',
+                toPrice: 'سعر الثاني',
+                toDiscount: 'خصم الثاني',
+                statFrom: 'الملف الأول',
+                statTo: 'الملف الثاني',
             },
         };
 
@@ -691,9 +710,9 @@
                 if (!platformUploads.length) return;
                 const q = input.value.trim().toLowerCase();
                 const prevValue = select.value;
-                const filtered = q
-                    ? platformUploads.filter((u) => uploadLabel(u).toLowerCase().includes(q))
-                    : platformUploads;
+                const filtered = q ?
+                    platformUploads.filter((u) => uploadLabel(u).toLowerCase().includes(q)) :
+                    platformUploads;
                 select.innerHTML = '<option value="">اختر ملف...</option>' + filtered.map((u) =>
                     `<option value="${u.id}">${escapeHtml(uploadLabel(u))}</option>`
                 ).join('');
@@ -841,8 +860,8 @@
                 }
 
                 rows = res.data?.lines || [];
-                const fileLabel = fileInput.files?.[0]?.name
-                    || `ملف ${MODE_LABELS[currentMode]}`;
+                const fileLabel = fileInput.files?.[0]?.name ||
+                    `ملف ${MODE_LABELS[currentMode]}`;
                 latestComparisonData = {
                     mode: currentMode,
                     file_name: fileLabel,
@@ -940,10 +959,10 @@
                 const discountCls = discountDiff === null ? 'text-slate-400' : (discountDiff > 0 ?
                     'text-emerald-400' : (discountDiff < 0 ? 'text-rose-400' : 'text-slate-200'));
 
-                const matchCell = status === 'no_match' ? '-'
-                    : onlyA ? '<span class="text-xs text-sky-300">موجود في الملف الأول فقط</span>'
-                    : onlyB ? '<span class="text-xs text-amber-300">موجود في الملف الثاني فقط</span>'
-                    : escapeHtml(line.matched_product ?? '-');
+                const matchCell = status === 'no_match' ? '-' :
+                    onlyA ? '<span class="text-xs text-sky-300">موجود في الملف الأول فقط</span>' :
+                    onlyB ? '<span class="text-xs text-amber-300">موجود في الملف الثاني فقط</span>' :
+                    escapeHtml(line.matched_product ?? '-');
 
                 return `
                     <tr class="border-b border-white/5">

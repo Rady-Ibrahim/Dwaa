@@ -5,12 +5,12 @@
 @section('content')
     <div class="max-w-2xl mx-auto py-10">
         <div
-            class="relative overflow-hidden bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-            <div class="absolute -top-24 -left-24 w-48 h-48 bg-sky-500/10 blur-[100px] pointer-events-none"></div>
+            class="relative overflow-hidden bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/40 rounded-2xl p-8 shadow-2xl">
+            <div class="absolute -top-24 -left-24 w-48 h-48 bg-[#ef233c]/10 blur-[100px] pointer-events-none"></div>
 
             <div class="relative z-10">
                 <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 rounded-2xl bg-sky-500/20 flex items-center justify-center text-2xl">🚀</div>
+                    <div class="w-12 h-12 rounded-2xl bg-[#ef233c]/15 flex items-center justify-center text-2xl">🚀</div>
                     <div>
                         <h3 class="text-xl font-bold text-white">تفعيل اشتراك الحساب</h3>
                     </div>
@@ -26,12 +26,12 @@
                     <div class="space-y-2">
                         <label class="block text-sm font-semibold text-slate-300 mr-1">رمز التفعيل (Activation Code)</label>
                         <input type="text" id="code"
-                            class="w-full bg-slate-950/50 rounded-2xl border border-white/5 p-4 text-white placeholder:text-slate-600 focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 focus:outline-none transition-all text-center text-xl tracking-[0.5em] font-mono"
+                            class="w-full bg-[#0d0d0d] rounded-2xl border border-[#ef233c]/25 p-4 text-white placeholder:text-slate-600 focus:border-[#ff4d63] focus:ring-4 focus:ring-[#ef233c]/10 focus:outline-none transition-all text-center text-xl tracking-[0.5em] font-mono"
                             placeholder="XXXX-XXXX" required>
                     </div>
 
                     <button type="submit"
-                        class="w-full relative group overflow-hidden rounded-2xl bg-sky-600 p-4 font-bold text-white transition-all hover:bg-sky-500 hover:shadow-[0_0_30px_rgba(14,165,233,0.3)] active:scale-[0.98]">
+                        class="w-full relative group overflow-hidden rounded-2xl bg-gradient-to-r from-[#ef233c] to-[#be123c] p-4 font-bold text-white transition-all hover:brightness-110 active:scale-[0.98] shadow-lg shadow-[#ef233c]/15">
                         <span class="relative z-10 flex items-center justify-center gap-2">
                             تأكيد التفعيل
                             <svg xmlns="http://www.w3.org/2000/svg"
@@ -44,8 +44,6 @@
                     </button>
                     <p id="message" class="hidden text-center mt-4 text-sm font-bold"></p>
                 </form>
-
-
             </div>
         </div>
     </div>

@@ -5,60 +5,60 @@
 @section('content')
     <style>
         .rank-tab {
-            padding: 0.65rem 1.25rem;
-            border-radius: 14px;
+            padding: 0.7rem 1.1rem;
+            border-radius: 12px;
             font-weight: 700;
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s ease;
-            border: 1px solid rgba(var(--border-rgb),0.16);
-            background: rgba(var(--surface-rgb),0.6);
+            border: 1px solid rgba(239, 35, 60, 0.35);
+            background: rgba(15, 15, 15, 0.7);
             color: var(--text-soft);
         }
 
         .rank-tab.active {
-            background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.12));
-            border-color: rgba(96,165,250,0.45);
+            background: linear-gradient(135deg, rgba(239, 35, 60, 0.24), rgba(239, 35, 60, 0.10));
+            border-color: rgba(239, 35, 60, 0.68);
             color: var(--accent-pale);
-            box-shadow: 0 0 24px rgba(59,130,246,0.18);
+            box-shadow: 0 0 16px rgba(239, 35, 60, 0.12);
         }
 
         .rank-badge {
             width: 2rem;
             height: 2rem;
-            border-radius: 12px;
+            border-radius: 10px;
             display: grid;
             place-items: center;
             font-weight: 800;
             font-size: 0.85rem;
-            background: rgba(var(--border-rgb),0.12);
+            background: rgba(255, 255, 255, 0.04);
             color: var(--text-soft);
-            border: 1px solid rgba(var(--border-rgb),0.16);
+            border: 1px solid rgba(239, 35, 60, 0.22);
         }
 
         .rank-badge.top-1 {
-            background: linear-gradient(135deg, rgba(245,158,11,0.25), rgba(251,191,36,0.1));
-            border-color: rgba(245,158,11,0.5);
-            color: var(--warn-soft);
+            background: linear-gradient(135deg, rgba(239, 35, 60, 0.25), rgba(239, 35, 60, 0.10));
+            border-color: rgba(239, 35, 60, 0.6);
+            color: var(--danger-soft);
         }
 
         .rank-badge.top-2 {
-            background: rgba(var(--border-rgb),0.2);
-            border-color: rgba(203,213,225,0.35);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
             color: var(--text-soft2);
         }
 
         .rank-badge.top-3 {
-            background: rgba(217,119,6,0.2);
-            border-color: rgba(217,119,6,0.45);
+            background: rgba(239, 35, 60, 0.12);
+            border-color: rgba(239, 35, 60, 0.35);
             color: var(--warn-soft);
         }
     </style>
 
     <div class="space-y-6">
-        <div class="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+        <div class="bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/50 rounded-2xl p-5">
             <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">🏆</div>
+                <div class="w-10 h-10 rounded-xl bg-[#ef233c]/15 flex items-center justify-center">🏆</div>
                 <h4 class="text-xl font-bold text-white">ترتيب الموردين</h4>
             </div>
             <p class="text-sm text-slate-400">قارن الموردين حسب حجم الكتالوج أو جودة الخصومات المتاحة</p>
@@ -71,7 +71,8 @@
             <button id="rankTabDiscount" class="rank-tab" onclick="loadRanking('discount')">
                 💰 حسب مؤشر الخصم
             </button>
-            <button id="rankingRefreshBtn" class="rank-tab" onclick="refreshRanking()" title="إعادة احتساب مؤشر الجودة الآن">
+            <button id="rankingRefreshBtn" class="rank-tab" onclick="refreshRanking()"
+                title="إعادة احتساب مؤشر الجودة الآن">
                 🔄 تحديث
             </button>
             <span id="rankingMeta" class="text-xs text-slate-500 mr-auto"></span>
@@ -79,7 +80,7 @@
 
         <div class="custom-table-card overflow-x-auto">
             <table class="w-full text-sm text-right">
-                <thead class="bg-slate-950/50 text-slate-400">
+                <thead class="bg-[#0d0d0d] text-slate-300">
                     <tr>
                         <th class="p-4">#</th>
                         <th class="p-4">المورد</th>
@@ -126,7 +127,10 @@
 
             try {
                 const res = await axios.get('/ranking', {
-                    params: { sort, limit: 100 }
+                    params: {
+                        sort,
+                        limit: 100
+                    }
                 });
                 renderRanking(res.data);
             } catch (err) {
@@ -139,7 +143,8 @@
 
         function renderRanking(data) {
             const rows = data?.data || [];
-            rankingMeta.textContent = data?.indexed_at ? 'آخر تحديث: ' + new Date(data.indexed_at).toLocaleString('ar-EG') : '';
+            rankingMeta.textContent = data?.indexed_at ? 'آخر تحديث: ' + new Date(data.indexed_at).toLocaleString('ar-EG') :
+                '';
 
             if (!rows.length) {
                 rankingTableBody.innerHTML =
@@ -148,9 +153,9 @@
             }
 
             const sortByDiscount = data?.sort === 'discount';
-            const values = rows.map(r => sortByDiscount
-                ? (r.discount_quality_index ?? 0)
-                : r.total_items_count);
+            const values = rows.map(r => sortByDiscount ?
+                (r.discount_quality_index ?? 0) :
+                r.total_items_count);
             const max = Math.max(...values, 1);
 
             rankingTableBody.innerHTML = rows.map((row, idx) => {

@@ -6,8 +6,8 @@
     <style>
         body.search-scene {
             background:
-                radial-gradient(circle at top left, rgba(59,130,246,0.12), transparent 22%),
-                radial-gradient(circle at bottom right, rgba(168,85,247,0.10), transparent 20%),
+                radial-gradient(circle at top left, rgba(239, 35, 60, 0.15), transparent 20%),
+                radial-gradient(circle at bottom right, rgba(239, 35, 60, 0.08), transparent 24%),
                 var(--client-bg);
             background-attachment: fixed;
             background-size: cover;
@@ -66,7 +66,7 @@
             margin: 0.9rem auto 0.7rem;
             width: 4rem;
             height: 2px;
-            background: linear-gradient(90deg, rgba(59,130,246,0.8), var(--brand-red));
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.85), rgba(140, 18, 40, 0.95));
             border-radius: 999px;
         }
 
@@ -83,16 +83,16 @@
             width: min(100%, 860px);
             margin: 0 auto;
             padding: 0.8rem 1rem 0.8rem 1.15rem;
-            border-radius: 26px;
-            background: rgba(var(--surface-rgb),0.88);
-            border: 2px solid rgba(59,130,246,0.4);
-            box-shadow: inset 0 0 0 1px rgba(59,130,246,0.16), 0 0 30px rgba(59,130,246,0.18);
+            border-radius: 30px;
+            background: rgba(15, 15, 15, 0.8);
+            border: 2px solid rgba(136, 12, 34, 0.95);
+            box-shadow: inset 0 0 0 1px rgba(136, 12, 34, 0.12), 0 0 22px rgba(136, 12, 34, 0.15);
             transition: all 0.2s ease;
         }
 
         .search-box-wrapper:focus-within {
-            box-shadow: inset 0 0 0 1px rgba(59,130,246,0.3), 0 0 32px rgba(59,130,246,0.22);
-            border-color: rgba(96,165,250,0.8);
+            box-shadow: inset 0 0 0 1px rgba(136, 12, 34, 0.22), 0 0 28px rgba(136, 12, 34, 0.20);
+            border-color: rgba(175, 20, 49, 0.95);
         }
 
         .search-input {
@@ -106,7 +106,7 @@
         }
 
         .search-input::placeholder {
-            color: rgba(var(--border-rgb),0.9);
+            color: rgba(var(--border-rgb), 0.9);
         }
 
         .search-icon-wrap {
@@ -115,9 +115,9 @@
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: rgba(59,130,246,0.06);
+            background: rgba(136, 12, 34, 0.14);
             color: var(--accent-soft);
-            border: 1px solid rgba(125,211,252,0.14);
+            border: 1px solid rgba(136, 12, 34, 0.28);
         }
 
         .feature-grid {
@@ -129,8 +129,8 @@
         }
 
         .feature-card {
-            background: rgba(var(--surface-rgb),0.72);
-            border: 1px solid rgba(var(--border-rgb),0.18);
+            background: rgba(var(--surface-rgb), 0.72);
+            border: 1px solid rgba(var(--border-rgb), 0.18);
             border-radius: 24px;
             padding: 1.5rem 1rem 1.2rem;
             min-height: 180px;
@@ -140,23 +140,23 @@
             justify-content: center;
             text-align: center;
             color: var(--text-soft2);
-            box-shadow: 0 18px 35px rgba(2,6,23,0.22);
+            box-shadow: 0 18px 35px rgba(2, 6, 23, 0.22);
         }
 
         .feature-card:nth-child(1) {
-            border-color: rgba(96,165,250,0.28);
+            border-color: rgba(96, 165, 250, 0.28);
         }
 
         .feature-card:nth-child(2) {
-            border-color: rgba(52,211,153,0.28);
+            border-color: rgba(52, 211, 153, 0.28);
         }
 
         .feature-card:nth-child(3) {
-            border-color: rgba(168,85,247,0.28);
+            border-color: rgba(168, 85, 247, 0.28);
         }
 
         .feature-card:nth-child(4) {
-            border-color: rgba(244,63,94,0.28);
+            border-color: rgba(244, 63, 94, 0.28);
         }
 
         .feature-card .icon-box {
@@ -167,26 +167,26 @@
             place-items: center;
             margin-bottom: 1rem;
             font-size: 1.8rem;
-            background: rgba(59,130,246,0.12);
-            border: 1px solid rgba(59,130,246,0.25);
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.25);
             color: var(--accent-soft);
         }
 
         .feature-card:nth-child(2) .icon-box {
-            background: rgba(34,197,94,0.10);
-            border-color: rgba(34,197,94,0.22);
+            background: rgba(34, 197, 94, 0.10);
+            border-color: rgba(34, 197, 94, 0.22);
             color: var(--success-soft);
         }
 
         .feature-card:nth-child(3) .icon-box {
-            background: rgba(168,85,247,0.12);
-            border-color: rgba(168,85,247,0.24);
+            background: rgba(168, 85, 247, 0.12);
+            border-color: rgba(168, 85, 247, 0.24);
             color: var(--violet-soft);
         }
 
         .feature-card:nth-child(4) .icon-box {
-            background: rgba(244,63,94,0.10);
-            border-color: rgba(244,63,94,0.22);
+            background: rgba(244, 63, 94, 0.10);
+            border-color: rgba(244, 63, 94, 0.22);
             color: var(--danger-soft);
         }
 
@@ -210,8 +210,8 @@
             gap: 0.5rem;
             margin-top: 0.75rem;
             padding: 0.75rem 1rem;
-            background: rgba(var(--surface-rgb),0.5);
-            border: 1px solid rgba(56,189,248,0.15);
+            background: rgba(var(--surface-rgb), 0.5);
+            border: 1px solid rgba(56, 189, 248, 0.15);
             border-radius: 12px;
             animation: fadeIn 0.3s ease;
             justify-content: center;
@@ -225,19 +225,19 @@
             border-radius: 999px;
             font-size: 0.78rem;
             font-weight: 600;
-            background: rgba(34,197,94,0.12);
+            background: rgba(34, 197, 94, 0.12);
             color: var(--success-soft);
-            border: 1px solid rgba(34,197,94,0.2);
+            border: 1px solid rgba(34, 197, 94, 0.2);
             cursor: pointer;
             transition: all 0.15s;
         }
 
         .discount-stat-chip:hover {
-            background: rgba(34,197,94,0.25);
+            background: rgba(34, 197, 94, 0.25);
         }
 
         .discount-stat-chip .chip-count {
-            background: rgba(34,197,94,0.2);
+            background: rgba(34, 197, 94, 0.2);
             border-radius: 999px;
             padding: 0 0.4rem;
             font-size: 0.72rem;
@@ -256,16 +256,16 @@
         }
 
         .custom-table-card {
-            background: rgba(var(--surface-rgb),0.72);
+            background: rgba(var(--surface-rgb), 0.72);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(var(--overlay-rgb),0.06);
+            border: 1px solid rgba(var(--overlay-rgb), 0.06);
             border-radius: 22px;
             overflow-x: auto;
-            box-shadow: 0 22px 40px rgba(2,6,23,0.25);
+            box-shadow: 0 22px 40px rgba(2, 6, 23, 0.25);
         }
 
         .result-table thead {
-            background: rgba(var(--surface-rgb),0.86);
+            background: rgba(var(--surface-rgb), 0.86);
         }
 
         .result-table th {
@@ -279,7 +279,7 @@
 
         .result-table td {
             padding: 15px;
-            border-bottom: 1px solid rgba(var(--overlay-rgb),0.04);
+            border-bottom: 1px solid rgba(var(--overlay-rgb), 0.04);
             color: var(--text-soft2);
         }
 
@@ -296,7 +296,7 @@
         }
 
         .badge-price {
-            background: rgba(56,189,248,0.15);
+            background: rgba(56, 189, 248, 0.15);
             color: #38bdf8;
             padding: 4px 10px;
             border-radius: 8px;
@@ -304,7 +304,7 @@
         }
 
         .badge-price-good {
-            background: rgba(34,197,94,0.15);
+            background: rgba(34, 197, 94, 0.15);
             color: var(--success-soft);
             padding: 4px 10px;
             border-radius: 8px;
@@ -312,7 +312,7 @@
         }
 
         .badge-price-bad {
-            background: rgba(244,63,94,0.15);
+            background: rgba(244, 63, 94, 0.15);
             color: var(--danger-soft);
             padding: 4px 10px;
             border-radius: 8px;
@@ -320,7 +320,7 @@
         }
 
         .badge-pill-neutral {
-            background: rgba(var(--border-rgb),0.15);
+            background: rgba(var(--border-rgb), 0.15);
             color: var(--text-soft);
             padding: 4px 10px;
             border-radius: 8px;

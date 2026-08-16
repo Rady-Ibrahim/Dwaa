@@ -4,24 +4,25 @@
 
 @section('content')
     <div class="space-y-6">
-        <div class="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+        <div class="bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/50 rounded-2xl p-5">
             <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">🕐</div>
+                <div class="w-10 h-10 rounded-xl bg-[#ef233c]/15 flex items-center justify-center">🕐</div>
                 <h4 class="text-xl font-bold text-white">موردين اليوم</h4>
             </div>
             <p class="text-sm text-slate-400">الموردون الذين حدّثوا عروضهم اليوم</p>
         </div>
 
         <div class="grid gap-6 lg:grid-cols-3">
-            <div class="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 lg:col-span-1 flex flex-col items-center justify-center text-center">
+            <div
+                class="bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/40 rounded-2xl p-6 lg:col-span-1 flex flex-col items-center justify-center text-center">
                 <p class="text-sm text-slate-400 mb-3">عدد الموردين المحدّثين اليوم</p>
-                <p id="suppliersTodayCount" class="text-6xl font-black tabular-nums text-emerald-400 leading-none">—</p>
+                <p id="suppliersTodayCount" class="text-6xl font-black tabular-nums text-[#ff7585] leading-none">—</p>
                 <p class="mt-3 text-xs text-slate-500">إجمالي من رفعوا أو حدّثوا ملفاتهم</p>
             </div>
 
             <div class="custom-table-card overflow-x-auto lg:col-span-2">
                 <table class="w-full text-sm text-right">
-                    <thead class="bg-slate-950/50 text-slate-400">
+                    <thead class="bg-[#0d0d0d] text-slate-300">
                         <tr>
                             <th class="p-4">المورد</th>
                             <th class="p-4">المنطقة</th>
@@ -77,9 +78,9 @@
             }
 
             suppliersTodayBody.innerHTML = rows.map(row => {
-                const updated = row.last_upload_at
-                    ? new Date(row.last_upload_at).toLocaleString('ar-EG')
-                    : '-';
+                const updated = row.last_upload_at ?
+                    new Date(row.last_upload_at).toLocaleString('ar-EG') :
+                    '-';
 
                 return `
                     <tr class="border-t border-white/5 hover:bg-white/[0.02]">

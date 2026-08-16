@@ -4,30 +4,37 @@
 
 @section('content')
     <style>
+        .settings-shell {
+            display: grid;
+            grid-template-columns: 1.05fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
         .settings-card {
-            background: rgba(var(--surface-rgb),0.5);
+            background: rgba(15, 9, 11, 0.96);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(var(--overlay-rgb),0.08);
-            border-radius: 24px;
+            border: 1px solid rgba(142, 17, 35, 0.7);
+            border-radius: 22px;
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
         }
 
         .info-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.85rem 1.25rem;
-            background: rgba(var(--overlay-rgb),0.03);
-            border-radius: 16px;
-            border: 1px solid rgba(var(--overlay-rgb),0.02);
+            padding: 0.85rem 1rem;
+            background: rgba(22, 12, 14, 0.88);
+            border-radius: 14px;
+            border: 1px solid rgba(142, 17, 35, 0.2);
             transition: all 0.3s ease;
         }
 
         .info-row:hover {
-            background: rgba(var(--overlay-rgb),0.05);
-            border-color: rgba(var(--overlay-rgb),0.05);
+            background: rgba(66, 16, 25, 0.18);
+            border-color: rgba(171, 27, 46, 0.35);
         }
 
-        /* كلاس مخصص لضمان ظهور الأرقام بالإنجليزية وتنسيق ltr */
         .en-numbers {
             font-family: 'Inter', sans-serif;
             direction: ltr;
@@ -40,28 +47,30 @@
 
         .form-input {
             width: 100%;
-            background: rgba(var(--surface-rgb),0.7);
-            border: 1px solid rgba(var(--overlay-rgb),0.1);
+            background: rgba(17, 15, 16, 0.96);
+            border: 1px solid rgba(148, 26, 43, 0.7);
             border-radius: 14px;
-            padding: 0.85rem 3.5rem 0.85rem 1rem;
+            padding: 0.85rem 3rem 0.85rem 1rem;
             color: white;
             transition: all 0.3s;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
         }
 
         .form-input:focus {
             outline: none;
-            border-color: #38bdf8;
-            box-shadow: 0 0 0 4px rgba(56,189,248,0.1);
+            border-color: #a90d2e;
+            box-shadow: 0 0 0 4px rgba(169, 13, 46, 0.14);
         }
 
         .eye-toggle {
             position: absolute;
             top: 50%;
-            right: 1.25rem;
+            right: 1rem;
             transform: translateY(-50%);
             cursor: pointer;
             font-size: 1.2rem;
-            opacity: 0.5;
+            opacity: 0.7;
+            color: #d67586;
             transition: opacity 0.2s, color 0.2s;
             z-index: 10;
             user-select: none;
@@ -69,105 +78,102 @@
 
         .eye-toggle:hover {
             opacity: 1;
-            color: #38bdf8;
+            color: #ff9aac;
+        }
+
+        @media (max-width: 980px) {
+            .settings-shell {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 
-    <div class="grid gap-8 lg:grid-cols-2 items-start">
+    <div class="settings-shell">
+        <div class="settings-card p-7">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-2xl bg-[#ef233c]/15 flex items-center justify-center text-2xl">👤</div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">بيانات الحساب</h3>
+                    <p class="text-slate-400 text-xs">معلومات العضوية في نظام MedRANKO</p>
+                </div>
+            </div>
 
-        <div class="space-y-6">
-            <div class="settings-card p-8 shadow-2xl shadow-black/20">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 rounded-2xl bg-sky-500/20 flex items-center justify-center text-2xl shadow-inner">
-                        👤</div>
-                    <div>
-                        <h3 class="text-xl font-bold text-white">بيانات الحساب</h3>
-                        <p class="text-slate-400 text-xs">معلومات العضوية في نظام MedRANKO</p>
-                    </div>
+            <div class="space-y-3">
+                <div class="info-row">
+                    <span class="text-slate-400 text-sm">اسم المستخدم</span>
+                    <span id="profileName" class="text-white font-bold text-sm">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="text-slate-400 text-sm">رقم الهاتف</span>
+                    <span id="profilePhone" class="text-white font-bold text-sm en-numbers">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="text-slate-400 text-sm">حالة الاشتراك</span>
+                    <span id="profileStatus"
+                        class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">-</span>
                 </div>
 
-                <div class="space-y-3">
-                    <div class="info-row">
-                        <span class="text-slate-400 text-sm">اسم المستخدم</span>
-                        <span id="profileName" class="text-white font-bold text-sm">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="text-slate-400 text-sm">رقم الهاتف</span>
-                        <span id="profilePhone" class="text-white font-bold text-sm en-numbers">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="text-slate-400 text-sm">حالة الاشتراك</span>
-                        <span id="profileStatus"
-                            class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">-</span>
-                    </div>
+                <div class="info-row">
+                    <span class="text-slate-400 text-sm">تاريخ الانضمام</span>
+                    <span id="profileCreatedAt" class="text-white font-medium text-xs en-numbers">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="text-slate-400 text-sm">آخر دخول</span>
+                    <span id="profileLastLogin" class="text-white font-medium text-xs en-numbers">-</span>
+                </div>
 
-                    <div class="info-row">
-                        <span class="text-slate-400 text-sm">تاريخ الانضمام</span>
-                        <span id="profileCreatedAt" class="text-white font-medium text-xs en-numbers">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="text-slate-400 text-sm">آخر دخول</span>
-                        <span id="profileLastLogin" class="text-white font-medium text-xs en-numbers">-</span>
-                    </div>
-
-                    <div class="info-row border-t border-white/5 mt-4 pt-4 bg-sky-500/5">
-                        <span class="text-sky-400 text-sm font-bold">صلاحية التفعيل حتى</span>
-                        <span id="profileActivatedUntil" class="text-sky-300 font-black text-sm en-numbers">-</span>
-                    </div>
+                <div class="info-row border-t border-[#ef233c]/20 mt-4 pt-4 bg-[#ef233c]/5">
+                    <span class="text-[#ff7585] text-sm font-bold">صلاحية التفعيل حتى</span>
+                    <span id="profileActivatedUntil" class="text-[#ff7585] font-black text-sm en-numbers">-</span>
                 </div>
             </div>
         </div>
 
-        <div class="space-y-6">
-            <div class="settings-card p-8 border-rose-500/10">
-                <div class="flex items-center gap-4 mb-8">
-                    <div
-                        class="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-2xl shadow-inner">
-                        🔐</div>
-                    <div>
-                        <h3 class="text-xl font-bold text-white">تعديل كلمة المرور</h3>
-                        <p class="text-slate-400 text-xs">تحديث بيانات الأمان الخاصة بك</p>
+        <div class="settings-card p-7">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-2xl bg-[#ef233c]/15 flex items-center justify-center text-2xl">🔐</div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">تعديل كلمة المرور</h3>
+                    <p class="text-slate-400 text-xs">تحديث بيانات الأمان الخاصة بك</p>
+                </div>
+            </div>
+
+            <form onsubmit="changePassword(event)" class="space-y-6">
+                <div class="space-y-2">
+                    <label class="block text-sm font-semibold text-slate-300 mr-2">كلمة المرور الحالية</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="currentPassword" class="form-input" placeholder="••••••••" required>
+                        <span class="eye-toggle" onclick="togglePass('currentPassword', this)">👁️</span>
                     </div>
                 </div>
 
-                <form onsubmit="changePassword(event)" class="space-y-6">
+                <div class="grid gap-6 md:grid-cols-2">
                     <div class="space-y-2">
-                        <label class="block text-sm font-semibold text-slate-300 mr-2">كلمة المرور الحالية</label>
+                        <label class="block text-sm font-semibold text-slate-300 mr-2">الكلمة الجديدة</label>
                         <div class="input-wrapper">
-                            <input type="password" id="currentPassword" class="form-input" placeholder="••••••••" required>
-                            <span class="eye-toggle" onclick="togglePass('currentPassword', this)">👁️</span>
+                            <input type="password" id="newPassword" class="form-input" placeholder="••••••••" required>
+                            <span class="eye-toggle" onclick="togglePass('newPassword', this)">👁️</span>
                         </div>
                     </div>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-semibold text-slate-300 mr-2">تأكيد الكلمة</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="confirmPassword" class="form-input" placeholder="••••••••" required>
+                            <span class="eye-toggle" onclick="togglePass('confirmPassword', this)">👁️</span>
+                        </div>
+                    </div>
+                </div>
 
-                    <div class="grid gap-6 md:grid-cols-2">
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-slate-300 mr-2">الكلمة الجديدة</label>
-                            <div class="input-wrapper">
-                                <input type="password" id="newPassword" class="form-input" placeholder="••••••••" required>
-                                <span class="eye-toggle" onclick="togglePass('newPassword', this)">👁️</span>
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-slate-300 mr-2">تأكيد الكلمة</label>
-                            <div class="input-wrapper">
-                                <input type="password" id="confirmPassword" class="form-input" placeholder="••••••••"
-                                    required>
-                                <span class="eye-toggle" onclick="togglePass('confirmPassword', this)">👁️</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pt-4">
-                        <button type="submit" id="submitBtn"
-                            class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-sky-900/20">
-                            <span>حفظ التعديلات الأمنية</span>
-                        </button>
-                    </div>
-                </form>
-                <div id="message" class="mt-4 text-center text-sm font-bold hidden"></div>
-            </div>
+                <div class="pt-4">
+                    <button type="submit" id="submitBtn"
+                        class="w-full text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-[#2b070d]/50 border border-white/10 hover:brightness-110"
+                        style="background: linear-gradient(90deg, #1b070d, #4f0a19, #1b070d);">
+                        <span>حفظ التعديلات الأمنية</span>
+                    </button>
+                </div>
+            </form>
+            <div id="message" class="mt-4 text-center text-sm font-bold hidden"></div>
         </div>
-
     </div>
 @endsection
 

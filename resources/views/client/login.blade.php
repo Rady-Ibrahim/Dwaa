@@ -37,12 +37,13 @@
 
         <label class="flex cursor-pointer items-center gap-2 pt-1 text-xs font-medium text-slate-300">
             <input type="checkbox" id="rememberMe"
-                class="h-4 w-4 rounded border-slate-700 bg-slate-900 text-rose-600 accent-rose-600 focus:ring-rose-500">
+                class="remember-check h-4 w-4 rounded border-slate-700 bg-slate-900 focus:ring-[#a40c2a]">
             تذكرني
         </label>
 
         <button type="button" id="loginBtn"
-            class="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-rose-600/30 transition duration-200 hover:bg-rose-700 active:scale-[0.99]">
+            class="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#2b070d]/40 transition duration-200 hover:brightness-110 hover:shadow-[#5d0d1d]/40 active:scale-[0.99]"
+            style="background: linear-gradient(90deg, #1b070d, #4f0a19, #1b070d);">
             <span>دخول</span>
             <i class="fa-solid fa-arrow-left text-xs"></i>
         </button>
@@ -50,6 +51,12 @@
         <p id="error" class="hidden mt-2 text-sm font-medium text-rose-400"></p>
     </div>
 @endsection
+
+<style>
+    .remember-check {
+        accent-color: #7a0c1d;
+    }
+</style>
 
 @push('scripts')
     <script>

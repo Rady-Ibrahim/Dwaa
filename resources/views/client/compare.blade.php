@@ -7,7 +7,7 @@
         .compare-shell {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.4rem;
         }
 
         .compare-hero {
@@ -15,11 +15,11 @@
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
-            padding: 1.2rem 1.3rem;
-            border-radius: 26px;
-            background: rgba(var(--surface-rgb),0.72);
-            border: 1px solid rgba(var(--border-rgb),0.14);
-            box-shadow: 0 20px 35px rgba(2,6,23,0.24);
+            padding: 1rem 1.2rem;
+            border-radius: 22px;
+            background: rgba(18, 18, 18, 0.75);
+            border: 1px solid rgba(239, 35, 60, 0.45);
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
         }
 
         .compare-hero-title {
@@ -28,17 +28,17 @@
             gap: 0.8rem;
             font-weight: 800;
             color: var(--text-main);
-            font-size: 1.35rem;
+            font-size: 1.4rem;
         }
 
         .compare-hero-badge {
             width: 42px;
             height: 42px;
-            border-radius: 14px;
+            border-radius: 12px;
             display: grid;
             place-items: center;
-            background: rgba(59,130,246,0.12);
-            border: 1px solid rgba(59,130,246,0.24);
+            background: rgba(239, 35, 60, 0.14);
+            border: 1px solid rgba(239, 35, 60, 0.38);
             color: var(--accent-soft);
         }
 
@@ -52,41 +52,41 @@
         .compare-pill {
             padding: 0.5rem 0.8rem;
             border-radius: 999px;
-            background: rgba(var(--border-rgb),0.06);
-            border: 1px solid rgba(var(--border-rgb),0.12);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(239, 35, 60, 0.28);
             color: var(--text-soft);
-            font-size: 0.82rem;
+            font-size: 0.8rem;
         }
 
         .compare-upload-panel {
-            padding: 1.3rem;
-            border-radius: 28px;
-            background: rgba(var(--surface-rgb),0.7);
-            border: 1px solid rgba(var(--border-rgb),0.14);
-            box-shadow: 0 20px 35px rgba(2,6,23,0.24);
+            padding: 1.2rem;
+            border-radius: 22px;
+            background: rgba(18, 18, 18, 0.75);
+            border: 1px solid rgba(239, 35, 60, 0.45);
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
         }
 
         .file-drop-zone {
-            border: 2px dashed rgba(var(--border-rgb),0.2);
-            background: rgba(var(--surface-rgb),0.42);
+            border: 2px dashed rgba(239, 35, 60, 0.45);
+            background: rgba(255, 255, 255, 0.01);
             transition: all 0.25s ease;
-            min-height: 180px;
+            min-height: 170px;
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
             cursor: pointer;
-            border-radius: 22px;
+            border-radius: 18px;
         }
 
         .file-drop-zone:hover {
-            border-color: rgba(96,165,250,0.7);
-            background: rgba(59,130,246,0.04);
+            border-color: rgba(255, 105, 120, 0.8);
+            background: rgba(239, 35, 60, 0.04);
         }
 
         .file-drop-zone.active {
-            border-color: rgba(96,165,250,0.8);
-            box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+            border-color: rgba(255, 105, 120, 0.9);
+            box-shadow: 0 0 0 4px rgba(239, 35, 60, 0.08);
         }
 
         .file-drop-zone .inner {
@@ -98,30 +98,30 @@
         }
 
         .file-drop-zone .icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 20px;
+            width: 62px;
+            height: 62px;
+            border-radius: 18px;
             display: grid;
             place-items: center;
-            background: rgba(59,130,246,0.12);
-            border: 1px solid rgba(59,130,246,0.22);
+            background: rgba(239, 35, 60, 0.1);
+            border: 1px solid rgba(239, 35, 60, 0.24);
             color: var(--accent-soft);
-            font-size: 1.8rem;
+            font-size: 1.7rem;
         }
 
         .compare-primary-btn {
-            border: none;
-            border-radius: 18px;
-            padding: 1rem 1.4rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1rem 1.3rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #2563eb, #8b5cf6);
+            background: linear-gradient(90deg, #1b070d, #4f0a19, #1b070d);
             color: #fff;
-            box-shadow: 0 18px 28px rgba(80,112,255,0.25);
+            box-shadow: 0 16px 24px rgba(33, 4, 10, 0.45);
             transition: transform 0.15s ease, filter 0.15s ease;
         }
 
         .compare-primary-btn:hover {
-            filter: brightness(1.06);
+            filter: brightness(1.08);
             transform: translateY(-1px);
         }
 
@@ -132,16 +132,16 @@
 
         .compare-table-wrap {
             overflow: hidden;
-            border-radius: 28px;
-            background: rgba(var(--surface-rgb),0.7);
-            border: 1px solid rgba(var(--border-rgb),0.14);
-            box-shadow: 0 20px 35px rgba(2,6,23,0.26);
+            border-radius: 22px;
+            background: rgba(18, 18, 18, 0.75);
+            border: 1px solid rgba(239, 35, 60, 0.45);
+            box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
         }
 
         .compare-filters {
             padding: 1rem 1rem 0.8rem;
-            border-bottom: 1px solid rgba(var(--border-rgb),0.08);
-            background: rgba(var(--surface-rgb),0.18);
+            border-bottom: 1px solid rgba(239, 35, 60, 0.18);
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .compare-filter-grid {
@@ -152,35 +152,35 @@
 
         .compare-filter-box {
             width: 100%;
-            border-radius: 16px;
-            border: 1px solid rgba(var(--border-rgb),0.14);
-            background: rgba(var(--surface-rgb),0.78);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(20, 20, 20, 0.8);
             color: var(--text-soft2);
             padding: 0.8rem 0.9rem;
             outline: none;
         }
 
         .compare-filter-box:focus {
-            border-color: rgba(96,165,250,0.45);
-            box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+            border-color: rgba(239, 35, 60, 0.45);
+            box-shadow: 0 0 0 4px rgba(239, 35, 60, 0.08);
         }
 
         .compare-table thead th {
-            background: rgba(var(--surface-rgb),0.45);
+            background: rgba(22, 22, 22, 0.9);
             color: var(--text-soft);
             text-transform: uppercase;
             font-size: 0.74rem;
             letter-spacing: 0.05em;
-            border-bottom: 1px solid rgba(var(--border-rgb),0.08);
+            border-bottom: 1px solid rgba(239, 35, 60, 0.18);
         }
 
         .compare-table tbody tr {
-            border-bottom: 1px solid rgba(var(--border-rgb),0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             transition: background 0.2s ease;
         }
 
         .compare-table tbody tr:hover {
-            background: rgba(59,130,246,0.03);
+            background: rgba(239, 35, 60, 0.03);
         }
 
         .pill-price,
@@ -201,43 +201,43 @@
         }
 
         .pill-price {
-            background: rgba(56,189,248,0.13);
-            color: #38bdf8;
+            background: rgba(239, 35, 60, 0.12);
+            color: var(--danger-soft);
         }
 
         .pill-discount {
-            background: rgba(34,197,94,0.12);
+            background: rgba(34, 197, 94, 0.12);
             color: var(--success-soft);
         }
 
         .pill-good {
-            background: rgba(34,197,94,0.16);
+            background: rgba(34, 197, 94, 0.16);
             color: var(--success-soft);
-            border: 1px solid rgba(34,197,94,0.22);
+            border: 1px solid rgba(34, 197, 94, 0.22);
         }
 
         .pill-bad {
-            background: rgba(244,63,94,0.16);
+            background: rgba(239, 35, 60, 0.14);
             color: var(--danger-soft);
-            border: 1px solid rgba(244,63,94,0.22);
+            border: 1px solid rgba(239, 35, 60, 0.22);
         }
 
         .pill-neutral {
-            background: rgba(var(--border-rgb),0.12);
+            background: rgba(255, 255, 255, 0.04);
             color: var(--text-soft);
-            border: 1px solid rgba(var(--border-rgb),0.2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .pill-best-a {
-            background: rgba(34,197,94,0.16);
+            background: rgba(34, 197, 94, 0.16);
             color: var(--success-soft);
-            border: 1px solid rgba(34,197,94,0.22);
+            border: 1px solid rgba(34, 197, 94, 0.22);
         }
 
         .pill-best-b {
-            background: rgba(59,130,246,0.14);
+            background: rgba(239, 35, 60, 0.10);
             color: var(--accent-soft);
-            border: 1px solid rgba(59,130,246,0.26);
+            border: 1px solid rgba(239, 35, 60, 0.20);
         }
 
         select option {

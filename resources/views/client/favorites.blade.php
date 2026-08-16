@@ -5,20 +5,20 @@
 @section('content')
     <style>
         .fav-card {
-            background: rgba(var(--surface-rgb),0.4);
+            background: rgba(18, 18, 18, 0.7);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(var(--overlay-rgb),0.05);
+            border: 1px solid rgba(239, 35, 60, 0.18);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .fav-card:hover {
-            border-color: rgba(244,63,94,0.3);
+            border-color: rgba(255, 117, 133, 0.35);
             transform: translateY(-2px);
-            background: rgba(var(--surface-rgb),0.6);
+            background: rgba(24, 24, 24, 0.9);
         }
 
         .empty-state {
-            background: linear-gradient(145deg, rgba(var(--surface-rgb),0.4), rgba(30,41,59,0.2));
+            background: linear-gradient(145deg, rgba(18, 18, 18, 0.7), rgba(30, 30, 30, 0.5));
         }
 
         .fav-table {
@@ -29,18 +29,18 @@
         }
 
         .fav-table thead th {
-            color: #38bdf8;
+            color: #ff7585;
             text-align: right;
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             padding: 1rem 1.25rem;
-            border-bottom: 1px solid rgba(var(--overlay-rgb),0.08);
+            border-bottom: 1px solid rgba(239, 35, 60, 0.18);
         }
 
         .fav-table tbody tr {
-            background: rgba(var(--surface-rgb),0.7);
-            border: 1px solid rgba(var(--overlay-rgb),0.08);
+            background: rgba(16, 16, 16, 0.8);
+            border: 1px solid rgba(239, 35, 60, 0.12);
             border-radius: 1.5rem;
         }
 
@@ -68,13 +68,13 @@
             width: 42px;
             height: 42px;
             border-radius: 14px;
-            background: rgba(248,113,113,0.14);
+            background: rgba(239, 35, 60, 0.12);
             color: var(--danger-soft);
             transition: all 0.2s ease;
         }
 
         .fav-delete-btn:hover {
-            background: rgba(248,113,113,0.25);
+            background: rgba(239, 35, 60, 0.2);
             color: var(--danger-pale);
         }
 
@@ -89,28 +89,28 @@
         }
 
         .fav-pill.price {
-            background: rgba(56,189,248,0.12);
-            color: #38bdf8;
+            background: rgba(239, 35, 60, 0.12);
+            color: #ff7585;
         }
 
         .fav-pill.discount {
-            background: rgba(16,185,129,0.12);
+            background: rgba(34, 197, 94, 0.12);
             color: var(--success-soft);
         }
     </style>
 
     <div class="space-y-6">
         <div
-            class="flex items-center justify-between bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+            class="flex items-center justify-between bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/50 rounded-2xl p-5">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-2xl">⭐</div>
+                <div class="w-12 h-12 rounded-2xl bg-[#ef233c]/15 flex items-center justify-center text-2xl">⭐</div>
                 <div>
                     <h3 class="text-xl font-bold text-white">قائمة المفضلة</h3>
                     <p class="text-slate-400 text-sm">المنتجات التي قمت بحفظها للرجوع إليها لاحقاً</p>
                 </div>
             </div>
             <div id="favCount"
-                class="px-4 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-mono text-slate-400">
+                class="px-4 py-1 bg-[#1b1b1b] border border-[#ef233c]/25 rounded-full text-xs font-mono text-slate-300">
                 0 منتجات
             </div>
         </div>

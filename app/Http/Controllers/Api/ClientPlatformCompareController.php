@@ -25,10 +25,10 @@ class ClientPlatformCompareController extends Controller
     private const MIN_NAME_OVERLAP = 60.0;
 
     /** نسبة السعر المتساوي تقريبًا: تعتبر تأكيدًا للمطابقة */
-    private const PRICE_EQUAL_RATIO = 0.95;
+    private const PRICE_EQUAL_RATIO = 0.97;
 
     /** نسبة السعر "القريب": يُقبل عندها التطابق دون رفض */
-    private const PRICE_CLOSE_RATIO = 0.70;
+    private const PRICE_CLOSE_RATIO = 0.80;
 
     /** مضاعف رفض التطابق عندما يتباعد السعر بشدة (نوع/جرامات مختلفة) */
     private const PRICE_FAR_PENALTY = 0.3;
@@ -267,6 +267,11 @@ class ClientPlatformCompareController extends Controller
      * الاسم التجاري (أول كلمة محتوى مميزة) جزء أساسي من الهوية أيضًا: اختلافه
      * يعني منتجًا مختلفًا حتى لو اشتركا في كلمات وصفية عامة مثل "صن بلوك" أو
      * "بديل ميلجا".
+     *
+     * كلمة التمييز الثانية (النكهة/الرائحة/المتغير مثل "تفاح"/"مسواك"/"سموكرز")
+     * جزء من الهوية كذلك: إذا حمل كل اسم كلمة تمييز مختلفة فهما منتجان مختلفان
+     * حتى لو تقارب سعرهما، لأن منتجات الرائحة/النكهة المختلفة كثيرًا ما تتساوى
+     * أسعارها تقريبًا.
      */
     private function drugOverlapScore(string $nameA, string $nameB): float
     {
@@ -293,6 +298,11 @@ class ClientPlatformCompareController extends Controller
 
         // الاسم التجاري (أول كلمة محتوى) مختلف → منتجان مختلفان.
         if (($tokensA[0] ?? '') !== ($tokensB[0] ?? '')) {
+            return 0.0;
+        }
+
+        // كلمة التمييز الثانية مختلفة (رائحة/نكهة/متغير) → منتجان مختلفان.
+        if (isset($tokensA[1], $tokensB[1]) && $tokensA[1] !== $tokensB[1]) {
             return 0.0;
         }
 

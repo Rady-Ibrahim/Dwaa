@@ -24,6 +24,15 @@ class ClientPlatformCompareController extends Controller
     /** الحد الأدنى لنسبة تداخل كلمات المحتوى للقبول في مقارنة الملفات */
     private const MIN_NAME_OVERLAP = 60.0;
 
+    /** نسبة السعر المتساوي تقريبًا: تعتبر تأكيدًا للمطابقة */
+    private const PRICE_EQUAL_RATIO = 0.95;
+
+    /** نسبة السعر "القريب": يُقبل عندها التطابق دون رفض */
+    private const PRICE_CLOSE_RATIO = 0.70;
+
+    /** مضاعف رفض التطابق عندما يتباعد السعر بشدة (نوع/جرامات مختلفة) */
+    private const PRICE_FAR_PENALTY = 0.3;
+
     /** كلمات عامة (صيغة/وحدة/عملة/ضجيج) تُستبعد من مطابقة أسماء الأدوية */
     private const DRUG_STOP_WORDS = [
         'اقراص', 'قرص', 'كبسول', 'كبسولة', 'حبوب', 'شراب', 'حقن', 'قطرات', 'قطرة', 'قطره',
@@ -154,6 +163,22 @@ class ClientPlatformCompareController extends Controller
                 continue;
             }
 
+            $priceA = $entryA['offer']->price;
+            $priceB = $entriesB[$name]['offer']->price;
+
+            // حتى مع تطابق الاسم حرفيًا، الأسعار المتباعدة بشدة تعني غالبًا
+            // منتجًا مختلفًا (نوع/جرامات مختلفة)، فيُترك للمطابقة الضبابية التي
+            // تُخضعها أيضًا لفلتر السعر، وإلا تظهر ضمن "موجود في ملف واحد فقط".
+            $priceScore = $this->applyPriceScore(
+                $priceA !== null ? (float) $priceA : null,
+                $priceB !== null ? (float) $priceB : null,
+                100.0,
+            );
+
+            if ($priceScore < 100.0) {
+                continue;
+            }
+
             $usedA[$name] = true;
             $usedB[$name] = true;
 
@@ -227,13 +252,23 @@ class ClientPlatformCompareController extends Controller
      *
      * القاسم = الأكبر بين عدد الكلمتين. فيُعطى تطابقًا تامًا (100) فقط عندما
      * تتطابق كل كلمات المحتوى في الاسمين، أما إذا احتوى أحدهما على كلمة محتوى
-     * إضافية (متغير/تركيبة أخرى مثل "اكسستر" أو "بلس") فلا يُقبل كتطابق كامل،
-     * ويُترك حسم الالتباس لفلتر السعر الذي يفضّل المنتجات المتساوية السعر.
+     * إضافية (متغير/تركيبة أخرى مثل "اكسستر" أو "بلس") فلا يُقبل كتطابق كامل.
+     *
+     * الجرعة الرقمية (مثل 60مجم / 90مجم / 2.5مجم) جزء من هوية المنتج: إذا حمل
+     * كل اسم جرعة رقمية مختلفة تمامًا فالمعنى منتجان مختلفان مهما تطابق الاسم،
+     * فيُرفض الربط من البداية ولا يُترك للسعر وحده.
      */
     private function drugOverlapScore(string $nameA, string $nameB): float
     {
         $tokensA = $this->contentTokens($nameA);
         $tokensB = $this->contentTokens($nameB);
+
+        $numbersA = $this->contentNumbers($nameA);
+        $numbersB = $this->contentNumbers($nameB);
+
+        if (! empty($numbersA) && ! empty($numbersB) && array_intersect($numbersA, $numbersB) === []) {
+            return 0.0;
+        }
 
         if (empty($tokensA) || empty($tokensB)) {
             return 0.0;
@@ -288,6 +323,23 @@ class ClientPlatformCompareController extends Controller
         }
 
         return $out;
+    }
+
+    /**
+     * القيم الرقمية في اسم الدواء (الجرعة/التركيز/عدد الأقراص مثل 60مجم أو 2.5).
+     *
+     * تُوحَّد الأرقام العربية الهندية (٢٫٥) إلى أرقام لاتينية (2.5) حتى يُقارن
+     * "٢٠مجم" بـ "20مجم" بشكل صحيح.
+     *
+     * @return list<string>
+     */
+    private function contentNumbers(string $name): array
+    {
+        $text = str_replace(['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], $name);
+
+        preg_match_all('/\d+(?:\.\d+)?/u', $text, $matches);
+
+        return $matches[0];
     }
 
     /**
@@ -796,13 +848,13 @@ class ClientPlatformCompareController extends Controller
     }
 
     /**
-     * فلتر السعر: يؤكد المطابقة عندما يتساوى السعر، ويرفضها عندما يتباعد بشدة.
+     * فلتر السعر: لا يُقبل التطابق إلا إذا كان السعر متساويًا أو قريبًا.
      *
-     * القاعدة: منتج دوائي واحد في السوق له سعر واحد (مُحدَّد رسميًا في الغالب)،
-     * فالأسعار المتساوية دليل على نفس المنتج. عندما يكون التطابق جزئيًا (الاسم
-     * ضمن اسم أطول، مثل "بانادول" داخل "بانادول اكسستر") فهذا غالبًا متغير/تركيبة
-     * مختلفة، لذا يُشترط تقارب سعري قوي لقبولها؛ أما التطابق التام للاسم (100)
-     * فلا يُرفض بتغيّر السعر لأنه بلا شك نفس المنتج.
+     * القاعدة: المنتج الدوائي الواحد في السوق له سعر واحد (مُحدَّد رسميًا في
+     * الغالب)، فالاسم المتشابه مع سعر مختلف بشدة (نوع/جرامات/تركيبة مختلفة مثل
+     * سعر 14 مقابل 72) يعني غالبًا منتجًا مختلفًا مهما بلغت نسبة تشابه الاسم.
+     * لذلك تُرفض المطابقة عندما يتباعد السعر عن نطاق "القريب" وتُؤكَّد (بدفعة
+     * بسيطة) عندما يكون متساويًا تقريبًا.
      */
     private function applyPriceScore(?float $sheetPrice, ?float $productPrice, float $nameScore): float
     {
@@ -812,12 +864,12 @@ class ClientPlatformCompareController extends Controller
 
         $ratio = min($sheetPrice, $productPrice) / max($sheetPrice, $productPrice);
 
-        if ($ratio >= 0.95) {
+        if ($ratio >= self::PRICE_EQUAL_RATIO) {
             return min(100.0, $nameScore + 10);
         }
 
-        if ($nameScore < 100.0) {
-            return max(0.0, $nameScore - 20);
+        if ($ratio < self::PRICE_CLOSE_RATIO) {
+            return $nameScore * self::PRICE_FAR_PENALTY;
         }
 
         return $nameScore;

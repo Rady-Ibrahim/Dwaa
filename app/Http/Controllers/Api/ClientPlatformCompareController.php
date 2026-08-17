@@ -773,70 +773,45 @@ class ClientPlatformCompareController extends Controller
      */
     private function loadAllPlatformCache(array $rows): Collection
     {
-        $keywords = [];
-
-        foreach ($rows as $row) {
-            $query = trim((string) $row['name']);
-            if (mb_strlen($query) < 3) {
-                continue;
-            }
-            $normalized = $this->normalizer->normalize($query);
-            $firstWord = explode(' ', $normalized)[0] ?? '';
-            if (mb_strlen($firstWord) >= 2) {
-                $keywords[$firstWord] = true;
-            }
-
-            // Keep a second, broader token so file-vs-platform compare does not drop valid results
-            // when the product name in the sheet includes extra words/dosage fragments.
-            foreach (preg_split('/\s+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
-                if (mb_strlen($token) >= 3) {
-                    $keywords[$token] = true;
-                }
-            }
-        }
-
-        Log::info('PlatformCompare: loadAllPlatformCache - keywords extracted', [
-            'keywords_count' => count($keywords),
-            'keywords_sample' => array_slice(array_keys($keywords), 0, 10),
-        ]);
-
         $dbStart = microtime(true);
 
-        $candidates = Product::query()
+        // تحميل خفيف: الاسم فقط بدون عروض/موردين — يكفي لبناء فهرس المطابقة.
+        $allProducts = Product::query()
             ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
             ->whereHas('offers', fn($q) => $q->active())
-            ->with([
-                'offers' => function ($q) {
-                    $q->active()
-                        ->orderBy('price')
-                        ->with('supplier:id,name,area,phone1,phone2');
-                },
-            ])
-            ->get()
-            ->filter(fn(Product $p) => $p->offers->isNotEmpty());
+            ->get();
 
-        Log::info('PlatformCompare: loadAllPlatformCache - DB query done', [
-            'total_products_with_offers' => $candidates->count(),
+        Log::info('PlatformCompare: loadAllPlatformCache - lightweight query done', [
+            'total_products' => $allProducts->count(),
             'db_elapsed_ms' => round((microtime(true) - $dbStart) * 1000),
         ]);
 
-        if (empty($keywords)) {
-            return $candidates;
+        return $allProducts;
+    }
+
+    /**
+     * جلب أفضل عرض (أقل سعر) + معلومات المورد لكل مجموعة product ids.
+     * يُستدعى بعد المطابقة ليجلب فقط ما يحتاجه الناتج.
+     */
+    private function loadBestOffersForProducts(array $productIds, ?int $uploadId = null): \Illuminate\Support\Collection
+    {
+        if (empty($productIds)) {
+            return new Collection();
         }
 
-        $keywordList = array_keys($keywords);
+        $query = Offer::query()
+            ->whereIn('product_id', $productIds)
+            ->active()
+            ->with('supplier:id,name')
+            ->orderBy('price');
 
-        return $candidates->filter(function (Product $p) use ($keywordList) {
-            $name = (string) $p->normalized_name;
+        if ($uploadId !== null) {
+            $query->where('upload_id', $uploadId);
+        }
 
-            foreach ($keywordList as $kw) {
-                if (str_starts_with($name, $kw) || str_contains($name, $kw)) {
-                    return true;
-                }
-            }
-
-            return false;
-        });
+        return $query->get()
+            ->groupBy('product_id')
+            ->map(fn($offers) => $offers->first());
     }
 
 
@@ -882,7 +857,6 @@ class ClientPlatformCompareController extends Controller
         $lines = [];
         $index = $this->buildProductIndex($cachedProducts);
 
-        // تجهيز بيانات كل المنتجات مرة واحدة: tokens + numbers لكل صيغة اسم.
         $productData = [];
         foreach ($cachedProducts as $product) {
             $normName = (string) ($product->normalized_name ?? '');
@@ -899,6 +873,8 @@ class ClientPlatformCompareController extends Controller
                 'en_numbers'   => $nameEn !== '' ? $this->prepareName($nameEn)['numbers'] : [],
             ];
         }
+
+        $matchedProductIds = [];
 
         foreach ($rows as $row) {
             $rawQuery = trim((string) $row['name']);
@@ -944,7 +920,6 @@ class ClientPlatformCompareController extends Controller
 
             $bestScore = 0.0;
             $bestProduct = null;
-            $sheetPrice = $row['price'] ?? null;
 
             foreach ($candidates as $product) {
                 $pd = $productData[$product->id] ?? null;
@@ -952,9 +927,6 @@ class ClientPlatformCompareController extends Controller
                     continue;
                 }
 
-                $bestOfferPrice = $product->offers->first()?->price;
-
-                // حساب أقصى نسبة تشابه من 3 صيغ للاسم (normalizedName, nameAr, nameEn)
                 $nameScore = 0.0;
 
                 if ($pd['norm_tokens'] !== []) {
@@ -987,8 +959,8 @@ class ClientPlatformCompareController extends Controller
                 }
 
                 $score = $this->applyPriceScore(
-                    $sheetPrice !== null ? (float) $sheetPrice : null,
-                    $bestOfferPrice !== null ? (float) $bestOfferPrice : null,
+                    ($row['price'] ?? null) !== null ? (float) $row['price'] : null,
+                    null,
                     $nameScore,
                 );
 
@@ -997,7 +969,6 @@ class ClientPlatformCompareController extends Controller
                     $bestProduct = $product;
                 }
 
-                // إيقاف مبكر: تطابق تام = لا حاجة للمزيد
                 if ($bestScore >= 100.0) {
                     break;
                 }
@@ -1005,28 +976,75 @@ class ClientPlatformCompareController extends Controller
 
             if ($bestScore < self::MIN_SIMILARITY || $bestProduct === null) {
                 $lines[] = $this->noMatchLine($row, $rawQuery);
-
                 continue;
             }
 
-            $bestOffer    = $bestProduct->offers->first();
-            $sheetPrice   = $row['price'];
-            $platformPrice = $bestOffer ? (float) $bestOffer->price : null;
+            $matchedProductIds[$bestProduct->id] = true;
 
             $lines[] = [
                 'query'          => $rawQuery,
-                'price'          => $sheetPrice,
+                'price'          => $row['price'],
                 'discount'       => $row['discount'],
                 'matched_product' => $bestProduct->name_ar ?: $bestProduct->name_en,
                 'similarity'     => round($bestScore, 1),
-                'platform_best'  => [
-                    'supplier' => $bestOffer?->supplier?->name,
-                    'price'    => $platformPrice,
-                    'discount' => $bestOffer ? (float) $bestOffer->discount : null,
-                ],
-                'status' => 'both',
+                '_product_id'    => $bestProduct->id,
+                'platform_best'  => null,
+                'status'         => 'both',
             ];
         }
+
+        $offerStart = microtime(true);
+
+        // الوضع 2 (ملف يمقارنة مع ملف من المنصة): العروض محملة بالفعل في الكاش.
+        // الوضع 1 (ملف يمقارنة مع المنصة ككل): نجلب أفضل عرض لكل منتج مطابق.
+        if ($uploadId !== null) {
+            $offerMap = [];
+            foreach ($cachedProducts as $product) {
+                $offer = $product->offers->first();
+                if ($offer) {
+                    $offerMap[$product->id] = $offer;
+                }
+            }
+        } else {
+            $offerMap = $this->loadBestOffersForProducts(array_keys($matchedProductIds));
+        }
+
+        Log::info('PlatformCompare: buildLines - offers resolved', [
+            'matched_products' => count($matchedProductIds),
+            'offers_loaded' => count($offerMap),
+            'elapsed_ms' => round((microtime(true) - $offerStart) * 1000),
+        ]);
+
+        foreach ($lines as &$line) {
+            if (($line['status'] ?? '') !== 'both' || empty($line['_product_id'])) {
+                continue;
+            }
+
+            $offer = $offerMap[$line['_product_id']] ?? null;
+            $platformPrice = $offer ? (float) $offer->price : null;
+
+            // فلتر السعر بعد تحميل العرض: لو السعر مختلف بشكل كبير، نرفض المطابقة.
+            $sheetPrice = $line['price'] !== null ? (float) $line['price'] : null;
+            if ($sheetPrice !== null && $platformPrice !== null && $platformPrice > 0) {
+                $ratio = min($sheetPrice, $platformPrice) / max($sheetPrice, $platformPrice);
+                if ($ratio < self::PRICE_CLOSE_RATIO) {
+                    $line['status'] = 'no_match';
+                    $line['matched_product'] = null;
+                    $line['similarity'] = 0;
+                    $line['platform_best'] = null;
+                    unset($line['_product_id']);
+                    continue;
+                }
+            }
+
+            $line['platform_best'] = $offer ? [
+                'supplier' => $offer->supplier?->name,
+                'price'    => $platformPrice,
+                'discount' => (float) $offer->discount,
+            ] : null;
+            unset($line['_product_id']);
+        }
+        unset($line);
 
         return $lines;
     }

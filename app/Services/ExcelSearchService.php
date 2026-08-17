@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Concerns\HasExcelHeaderAliases;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ExcelSearchService
@@ -89,10 +90,23 @@ class ExcelSearchService
      */
     public function readRowsAutoForPlatformCompare(string $absolutePath, int $maxRows = 200): array
     {
+        Log::info('ExcelSearchService: readRowsAutoForPlatformCompare START', [
+            'path' => $absolutePath,
+            'exists' => file_exists($absolutePath),
+            'size' => @filesize($absolutePath),
+            'readable' => is_readable($absolutePath),
+        ]);
+
         $reader = IOFactory::createReaderForFile($absolutePath);
         $reader->setReadDataOnly(true);
         $spreadsheet = $reader->load($absolutePath);
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+
+        Log::info('ExcelSearchService: spreadsheet loaded', [
+            'total_rows' => count($rows),
+            'maxRows' => $maxRows,
+        ]);
+
         $headerIndex = null;
         $map = null;
 
@@ -110,12 +124,27 @@ class ExcelSearchService
         }
 
         if ($headerIndex === null || $map === null) {
+            Log::warning('ExcelSearchService: no valid header found', [
+                'total_rows' => count($rows),
+                'sample_rows' => array_slice(array_map(function ($r) {
+                    return is_array($r) ? array_slice($r, 0, 5) : $r;
+                }, $rows), 0, 5),
+            ]);
             return [];
         }
+
+        Log::info('ExcelSearchService: header detected', [
+            'headerIndex' => $headerIndex,
+            'map' => $map,
+        ]);
 
         // Validate column detection by checking sample data
         $sampleValid = $this->validateColumnDetection($rows, $headerIndex, $map);
         if (! $sampleValid) {
+            Log::warning('ExcelSearchService: column validation failed', [
+                'headerIndex' => $headerIndex,
+                'map' => $map,
+            ]);
             return [];
         }
 
@@ -157,6 +186,11 @@ class ExcelSearchService
                 break;
             }
         }
+
+        Log::info('ExcelSearchService: readRowsAutoForPlatformCompare DONE', [
+            'rows_returned' => count($out),
+            'first_row' => $out[0] ?? null,
+        ]);
 
         return $out;
     }

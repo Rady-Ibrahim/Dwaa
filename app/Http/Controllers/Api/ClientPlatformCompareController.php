@@ -10,6 +10,7 @@ use App\Services\ExcelSearchService;
 use App\Services\NormalizerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -134,18 +135,85 @@ class ClientPlatformCompareController extends Controller
      */
     public function __invoke(Request $request)
     {
+        $startMs = microtime(true);
+
         if (function_exists('set_time_limit')) {
             @set_time_limit(600);
         }
 
-        $rows = $this->readRows($request);
+        Log::info('PlatformCompare: START', [
+            'user_id' => $request->user()?->id,
+            'file_size' => $request->file('file')?->getSize(),
+            'file_mime' => $request->file('file')?->getMimeType(),
+            'file_name' => $request->file('file')?->getClientOriginalName(),
+        ]);
+
+        try {
+            $rows = $this->readRows($request);
+        } catch (\Throwable $e) {
+            Log::error('PlatformCompare: readRows FAILED', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            throw $e;
+        }
+
+        Log::info('PlatformCompare: readRows done', [
+            'rows_count' => count($rows),
+            'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+        ]);
 
         if (empty($rows)) {
+            Log::warning('PlatformCompare: empty rows, aborting', [
+                'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+            ]);
             throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
         }
 
-        $cache = $this->loadAllPlatformCache($rows);
-        $lines = $this->sortLines($this->buildLines($rows, $cache));
+        $cacheStart = microtime(true);
+
+        try {
+            $cache = $this->loadAllPlatformCache($rows);
+        } catch (\Throwable $e) {
+            Log::error('PlatformCompare: loadAllPlatformCache FAILED', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'rows_count' => count($rows),
+            ]);
+            throw $e;
+        }
+
+        Log::info('PlatformCompare: loadAllPlatformCache done', [
+            'products_loaded' => $cache->count(),
+            'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
+        ]);
+
+        $buildStart = microtime(true);
+
+        try {
+            $lines = $this->buildLines($rows, $cache);
+        } catch (\Throwable $e) {
+            Log::error('PlatformCompare: buildLines FAILED', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'rows_count' => count($rows),
+                'products_count' => $cache->count(),
+            ]);
+            throw $e;
+        }
+
+        $lines = $this->sortLines($lines);
+
+        Log::info('PlatformCompare: DONE', [
+            'rows_count' => count($rows),
+            'products_count' => $cache->count(),
+            'lines_count' => count($lines),
+            'total_elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+            'build_elapsed_ms' => round((microtime(true) - $buildStart) * 1000),
+        ]);
 
         return response()->json([
             'rows_read' => count($rows),
@@ -672,8 +740,22 @@ class ClientPlatformCompareController extends Controller
         $path = $request->file('file')->store('temp/compare-platform/' . now()->format('Y/m'), 'local');
         $fullPath = Storage::disk('local')->path($path);
 
+        Log::info('PlatformCompare: readRows - file stored', [
+            'path' => $path,
+            'fullPath' => $fullPath,
+            'exists' => file_exists($fullPath),
+            'size' => @filesize($fullPath),
+        ]);
+
         try {
-            return $this->excelSearchService->readRowsAutoForPlatformCompare($fullPath, self::MAX_ROWS);
+            $rows = $this->excelSearchService->readRowsAutoForPlatformCompare($fullPath, self::MAX_ROWS);
+
+            Log::info('PlatformCompare: readRows - parsed', [
+                'rows_count' => count($rows),
+                'first_row' => $rows[0] ?? null,
+            ]);
+
+            return $rows;
         } finally {
             Storage::disk('local')->delete($path);
         }
@@ -713,6 +795,13 @@ class ClientPlatformCompareController extends Controller
             }
         }
 
+        Log::info('PlatformCompare: loadAllPlatformCache - keywords extracted', [
+            'keywords_count' => count($keywords),
+            'keywords_sample' => array_slice(array_keys($keywords), 0, 10),
+        ]);
+
+        $dbStart = microtime(true);
+
         $candidates = Product::query()
             ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
             ->whereHas('offers', fn($q) => $q->active())
@@ -725,6 +814,11 @@ class ClientPlatformCompareController extends Controller
             ])
             ->get()
             ->filter(fn(Product $p) => $p->offers->isNotEmpty());
+
+        Log::info('PlatformCompare: loadAllPlatformCache - DB query done', [
+            'total_products_with_offers' => $candidates->count(),
+            'db_elapsed_ms' => round((microtime(true) - $dbStart) * 1000),
+        ]);
 
         if (empty($keywords)) {
             return $candidates;

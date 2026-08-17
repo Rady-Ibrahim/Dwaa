@@ -8,10 +8,10 @@
 @section('auth_form')
     <div id="loginForm" class="space-y-6">
         <div>
-            <label for="phone" class="mb-2 block text-xs font-semibold text-slate-300">رقم الهاتف</label>
+            <label for="phone" class="mb-2 block text-xs font-semibold text-slate-300"> اسم المستخدم </label>
             <div class="relative">
-                <input type="tel" id="phone" inputmode="tel" autocomplete="username" dir="ltr"
-                    placeholder="01xxxxxxxxx"
+                <input type="text" id="phone" autocomplete="username" dir="ltr"
+                    placeholder="••••••••"
                     class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-3.5 pl-4 pr-10 text-right text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-600/20"
                     required>
                 <i

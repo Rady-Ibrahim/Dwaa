@@ -17,7 +17,9 @@ class ExcelSearchService
     public function readNameColumn(string $absolutePath, string $colNameLetter, int $headerRowsToSkip): array
     {
         $nameIdx = $this->uploadService->toColumnIndex($colNameLetter);
-        $spreadsheet = IOFactory::load($absolutePath);
+        $reader = IOFactory::createReaderForFile($absolutePath);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($absolutePath);
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
         $out = [];
 
@@ -43,7 +45,9 @@ class ExcelSearchService
      */
     public function readNameColumnAuto(string $absolutePath): array
     {
-        $spreadsheet = IOFactory::load($absolutePath);
+        $reader = IOFactory::createReaderForFile($absolutePath);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($absolutePath);
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
 
         $headerIndex = null;
@@ -85,7 +89,9 @@ class ExcelSearchService
      */
     public function readRowsAutoForPlatformCompare(string $absolutePath, int $maxRows = 200): array
     {
-        $spreadsheet = IOFactory::load($absolutePath);
+        $reader = IOFactory::createReaderForFile($absolutePath);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($absolutePath);
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
         $headerIndex = null;
         $map = null;
@@ -109,7 +115,7 @@ class ExcelSearchService
 
         // Validate column detection by checking sample data
         $sampleValid = $this->validateColumnDetection($rows, $headerIndex, $map);
-        if (!$sampleValid) {
+        if (! $sampleValid) {
             return [];
         }
 
@@ -168,7 +174,9 @@ class ExcelSearchService
             if ($i <= $headerIndex || ! is_array($row) || $sampleSize >= 5) {
                 continue;
             }
-            if (!is_array($row)) continue;
+            if (! is_array($row)) {
+                continue;
+            }
 
             $sampleSize++;
             $name = trim((string) ($row[$map['name']] ?? ''));
@@ -177,9 +185,9 @@ class ExcelSearchService
             // Valid sample: has a reasonable name (3+ chars not all numbers) and numeric price
             if (
                 strlen($name) >= 3 &&
-                !preg_match('/^\d+(\.\d+)?$/', $name) &&
+                ! preg_match('/^\d+(\.\d+)?$/', $name) &&
                 is_numeric($price) &&
-                (float)$price > 0
+                (float) $price > 0
             ) {
                 $validSamples++;
             }
@@ -203,14 +211,17 @@ class ExcelSearchService
 
             if (! isset($map['name']) && $this->headerMatchesAliases($header, self::NAME_HEADER_ALIASES, true)) {
                 $map['name'] = (int) $idx;
+
                 continue;
             }
             if (! isset($map['price']) && $this->headerMatchesAliases($header, self::PRICE_HEADER_ALIASES, false)) {
                 $map['price'] = (int) $idx;
+
                 continue;
             }
             if (! isset($map['discount']) && $this->headerMatchesAliases($header, self::DISCOUNT_HEADER_ALIASES, false)) {
                 $map['discount'] = (int) $idx;
+
                 continue;
             }
             if (! isset($map['bonus']) && $this->headerMatchesAliases($header, self::BONUS_HEADER_ALIASES, false)) {
@@ -226,7 +237,7 @@ class ExcelSearchService
     }
 
     /**
-     * @param list<string> $aliases
+     * @param  list<string>  $aliases
      */
     private function headerMatchesAliases(string $header, array $aliases, bool $isName): bool
     {

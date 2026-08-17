@@ -43,7 +43,7 @@ class ClientFileCompareController extends Controller
                     'price' => $data['col_price_b'] ?? null,
                     'discount' => $data['col_discount_b'] ?? null,
                 ],
-                (float) ($data['min_similarity'] ?? 80)
+                (float) ($data['min_similarity'] ?? 80),
             );
 
             ComparisonLog::query()->create([

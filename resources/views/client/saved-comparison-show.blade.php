@@ -175,8 +175,9 @@
             if (comparisonType === 'platform_compare') {
                 filteredPairs = allPairs.filter((line) => {
                     if (!q) return true;
+                    const name = line.query || line.sheet?.name || '';
                     const hay =
-                        `${line.sheet?.name || ''} ${line.matched_product || ''} ${line.platform_best?.supplier || ''}`
+                        `${name} ${line.matched_product || ''} ${line.platform_best?.supplier || ''}`
                         .toLowerCase();
                     return hay.includes(q);
                 });
@@ -220,11 +221,20 @@
 
             if (comparisonType === 'platform_compare') {
                 savedComparisonTable.innerHTML = rows.map((line) => {
-                    const sheet = line.sheet || {};
                     const best = line.platform_best || {};
-                    const cmp = line.comparison || {};
-                    const priceDiff = cmp.price_diff;
-                    const discountDiff = cmp.discount_diff;
+                    const sheetName = line.query || line.sheet?.name || '-';
+                    const sheetPrice = line.price ?? line.sheet?.price;
+                    const sheetDiscount = line.discount ?? line.sheet?.discount;
+                    const platformPrice = best.price;
+                    const platformDiscount = best.discount;
+
+                    const priceDiff = (sheetPrice == null || platformPrice == null)
+                        ? null
+                        : Math.round((sheetPrice - platformPrice) * 100) / 100;
+                    const discountDiff = (sheetDiscount == null || platformDiscount == null)
+                        ? null
+                        : Math.round((sheetDiscount - platformDiscount) * 100) / 100;
+
                     const priceCls = priceDiff === null ? 'text-slate-400' : (priceDiff > 0 ? 'text-rose-400' : (
                         priceDiff < 0 ? 'text-emerald-400' : 'text-slate-200'));
                     const discountCls = discountDiff === null ? 'text-slate-400' : (discountDiff > 0 ?
@@ -232,13 +242,13 @@
 
                     return `
                         <tr class="border-t border-white/5 text-slate-300">
-                            <td class="p-4 font-semibold text-white">${escapeHtml(sheet.name ?? '-')}</td>
-                            <td class="p-4 text-center">${formatNum(sheet.price)}</td>
-                            <td class="p-4 text-center">${formatNum(sheet.discount)}</td>
+                            <td class="p-4 font-semibold text-white">${escapeHtml(sheetName)}</td>
+                            <td class="p-4 text-center">${formatNum(sheetPrice)}</td>
+                            <td class="p-4 text-center">${formatNum(sheetDiscount)}</td>
                             <td class="p-4">${escapeHtml(line.matched_product ?? '-')}</td>
                             <td class="p-4">${escapeHtml(best.supplier ?? '-')}</td>
-                            <td class="p-4 text-center">${formatNum(best.price)}</td>
-                            <td class="p-4 text-center">${formatNum(best.discount)}</td>
+                            <td class="p-4 text-center">${formatNum(platformPrice)}</td>
+                            <td class="p-4 text-center">${formatNum(platformDiscount)}</td>
                             <td class="p-4 text-center ${priceCls}">${formatNum(priceDiff)}</td>
                             <td class="p-4 text-center ${discountCls}">${formatNum(discountDiff)}</td>
                         </tr>

@@ -3,9 +3,6 @@
 namespace App\Services;
 
 use App\Concerns\HasExcelHeaderAliases;
-use App\Models\Offer;
-use App\Models\Product;
-use App\Models\ProductAlias;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use RuntimeException;
@@ -13,6 +10,20 @@ use RuntimeException;
 class FileCompareService
 {
     use HasExcelHeaderAliases;
+
+    private const DRUG_STOP_WORDS = [
+        'اقراص', 'قرص', 'كبسول', 'كبسوله', 'كبسولات', 'حبوب', 'شراب', 'حقن', 'قطرات', 'قطره',
+        'نقط', 'مرهم', 'كريم', 'جل', 'بخاخ', 'سبراي', 'محلول', 'معلق', 'لبوس', 'تحاميل',
+        'امبول', 'امبولات', 'شريط', 'شرايط', 'باكت', 'علبه', 'زجاجه', 'مسحوق', 'بودره', 'سيروم',
+        'لوشن', 'لوسيون', 'مجم', 'ملجم', 'مليجرام', 'جرام', 'ملى', 'مللى', 'مل', 'سم', 'لتر', 'كجم',
+        'فموي', 'وريدي', 'موضعي', 'مستمر', 'معجل', 'مؤخر', 'سعر', 'جنيه', 'جنية',
+        'مع', 'وزن', 'عبوه', 'محيط', 'العين', 'مطهر', 'غسول', 'جديد', 'احمر', 'اكسترا', 'ال',
+        'جيل', 'كبير', 'صغير', 'كبيره', 'صغيره',
+        'صن', 'بلوك', 'بديل', 'سيرم', 'شامبو', 'مضاد', 'حيوي', 'ادويه', 'علاج', 'دواء',
+        'مستحضر', 'كبسولات',
+    ];
+
+    private static ?array $stopWordMap = null;
 
     public function __construct(
         private NormalizerService $normalizer,
@@ -29,7 +40,7 @@ class FileCompareService
         string $storagePathB,
         array $mapA,
         array $mapB,
-        float $minSimilarityPercent = 80.0
+        float $minSimilarityPercent = 80.0,
     ): array {
         $pathA = Storage::disk('local')->path($storagePathA);
         $pathB = Storage::disk('local')->path($storagePathB);
@@ -40,46 +51,82 @@ class FileCompareService
         $rowsA = $this->extractRows($pathA, $normA);
         $rowsB = $this->extractRows($pathB, $normB);
 
+        $indexB = $this->buildRowIndexByNormName($rowsB);
+
         $usedB = [];
         $pairs = [];
         $unmatchedA = [];
 
         foreach ($rowsA as $a) {
-            $nA = $this->normalizer->normalize($a['raw_name']);
+            $nA = $a['norm_name'];
             $bestJ = null;
-            $bestPct = 0.0;
+            $bestScore = 0.0;
 
-            foreach ($rowsB as $j => $b) {
-                if (isset($usedB[$j])) {
-                    continue;
-                }
-                $nB = $this->normalizer->normalize($b['raw_name']);
-                similar_text($nA, $nB, $pct);
-                if ($pct >= $minSimilarityPercent && $pct > $bestPct) {
-                    $bestPct = $pct;
+            if (isset($indexB[$nA])) {
+                foreach ($indexB[$nA] as $j) {
+                    if (isset($usedB[$j])) {
+                        continue;
+                    }
                     $bestJ = $j;
+                    $bestScore = 100.0;
+                    break;
+                }
+            }
+
+            if ($bestJ === null) {
+                $tokensA = $this->contentTokens($nA);
+                $numbersA = $this->contentNumbers($nA);
+
+                if (! empty($tokensA)) {
+                    $candidateKeys = array_unique(array_merge(
+                        [$tokensA[0]],
+                        array_slice($tokensA, 1),
+                    ));
+
+                    $seenCandidates = [];
+                    foreach ($candidateKeys as $token) {
+                        if (isset($indexB[$token])) {
+                            foreach ($indexB[$token] as $j) {
+                                if (isset($usedB[$j], $seenCandidates[$j])) {
+                                    continue;
+                                }
+                                $seenCandidates[$j] = true;
+
+                                $b = $rowsB[$j];
+                                $score = $this->drugOverlapScorePrepared(
+                                    $tokensA,
+                                    $this->contentTokens($b['norm_name']),
+                                    $numbersA,
+                                    $this->contentNumbers($b['norm_name']),
+                                );
+
+                                if ($score >= $minSimilarityPercent && $score > $bestScore) {
+                                    $bestScore = $score;
+                                    $bestJ = $j;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
             if ($bestJ !== null) {
                 $usedB[$bestJ] = true;
                 $b = $rowsB[$bestJ];
-                $product = $this->findProduct($nA) ?? $this->findProduct($this->normalizer->normalize($b['raw_name']));
                 $pairs[] = [
-                    'file_a' => $a,
-                    'file_b' => $b,
-                    'similarity_percent' => round($bestPct, 1),
-                    'platform' => $this->platformSummary($product),
+                    'file_a' => $this->stripRow($a),
+                    'file_b' => $this->stripRow($b),
+                    'similarity_percent' => round($bestScore, 1),
                 ];
             } else {
-                $unmatchedA[] = $a;
+                $unmatchedA[] = $this->stripRow($a);
             }
         }
 
         $unmatchedB = [];
         foreach ($rowsB as $j => $b) {
             if (! isset($usedB[$j])) {
-                $unmatchedB[] = $b;
+                $unmatchedB[] = $this->stripRow($b);
             }
         }
 
@@ -91,12 +138,147 @@ class FileCompareService
     }
 
     /**
+     * @param  array{raw_name:string,norm_name:string,price:float,discount:float,bonus?:string}  $row
+     * @return array{raw_name:string,price:float,discount:float,bonus?:string|null}
+     */
+    private function stripRow(array $row): array
+    {
+        return [
+            'raw_name' => $row['raw_name'],
+            'price' => $row['price'],
+            'discount' => $row['discount'],
+            'bonus' => $row['bonus'] ?? null,
+        ];
+    }
+
+    /**
+     * @param  list<array{raw_name:string,norm_name:string,price:float,discount:float,bonus?:string}>  $rows
+     * @return array<string, list<int>>
+     */
+    private function buildRowIndexByNormName(array $rows): array
+    {
+        $index = [];
+        foreach ($rows as $j => $b) {
+            $key = $b['norm_name'];
+            $index[$key][] = $j;
+
+            foreach ($this->contentTokens($key) as $token) {
+                if (mb_strlen($token) >= 3 && ! isset(self::stopWordMap()[$token])) {
+                    $index[$token][] = $j;
+                }
+            }
+        }
+
+        return $index;
+    }
+
+    // ─── Text Matching ───────────────────────────────────────────────────
+
+    private function drugOverlapScorePrepared(
+        array $tokensA,
+        array $tokensB,
+        array $numbersA,
+        array $numbersB,
+    ): float {
+        if (! empty($numbersA) && ! empty($numbersB)) {
+            if (array_intersect($numbersA, $numbersB) === []) {
+                return 0.0;
+            }
+            if (($numbersA[0] ?? null) !== ($numbersB[0] ?? null)) {
+                return 0.0;
+            }
+        }
+
+        if (empty($tokensA) || empty($tokensB)) {
+            return 0.0;
+        }
+
+        if (($tokensA[0] ?? '') !== ($tokensB[0] ?? '')) {
+            return 0.0;
+        }
+
+        if (isset($tokensA[1], $tokensB[1]) && $tokensA[1] !== $tokensB[1]) {
+            return 0.0;
+        }
+
+        $shared = [];
+        foreach ($tokensA as $tokenA) {
+            if (in_array($tokenA, $tokensB, true)) {
+                $shared[] = $tokenA;
+            }
+        }
+
+        if (empty($shared)) {
+            return 0.0;
+        }
+
+        $longestShared = max(array_map('mb_strlen', $shared));
+        if ($longestShared < 4) {
+            return 0.0;
+        }
+
+        return round((count($shared) / max(count($tokensA), count($tokensB))) * 100, 1);
+    }
+
+    private function contentTokens(string $name): array
+    {
+        preg_match_all('/\p{L}+/u', $name, $matches);
+
+        $out = [];
+        foreach ($matches[0] as $run) {
+            $lower = mb_strtolower($run);
+            $lower = str_replace(
+                ['أ', 'إ', 'آ', 'ٱ', 'ى', 'ئ', 'ة', 'ؤ', 'ء'],
+                ['ا', 'ا', 'ا', 'ا', 'ي', 'ي', 'ه', 'و', ''],
+                $lower
+            );
+
+            if (mb_strlen($lower) < 2) {
+                continue;
+            }
+
+            if (isset(self::stopWordMap()[$lower])) {
+                continue;
+            }
+
+            $out[] = $lower;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function contentNumbers(string $name): array
+    {
+        $text = str_replace(
+            ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'],
+            ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            $name
+        );
+
+        preg_match_all('/\d+(?:\.\d+)?/u', $text, $matches);
+
+        return $matches[0];
+    }
+
+    private static function stopWordMap(): array
+    {
+        return self::$stopWordMap ??= array_flip(self::DRUG_STOP_WORDS);
+    }
+
+    // ─── Excel Parsing ───────────────────────────────────────────────────
+
+    /**
      * @param  array{name:int,price:int,discount?:int,bonus?:int}|null  $columnIndexes
-     * @return list<array{raw_name:string,price:float,discount:float,bonus?:string}>
+     * @return list<array{raw_name:string,norm_name:string,price:float,discount:float,bonus?:string}>
      */
     private function extractRows(string $absolutePath, ?array $columnIndexes): array
     {
-        $spreadsheet = IOFactory::load($absolutePath);
+        $reader = IOFactory::createReaderForFile($absolutePath);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($absolutePath);
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
         $out = [];
         $detectedHeader = $columnIndexes !== null;
@@ -112,7 +294,7 @@ class FileCompareService
                     continue;
                 }
                 $detectedHeader = true;
-                // Skip header row once it is detected.
+
                 continue;
             }
 
@@ -133,6 +315,7 @@ class FileCompareService
 
             $out[] = [
                 'raw_name' => $rawName,
+                'norm_name' => $this->normalizer->normalize($rawName),
                 'price' => $price,
                 'discount' => $discount,
                 'bonus' => $bonus !== '' ? $bonus : null,
@@ -209,7 +392,6 @@ class FileCompareService
                 continue;
             }
 
-            // يمنع اختيار "رقم الصنف" كعمود اسم منتج
             if ($isName && $isLikelyCodeColumn && in_array($normalizedAlias, ['الصنف', 'item', 'product'], true)) {
                 continue;
             }
@@ -226,9 +408,6 @@ class FileCompareService
         return false;
     }
 
-    /**
-     * Check if a normalized header looks like a code/ID column
-     */
     private function looksLikeCodeHeader(string $normalizedHeader): bool
     {
         return str_contains($normalizedHeader, 'رقم')
@@ -246,46 +425,5 @@ class FileCompareService
         $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
 
         return trim($normalized);
-    }
-
-    private function findProduct(string $normalized): ?Product
-    {
-        $p = Product::query()->where('normalized_name', $normalized)->first();
-        if ($p) {
-            return $p;
-        }
-
-        $alias = ProductAlias::query()->where('normalized_name', $normalized)->with('product')->first();
-
-        return $alias?->product;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function platformSummary(?Product $product): array
-    {
-        if (! $product) {
-            return [
-                'matched' => false,
-                'message' => 'الصنف غير موجود في قاعدة المنصة',
-            ];
-        }
-
-        $offers = Offer::query()
-            ->where('product_id', $product->id)
-            ->active()
-            ->get();
-
-        return [
-            'matched' => true,
-            'product_id' => $product->id,
-            'name_ar' => $product->name_ar,
-            'name_en' => $product->name_en,
-            'code' => $product->code,
-            'suppliers_count' => $offers->count(),
-            'lowest_price' => $offers->min('price') !== null ? (float) $offers->min('price') : null,
-            'highest_discount' => $offers->max('discount') !== null ? (float) $offers->max('discount') : null,
-        ];
     }
 }

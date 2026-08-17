@@ -14,7 +14,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div
-                class="bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/40 rounded-2xl p-6 lg:col-span-1 flex flex-col items-center justify-center text-center">
+                class="bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/40 rounded-2xl p-6 lg:col-span-1 flex flex-col items-center justify-center text-center lg:sticky lg:top-6 lg:self-start lg:h-fit">
                 <p class="text-sm text-slate-400 mb-3">عدد الموردين المحدّثين اليوم</p>
                 <p id="suppliersTodayCount" class="text-6xl font-black tabular-nums text-[#ff7585] leading-none">—</p>
                 <p class="mt-3 text-xs text-slate-500">إجمالي من رفعوا أو حدّثوا ملفاتهم</p>

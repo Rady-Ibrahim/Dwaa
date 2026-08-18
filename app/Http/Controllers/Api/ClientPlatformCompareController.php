@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Upload;
 use App\Services\ExcelSearchService;
 use App\Services\NormalizerService;
+use App\Services\PlatformCompareService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -16,121 +17,24 @@ use Illuminate\Validation\ValidationException;
 
 class ClientPlatformCompareController extends Controller
 {
-    /** أقصى عدد صفوف تُقرأ من الملف */
     private const MAX_ROWS = 1000;
 
-    /** الحد الأدنى لنسبة التشابه للقبول */
-    private const MIN_SIMILARITY = 45.0;
-
-    /** الحد الأدنى لنسبة تداخل كلمات المحتوى للقبول في مقارنة الملفات */
     private const MIN_NAME_OVERLAP = 60.0;
 
-    /** نسبة السعر المتساوي تقريبًا: تعتبر تأكيدًا للمطابقة */
     private const PRICE_EQUAL_RATIO = 0.97;
 
-    /** نسبة السعر "القريب": يُقبل عندها التطابق دون رفض */
     private const PRICE_CLOSE_RATIO = 0.80;
 
-    /** نسبة تقارب السعر الصارمة قبل المطابقة النصية: ±2% */
-    private const PRICE_PROXIMITY_RATIO = 0.02;
-
-    /** مضاعف رفض التطابق عندما يتباعد السعر بشدة (نوع/جرامات مختلفة) */
     private const PRICE_FAR_PENALTY = 0.3;
 
-    /** كلمات عامة (صيغة/وحدة/عملة/ضجيج) تُستبعد من مطابقة أسماء الأدوية */
-    private const DRUG_STOP_WORDS = [
-        // صيغة/وحدة (بالصيغة المطبّعة: ة → ه)
-        'اقراص',
-        'قرص',
-        'كبسول',
-        'كبسوله',
-        'كبسولات',
-        'حبوب',
-        'شراب',
-        'حقن',
-        'قطرات',
-        'قطره',
-        'نقط',
-        'مرهم',
-        'كريم',
-        'جل',
-        'بخاخ',
-        'سبراي',
-        'محلول',
-        'معلق',
-        'لبوس',
-        'تحاميل',
-        'امبول',
-        'امبولات',
-        'شريط',
-        'شرايط',
-        'باكت',
-        'علبه',
-        'زجاجه',
-        'مسحوق',
-        'بودره',
-        'سيروم',
-        'لوشن',
-        'لوسيون',
-        'مجم',
-        'ملجم',
-        'مليجرام',
-        'جرام',
-        'ملى',
-        'مللى',
-        'مل',
-        'سم',
-        'لتر',
-        'كجم',
-        'فموي',
-        'وريدي',
-        'موضعي',
-        'مستمر',
-        'معجل',
-        'مؤخر',
-        'سعر',
-        'جنيه',
-        'جنية',
-        // كلمات وصفية عامة لا تُحدّد هوية المنتج
-        'مع',
-        'وزن',
-        'عبوه',
-        'محيط',
-        'العين',
-        'مطهر',
-        'غسول',
-        'جديد',
-        'احمر',
-        'اكسترا',
-        'ال',
-        'جيل',
-        'كبير',
-        'صغير',
-        'كبيره',
-        'صغيره',
-        'صن',
-        'بلوك',
-        'بديل',
-        'سيرم',
-        'شامبو',
-        'مضاد',
-        'حيوي',
-        'ادويه',
-        'علاج',
-        'دواء',
-        'مستحضر',
-        'كبسولات',
-    ];
-
-    /** ذاكرة تجهيز أسماء الأدوية داخل الطلب لتجنّب إعادة التحليل في كل مقارنة. */
     private array $namePrepareCache = [];
 
-    /** نسخة معكوسة من كلمات الاستبعاد للبحث الفوري (O(1)). */
     private static ?array $stopWordMap = null;
 
     public function __construct(
         private ExcelSearchService $excelSearchService,
         private NormalizerService $normalizer,
+        private PlatformCompareService $platformCompareService,
     ) {}
 
     /**
@@ -188,7 +92,6 @@ class ClientPlatformCompareController extends Controller
             throw $e;
         }
 
-        // تحميل أفضل عرض لكل منتج مُحمَّل قبل المطابقة — يُستخدم لفلتر تقارب السعر98%.
         $offerMap = $this->loadBestOffersForProducts($cache->pluck('id')->all())->all();
 
         Log::info('PlatformCompare: cache + offers loaded', [
@@ -200,7 +103,7 @@ class ClientPlatformCompareController extends Controller
         $buildStart = microtime(true);
 
         try {
-            $lines = $this->buildLines($rows, $cache, null, $offerMap);
+            $lines = $this->platformCompareService->buildLines($rows, $cache, null, $offerMap);
         } catch (\Throwable $e) {
             Log::error('PlatformCompare: buildLines FAILED', [
                 'message' => $e->getMessage(),
@@ -212,7 +115,7 @@ class ClientPlatformCompareController extends Controller
             throw $e;
         }
 
-        $lines = $this->sortLines($lines);
+        $lines = $this->platformCompareService->sortLines($lines);
 
         Log::info('PlatformCompare: DONE', [
             'rows_count' => count($rows),
@@ -274,23 +177,19 @@ class ClientPlatformCompareController extends Controller
         }
 
         $uploadId = (int) $data['upload_id'];
-        $cache    = $this->loadUploadCache($uploadId);
-        $lines    = $this->sortLines($this->buildLines($rows, $cache, $uploadId));
+        $cache = $this->loadUploadCache($uploadId);
+        $lines = $this->platformCompareService->sortLines(
+            $this->platformCompareService->buildLines($rows, $cache, $uploadId),
+        );
 
         return response()->json([
             'rows_read' => count($rows),
-            'lines'     => $lines,
+            'lines' => $lines,
         ]);
     }
 
     /**
      * الوضع 3: مقارنة ملفين من الملفات المرفوعة من الأدمن مع بعضهما.
-     *
-     * المنتجات مربوطة بكل مورد على حدة (منتج الشيت = مورد واحد)، لذلك تتم
-     * المطابقة بين الملفين عبر الاسم المُطبّع (normalized_name) وليس product_id.
-     * تتم المطابقة الحرفية أولًا (كما كانت سابقًا) ثم المطابقة الضبابية
-     * بنفس منطق المقارنة الذكية (matchScore) للمتبقي حتى لا تضيع المطابقات
-     * عندما يكتب الموردان نفس الدواء باختلاف بسيط.
      */
     public function uploadsCompare(Request $request)
     {
@@ -312,7 +211,6 @@ class ClientPlatformCompareController extends Controller
         $usedB = [];
         $usedA = [];
 
-        // Pass 1: مطابقة حرفية (نفس السلوك القديم) للحفاظ على النتائج الموجودة.
         foreach ($entriesA as $name => $entryA) {
             if (! isset($entriesB[$name])) {
                 continue;
@@ -321,9 +219,6 @@ class ClientPlatformCompareController extends Controller
             $priceA = $entryA['offer']->price;
             $priceB = $entriesB[$name]['offer']->price;
 
-            // حتى مع تطابق الاسم حرفيًا، الأسعار المتباعدة بشدة تعني غالبًا
-            // منتجًا مختلفًا (نوع/جرامات مختلفة)، فيُترك للمطابقة الضبابية التي
-            // تُخضعها أيضًا لفلتر السعر، وإلا تظهر ضمن "موجود في ملف واحد فقط".
             $priceScore = $this->applyPriceScore(
                 $priceA !== null ? (float) $priceA : null,
                 $priceB !== null ? (float) $priceB : null,
@@ -340,9 +235,6 @@ class ClientPlatformCompareController extends Controller
             $lines[] = $this->buildPairLine($entryA, $entriesB[$name], $socketB, 100.0);
         }
 
-        // تجهيز أسماء الملفين مرة واحدة وتجميع B حسب أول كلمة محتوى حتى لا
-        // تُقارَن كل الأسماء ضد كل الأسماء (حلقة داخلية ضخمة) — أول كلمة محتوى
-        // مختلفة تعني منتجًا مختلفًا على أي حال في drugOverlapScorePrepared.
         $preparedA = [];
         foreach ($entriesA as $nameA => $entryA) {
             $preparedA[$nameA] = $this->prepareName((string) $nameA);
@@ -359,7 +251,6 @@ class ClientPlatformCompareController extends Controller
             }
         }
 
-        // Pass 2: مطابقة ضبابية للمتبقي من A ضد المتبقي من B.
         foreach ($entriesA as $nameA => $entryA) {
             if (isset($usedA[$nameA])) {
                 continue;
@@ -412,7 +303,6 @@ class ClientPlatformCompareController extends Controller
             $lines[] = $this->buildPairLine($entryA, $entriesB[$bestKey], $socketB, round($bestScore, 1));
         }
 
-        // Pass 3: المتبقي من B فقط.
         foreach ($entriesB as $nameB => $entryB) {
             if (isset($usedB[$nameB])) {
                 continue;
@@ -421,281 +311,18 @@ class ClientPlatformCompareController extends Controller
             $lines[] = $this->buildOnlyBLine($entryB, $socketB);
         }
 
-        $lines = $this->sortLines($lines);
+        $lines = $this->sortLinesMode3($lines);
 
         return response()->json([
             'rows_read' => count($entriesA) + count($entriesB),
-            'lines'     => $lines,
+            'lines' => $lines,
         ]);
     }
 
-    /**
-     * نسبة تداخل كلمات المحتوى بين اسمين (0-100).
-     *
-     * بخلاف similar_text التي تُعطي نتائج مضللة في العربية (تحتسب الأحرف
-     * المشتركة بين أي اسمين)، تعتمد هذه النسبة على المطابقة الحرفية التامة
-     * لكلمات الدواء المميزة (اسم التركيبة) بعد تجريد الأرقام واستبعاد كلمات
-     * الصيغة العامة. فلا يُقبل ربط اسمين مختلفين تمامًا (مثل اتورستات ↔
-     * اتوريزا) ولا الأسماء التي تشترك فقط في بادئة قصيرة (مثل اكس ↔ اكساميد).
-     *
-     * القاسم = الأكبر بين عدد الكلمتين. فيُعطى تطابقًا تامًا (100) فقط عندما
-     * تتطابق كل كلمات المحتوى في الاسمين، أما إذا احتوى أحدهما على كلمة محتوى
-     * إضافية (متغير/تركيبة أخرى مثل "اكسستر" أو "بلس") فلا يُقبل كتطابق كامل.
-     *
-     * الجرعة الرقمية (مثل 60مجم / 90مجم / 2.5مجم) جزء من هوية المنتج: إذا حمل
-     * كل اسم جرعة رقمية مختلفة تمامًا فالمعنى منتجان مختلفان مهما تطابق الاسم،
-     * فيُرفض الربط من البداية ولا يُترك للسعر وحده. الرقم الأول في الاسم هو
-     * الجرعة/التركيز عادةً، واختلافه يكفي للرفض حتى لو اشتركا في رقم ثانوي
-     * (مثل عدد الأشرطة "3 شريط").
-     *
-     * الاسم التجاري (أول كلمة محتوى مميزة) جزء أساسي من الهوية أيضًا: اختلافه
-     * يعني منتجًا مختلفًا حتى لو اشتركا في كلمات وصفية عامة مثل "صن بلوك" أو
-     * "بديل ميلجا".
-     *
-     * كلمة التمييز الثانية (النكهة/الرائحة/المتغير مثل "تفاح"/"مسواك"/"سموكرز")
-     * جزء من الهوية كذلك: إذا حمل كل اسم كلمة تمييز مختلفة فهما منتجان مختلفان
-     * حتى لو تقارب سعرهما، لأن منتجات الرائحة/النكهة المختلفة كثيرًا ما تتساوى
-     * أسعارها تقريبًا.
-     */
-    private function drugOverlapScore(string $nameA, string $nameB): float
-    {
-        $preparedA = $this->prepareName($nameA);
-        $preparedB = $this->prepareName($nameB);
+    // ════════════════════════════════════════════════════════════════
+    //  Mode 3 helpers (uploadsCompare)
+    // ════════════════════════════════════════════════════════════════
 
-        return $this->drugOverlapScorePrepared(
-            $preparedA['tokens'],
-            $preparedB['tokens'],
-            $preparedA['numbers'],
-            $preparedB['numbers'],
-        );
-    }
-
-    /**
-     * تجهيز اسم الدواء مرة واحدة داخل الطلب (كلمات المحتوى + الأرقام) ليُعاد
-     * استخدامه في كل المقارنات بدل إعادة تحليله في كل مكالمة.
-     *
-     * @return array{tokens: list<string>, numbers: list<string>}
-     */
-    private function prepareName(string $name): array
-    {
-        return $this->namePrepareCache[$name] ??= [
-            'tokens' => $this->contentTokens($name),
-            'numbers' => $this->contentNumbers($name),
-        ];
-    }
-
-    /**
-     * نسبة تداخل كلمات المحتوى بين اسمين (0-100) بعد تجهيزهما مسبقًا.
-     *
-     * @param  list<string>  $tokensA
-     * @param  list<string>  $tokensB
-     * @param  list<string>  $numbersA
-     * @param  list<string>  $numbersB
-     */
-    private function drugOverlapScorePrepared(
-        array $tokensA,
-        array $tokensB,
-        array $numbersA,
-        array $numbersB,
-    ): float {
-        // جرعة/تركيز مختلف تمامًا → منتجان مختلفان.
-        if (! empty($numbersA) && ! empty($numbersB)) {
-            if (array_intersect($numbersA, $numbersB) === []) {
-                return 0.0;
-            }
-
-            if (($numbersA[0] ?? null) !== ($numbersB[0] ?? null)) {
-                return 0.0;
-            }
-        }
-
-        if (empty($tokensA) || empty($tokensB)) {
-            return 0.0;
-        }
-
-        // الاسم التجاري (أول كلمة محتوى) مختلف → منتجان مختلفان.
-        if (($tokensA[0] ?? '') !== ($tokensB[0] ?? '')) {
-            return 0.0;
-        }
-
-        // كلمة التمييز الثانية مختلفة (رائحة/نكهة/متغير) → منتجان مختلفان.
-        if (isset($tokensA[1], $tokensB[1]) && $tokensA[1] !== $tokensB[1]) {
-            return 0.0;
-        }
-
-        $shared = [];
-
-        foreach ($tokensA as $tokenA) {
-            if (in_array($tokenA, $tokensB, true)) {
-                $shared[] = $tokenA;
-            }
-        }
-
-        if (empty($shared)) {
-            return 0.0;
-        }
-
-        $longestShared = max(array_map('mb_strlen', $shared));
-
-        if ($longestShared < 4) {
-            return 0.0;
-        }
-
-        return round((count($shared) / max(count($tokensA), count($tokensB))) * 100, 1);
-    }
-
-    /**
-     * كلمات المحتوى المميزة في اسم دواء.
-     *
-     * يُقسَّم الاسم إلى متتاليات حروف فقط (تُجرَّد الأرقام والرموز تمامًا،
-     * فيصبح "اتورستات20قرص" = "اتورستات" و"80ق" بلا محتوى)، ثم تُوحَّد الحروف
-     * العربية الشائعة (أ/إ/آ → ا، ى/ئ → ي، ة → ه) وتُستبعد كلمات الصيغة العامة
-     * والأحرف المفردة.
-     */
-    private function contentTokens(string $name): array
-    {
-        preg_match_all('/\p{L}+/u', $name, $matches);
-
-        $out = [];
-
-        foreach ($matches[0] as $run) {
-            $lower = mb_strtolower($run);
-            $lower = str_replace(
-                ['أ', 'إ', 'آ', 'ٱ', 'ى', 'ئ', 'ة', 'ؤ', 'ء'],
-                ['ا', 'ا', 'ا', 'ا', 'ي', 'ي', 'ه', 'و', ''],
-                $lower
-            );
-
-            if (mb_strlen($lower) < 2) {
-                continue;
-            }
-
-            if (isset(self::stopWordMap()[$lower])) {
-                continue;
-            }
-
-            $out[] = $lower;
-        }
-
-        return $out;
-    }
-
-    /**
-     * خريطة كلمات الاستبعاد (مقلوبة) للبحث الفوري بدل in_array الخطي.
-     *
-     * @return array<string, int>
-     */
-    private static function stopWordMap(): array
-    {
-        return self::$stopWordMap ??= array_flip(self::DRUG_STOP_WORDS);
-    }
-
-    /**
-     * القيم الرقمية في اسم الدواء (الجرعة/التركيز/عدد الأقراص مثل 60مجم أو 2.5).
-     *
-     * تُوحَّد الأرقام العربية الهندية (٢٫٥) إلى أرقام لاتينية (2.5) حتى يُقارن
-     * "٢٠مجم" بـ "20مجم" بشكل صحيح.
-     *
-     * @return list<string>
-     */
-    private function contentNumbers(string $name): array
-    {
-        $text = str_replace(['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], $name);
-
-        preg_match_all('/\d+(?:\.\d+)?/u', $text, $matches);
-
-        return $matches[0];
-    }
-
-    /**
-     * بناء سطر "مطابقة" بين منتج من الملف الأول ومنتج من الملف الثاني.
-     *
-     * @param  array{product: Product, offer: Offer}  $entryA
-     * @param  array{product: Product, offer: Offer}  $entryB
-     */
-    private function buildPairLine(array $entryA, array $entryB, Upload $socketB, float $similarity): array
-    {
-        $productA = $entryA['product'];
-        $productB = $entryB['product'];
-        $offerA = $entryA['offer'];
-        $offerB = $entryB['offer'];
-
-        $nameA = $productA->name_ar ?: $productA->name_en;
-        $nameB = $productB->name_ar ?: $productB->name_en;
-
-        $priceA = $offerA->price !== null ? (float) $offerA->price : null;
-        $priceB = $offerB->price !== null ? (float) $offerB->price : null;
-
-        return [
-            'query' => $nameA,
-            'price' => $priceA,
-            'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
-            'matched_product' => $nameB,
-            'similarity' => $similarity,
-            'platform_best' => [
-                'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
-                'price' => $priceB,
-                'discount' => $offerB->discount !== null ? (float) $offerB->discount : null,
-            ],
-            'status' => 'both',
-        ];
-    }
-
-    /**
-     * بناء سطر "موجود فقط في الملف الأول".
-     *
-     * @param  array{product: Product, offer: Offer}  $entryA
-     */
-    private function buildOnlyALine(array $entryA): array
-    {
-        $productA = $entryA['product'];
-        $offerA = $entryA['offer'];
-
-        $nameA = $productA->name_ar ?: $productA->name_en;
-
-        return [
-            'query' => $nameA,
-            'price' => $offerA->price !== null ? (float) $offerA->price : null,
-            'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
-            'matched_product' => $nameA,
-            'similarity' => 0.0,
-            'platform_best' => null,
-            'status' => 'only_a',
-        ];
-    }
-
-    /**
-     * بناء سطر "موجود فقط في الملف الثاني".
-     *
-     * @param  array{product: Product, offer: Offer}  $entryB
-     */
-    private function buildOnlyBLine(array $entryB, Upload $socketB): array
-    {
-        $productB = $entryB['product'];
-        $offerB = $entryB['offer'];
-
-        $nameB = $productB->name_ar ?: $productB->name_en;
-
-        return [
-            'query' => $nameB,
-            'price' => null,
-            'discount' => null,
-            'matched_product' => $nameB,
-            'similarity' => 0.0,
-            'platform_best' => [
-                'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
-                'price' => $offerB->price !== null ? (float) $offerB->price : null,
-                'discount' => $offerB->discount !== null ? (float) $offerB->discount : null,
-            ],
-            'status' => 'only_b',
-        ];
-    }
-
-    /**
-     * بناء فهرس منتجات ملف مرفوع: normalized_name => أفضل عرض (أقل سعر) للمنتج.
-     *
-     * @return array<string, array{product: Product, offer: Offer}>
-     */
     private function buildUploadsIndex(int $uploadId): array
     {
         $bestOffers = $this->bestOffersByProduct($uploadId);
@@ -733,477 +360,6 @@ class ClientPlatformCompareController extends Controller
         return $index;
     }
 
-    /**
-     * قراءة صفوف الملف المرفوع وتنظيفه مؤقتاً بعد القراءة.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function readRows(Request $request): array
-    {
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
-        ]);
-
-        $path = $request->file('file')->store('temp/compare-platform/' . now()->format('Y/m'), 'local');
-        $fullPath = Storage::disk('local')->path($path);
-
-        Log::info('PlatformCompare: readRows - file stored', [
-            'path' => $path,
-            'fullPath' => $fullPath,
-            'exists' => file_exists($fullPath),
-            'size' => @filesize($fullPath),
-        ]);
-
-        try {
-            $rows = $this->excelSearchService->readRowsAutoForPlatformCompare($fullPath, self::MAX_ROWS);
-
-            Log::info('PlatformCompare: readRows - parsed', [
-                'rows_count' => count($rows),
-                'first_row' => $rows[0] ?? null,
-            ]);
-
-            return $rows;
-        } finally {
-            Storage::disk('local')->delete($path);
-        }
-    }
-
-    /**
-     * الوضع 1: منتجات المنصة النشطة المطابقة لكلمات مفتاحية من الملف.
-     *
-     * كانت النسخة القديمة تبحث بـ LIKE عن الكلمات داخل جدول المنتجات الكامل ثم
-     * تحمّل عروض كل النتائج — ما كان يستنزف الذاكرة ويمرر قائمة ids ضخمة داخل
-     * IN في نفس الـ query. هنا نحمّل مرة واحدة فقط كل المنتجات ذات العروض
-     * النشطة (عددها محدود) ونطبق نفس الفلترة بالكلمات في PHP.
-     *
-     * @param  array<int, array<string, mixed>>  $rows
-     */
-    private function loadAllPlatformCache(array $rows): Collection
-    {
-        $dbStart = microtime(true);
-
-        // استخراج كلمات مفتاحية من الملف بناءً على أول كلمة في كل صف.
-        $firstWords = [];
-        foreach ($rows as $row) {
-            $query = trim((string) $row['name']);
-            if (mb_strlen($query) < 3) {
-                continue;
-            }
-            $normalized = $this->normalizer->normalize($query);
-            $firstWord = explode(' ', $normalized)[0] ?? '';
-            if (mb_strlen($firstWord) >= 2) {
-                $firstWords[$firstWord] = true;
-            }
-        }
-
-        if (empty($firstWords)) {
-            $products = Product::query()
-                ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                ->whereHas('offers', fn($q) => $q->active())
-                ->get();
-        } else {
-            // تقسيم الكلمات لمجموعات صغيرة لتفادي استعلام بـ hundreds of OR conditions
-            // الذي يبطّي MySQL query planner ويمنع استخدام الـ index بكفاءة.
-            $keywords = array_keys($firstWords);
-            $chunks = array_chunk($keywords, 50);
-            $productsById = [];
-
-            foreach ($chunks as $chunk) {
-                $chunkProducts = Product::query()
-                    ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                    ->whereHas('offers', fn($q) => $q->active())
-                    ->where(function ($q) use ($chunk) {
-                        foreach ($chunk as $kw) {
-                            $q->orWhere('normalized_name', 'LIKE', $kw . '%');
-                        }
-                    })
-                    ->get();
-
-                foreach ($chunkProducts as $product) {
-                    $productsById[$product->id] = $product;
-                }
-            }
-
-            $products = new Collection(array_values($productsById));
-        }
-
-        Log::info('PlatformCompare: loadAllPlatformCache done', [
-            'keywords_count' => count($firstWords),
-            'chunks_count' => isset($chunks) ? count($chunks) : 0,
-            'products_loaded' => $products->count(),
-            'db_elapsed_ms' => round((microtime(true) - $dbStart) * 1000),
-        ]);
-
-        return $products;
-    }
-
-    /**
-     * جلب أفضل عرض (أقل سعر) + معلومات المورد لكل مجموعة product ids.
-     * يُستدعى بعد المطابقة ليجلب فقط ما يحتاجه الناتج.
-     */
-    private function loadBestOffersForProducts(array $productIds, ?int $uploadId = null): \Illuminate\Support\Collection
-    {
-        if (empty($productIds)) {
-            return new Collection();
-        }
-
-        $query = Offer::query()
-            ->whereIn('product_id', $productIds)
-            ->active()
-            ->with('supplier:id,name')
-            ->orderBy('price');
-
-        if ($uploadId !== null) {
-            $query->where('upload_id', $uploadId);
-        }
-
-        return $query->get()
-            ->groupBy('product_id')
-            ->map(fn($offers) => $offers->first());
-    }
-
-
-    private function loadUploadCache(int $uploadId): Collection
-    {
-        $bestOffers = $this->bestOffersByProduct($uploadId);
-
-        if ($bestOffers->isEmpty()) {
-            return new Collection();
-        }
-
-        $products = Product::query()
-            ->whereIn('id', $bestOffers->keys()->all())
-            ->get(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-            ->keyBy('id');
-
-        $result = [];
-
-        foreach ($bestOffers as $productId => $offer) {
-            $product = $products->get($productId);
-            if (! $product) {
-                continue;
-            }
-            $product->setRelation('offers', collect([$offer]));
-            $result[] = $product;
-        }
-
-        return new Collection($result);
-    }
-
-    /**
-     * بناء سطور المقارنة لكل صف من الملف مقابل مجموعة المنتجات المتاحة.
-     *
-     * يُحسَّن الأداء عبر:
-     * 1. تجهيز كلمات المحتوى والأرقام لكل منتج مرة واحدة (وليس في كل مقارنة).
-     * 2. استخدام drugOverlapScorePrepared مباشرة بدلاً من matchScore→drugOverlapScore.
-     * 3. إيقاف مبكر عند تطابق 100%.
-     * 4. فلتر تقارب السعر 98% قبل المطابقة النصية لتضييق المرشحين.
-     *
-     * @param  array<int, array<string, mixed>>  $rows
-     * @param  array<int, Offer>  $offerMap  أفضل عرض لكل product_id (مُحمَّل مسبقاً).
-     */
-    private function buildLines(array $rows, Collection $cachedProducts, ?int $uploadId = null, array $offerMap = []): array
-    {
-        $lines = [];
-        $index = $this->buildProductIndex($cachedProducts);
-
-        $productData = [];
-        foreach ($cachedProducts as $product) {
-            $normName = (string) ($product->normalized_name ?? '');
-            $nameAr   = (string) ($product->name_ar ?? '');
-            $nameEn   = (string) ($product->name_en ?? '');
-
-            $productData[$product->id] = [
-                'product'      => $product,
-                'norm_tokens'  => $normName !== '' ? $this->prepareName($normName)['tokens'] : [],
-                'norm_numbers' => $normName !== '' ? $this->prepareName($normName)['numbers'] : [],
-                'ar_tokens'    => $nameAr !== '' ? $this->prepareName($this->normalizer->normalize($nameAr))['tokens'] : [],
-                'ar_numbers'   => $nameAr !== '' ? $this->prepareName($this->normalizer->normalize($nameAr))['numbers'] : [],
-                'en_tokens'    => $nameEn !== '' ? $this->prepareName($nameEn)['tokens'] : [],
-                'en_numbers'   => $nameEn !== '' ? $this->prepareName($nameEn)['numbers'] : [],
-            ];
-        }
-
-        $matchedProductIds = [];
-
-        foreach ($rows as $row) {
-            $rawQuery = trim((string) $row['name']);
-
-            if (mb_strlen($rawQuery) < 3) {
-                $lines[] = [
-                    'query'          => $rawQuery,
-                    'price'          => $row['price'] ?? null,
-                    'discount'       => $row['discount'] ?? null,
-                    'matched_product' => null,
-                    'similarity'     => 0,
-                    'platform_best'  => null,
-                    'status'         => 'skipped',
-                ];
-
-                continue;
-            }
-
-            $normalizedQuery = $this->normalizer->normalize($rawQuery);
-            $firstWord = explode(' ', $normalizedQuery)[0] ?? '';
-            $queryPrepared = $this->prepareName($normalizedQuery);
-
-            $candidates = $firstWord !== ''
-                ? $this->platformCandidates($normalizedQuery, $firstWord, $cachedProducts, $index)
-                : $cachedProducts;
-
-            if ($candidates->isEmpty() && mb_strlen($firstWord) >= 3) {
-                $partialQuery = mb_strlen($normalizedQuery) >= 6
-                    ? mb_substr($normalizedQuery, 0, 8)
-                    : null;
-
-                $candidates = $cachedProducts->filter(function (Product $p) use ($firstWord, $normalizedQuery, $partialQuery) {
-                    $name = (string) ($p->normalized_name ?? '');
-                    if ($name === '') {
-                        return false;
-                    }
-                    if (str_contains($name, $firstWord) || str_contains($name, $normalizedQuery)) {
-                        return true;
-                    }
-                    return $partialQuery !== null && str_contains($name, $partialQuery);
-                });
-            }
-
-            $prePriceCount = $candidates->count();
-
-            // فلتر تقارب السعر 98%: يرفض أي مرشح سعره يبعد عن سعر الصف أكثر من ±2%.
-            // يُفعَّل فقط عندما يكون $offerMap مُحمَّلاً مسبقاً (الوضع 1).
-            $rowPrice = (float) ($row['price'] ?? 0);
-            if ($rowPrice > 0 && $candidates->isNotEmpty() && ! empty($offerMap)) {
-                $candidates = $candidates->filter(function (Product $p) use ($rowPrice, $offerMap) {
-                    $offer = $offerMap[$p->id] ?? null;
-                    if (! $offer || (float) $offer->price <= 0) {
-                        return false;
-                    }
-
-                    $offerPrice = (float) $offer->price;
-
-                    return abs($offerPrice - $rowPrice) / $rowPrice <= self::PRICE_PROXIMITY_RATIO;
-                });
-            }
-
-            $postPriceCount = $candidates->count();
-
-            Log::debug('PlatformCompare: row candidates', [
-                'query'          => mb_substr($rawQuery, 0, 40),
-                'row_price'      => $rowPrice,
-                'pre_price'      => $prePriceCount,
-                'post_price'     => $postPriceCount,
-            ]);
-
-            $bestScore = 0.0;
-            $bestProduct = null;
-
-            foreach ($candidates as $product) {
-                $pd = $productData[$product->id] ?? null;
-                if (! $pd) {
-                    continue;
-                }
-
-                $nameScore = 0.0;
-
-                if ($pd['norm_tokens'] !== []) {
-                    $nameScore = max($nameScore, $this->drugOverlapScorePrepared(
-                        $queryPrepared['tokens'],
-                        $pd['norm_tokens'],
-                        $queryPrepared['numbers'],
-                        $pd['norm_numbers'],
-                    ));
-                }
-                if ($nameScore < 100.0 && $pd['ar_tokens'] !== []) {
-                    $nameScore = max($nameScore, $this->drugOverlapScorePrepared(
-                        $queryPrepared['tokens'],
-                        $pd['ar_tokens'],
-                        $queryPrepared['numbers'],
-                        $pd['ar_numbers'],
-                    ));
-                }
-                if ($nameScore < 100.0 && $pd['en_tokens'] !== []) {
-                    $nameScore = max($nameScore, $this->drugOverlapScorePrepared(
-                        $queryPrepared['tokens'],
-                        $pd['en_tokens'],
-                        $queryPrepared['numbers'],
-                        $pd['en_numbers'],
-                    ));
-                }
-
-                if ($nameScore <= 0.0) {
-                    continue;
-                }
-
-                $score = $this->applyPriceScore(
-                    ($row['price'] ?? null) !== null ? (float) $row['price'] : null,
-                    null,
-                    $nameScore,
-                );
-
-                if ($score > $bestScore) {
-                    $bestScore = $score;
-                    $bestProduct = $product;
-                }
-
-                if ($bestScore >= 100.0) {
-                    break;
-                }
-            }
-
-            if ($bestScore < self::MIN_SIMILARITY || $bestProduct === null) {
-                $lines[] = $this->noMatchLine($row, $rawQuery);
-                continue;
-            }
-
-            $matchedProductIds[$bestProduct->id] = true;
-
-            $lines[] = [
-                'query'          => $rawQuery,
-                'price'          => $row['price'],
-                'discount'       => $row['discount'],
-                'matched_product' => $bestProduct->name_ar ?: $bestProduct->name_en,
-                'similarity'     => round($bestScore, 1),
-                '_product_id'    => $bestProduct->id,
-                'platform_best'  => null,
-                'status'         => 'both',
-            ];
-        }
-
-        $offerStart = microtime(true);
-
-        // الوضع 2 (ملف يمقارنة مع ملف من المنصة): العروض محملة بالفعل في الكاش.
-        // الوضع 1 (ملف يمقارنة مع المنصة ككل): العروض مُحمَّلة مسبقاً في __invoke.
-        if ($uploadId !== null) {
-            $offerMap = [];
-            foreach ($cachedProducts as $product) {
-                $offer = $product->offers->first();
-                if ($offer) {
-                    $offerMap[$product->id] = $offer;
-                }
-            }
-        }
-
-        Log::info('PlatformCompare: buildLines - offers resolved', [
-            'matched_products' => count($matchedProductIds),
-            'offers_available' => count($offerMap),
-            'elapsed_ms' => round((microtime(true) - $offerStart) * 1000),
-        ]);
-
-        foreach ($lines as &$line) {
-            if (($line['status'] ?? '') !== 'both' || empty($line['_product_id'])) {
-                continue;
-            }
-
-            $offer = $offerMap[$line['_product_id']] ?? null;
-            $platformPrice = $offer ? (float) $offer->price : null;
-
-            $line['platform_best'] = $offer ? [
-                'supplier' => $offer->supplier?->name,
-                'price'    => $platformPrice,
-                'discount' => (float) $offer->discount,
-            ] : null;
-            unset($line['_product_id']);
-        }
-        unset($line);
-
-        return $lines;
-    }
-
-    /**
-     * بناء فهرس المنتجات مرة واحدة لكل الطلب (أول كلمة + كل كلمة) لتضييق نطاق
-     * المرشحين لكل صف دون مسح كل منتجات المنصة في كل صف.
-     *
-     * @return array{by_first: array<string, list<Product>>, by_token: array<string, list<Product>>}
-     */
-    private function buildProductIndex(Collection $cachedProducts): array
-    {
-        $byFirst = [];
-        $byToken = [];
-
-        foreach ($cachedProducts as $product) {
-            $name = (string) ($product->normalized_name ?? '');
-            $tokens = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-
-            $first = $tokens[0] ?? '';
-
-            if ($first !== '') {
-                $byFirst[$first][] = $product;
-            }
-
-            foreach ($tokens as $token) {
-                if (mb_strlen($token) >= 3) {
-                    $byToken[$token][] = $product;
-                }
-            }
-        }
-
-        return ['by_first' => $byFirst, 'by_token' => $byToken];
-    }
-
-    /**
-     * اختيار مرشحين للصف من فهرس المنتجات، ثم تطبيق نفس معايير
-     * matchesPlatformProductCandidate على المجموعة الصغيرة الناتجة فقط.
-     *
-     * @param  array{by_first: array<string, list<Product>>, by_token: array<string, list<Product>>}  $index
-     */
-    private function platformCandidates(
-        string $normalizedQuery,
-        string $firstWord,
-        Collection $cachedProducts,
-        array $index,
-    ): Collection {
-        $ids = [];
-
-        if ($firstWord !== '' && isset($index['by_first'][$firstWord])) {
-            foreach ($index['by_first'][$firstWord] as $product) {
-                $ids[$product->id] = true;
-            }
-        }
-
-        foreach (preg_split('/\s+/u', $normalizedQuery, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
-            if (mb_strlen($token) >= 3 && isset($index['by_token'][$token])) {
-                foreach ($index['by_token'][$token] as $product) {
-                    $ids[$product->id] = true;
-                }
-            }
-        }
-
-        $queryTokens = preg_split('/\s+/u', $normalizedQuery, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-
-        return $cachedProducts
-            ->filter(fn(Product $p) => isset($ids[$p->id]))
-            ->filter(fn(Product $p) => $this->matchesPlatformProductCandidate($normalizedQuery, $firstWord, $queryTokens, $p));
-    }
-
-    private function matchesPlatformProductCandidate(string $normalizedQuery, string $firstWord, array $queryTokens, Product $product): bool
-    {
-        $productName = (string) ($product->normalized_name ?? '');
-        if ($productName === '') {
-            return false;
-        }
-
-        if ($firstWord !== '' && (str_starts_with($productName, $firstWord) || str_contains($productName, $firstWord))) {
-            return true;
-        }
-
-        foreach ($queryTokens as $token) {
-            if (mb_strlen($token) >= 3 && str_contains($productName, $token)) {
-                return true;
-            }
-        }
-
-        $prefixLen = min(mb_strlen($normalizedQuery), mb_strlen($productName), 6);
-        if ($prefixLen >= 4) {
-            return mb_substr($normalizedQuery, 0, $prefixLen) === mb_substr($productName, 0, $prefixLen);
-        }
-
-        return false;
-    }
-
-    /**
-     * أفضل عرض (أقل سعر) لكل منتج داخل ملف مرفوع معين.
-     */
     private function bestOffersByProduct(int $uploadId): Collection
     {
         return Offer::query()
@@ -1215,10 +371,217 @@ class ClientPlatformCompareController extends Controller
             ->map->first();
     }
 
-    /**
-     * ترتيب السطور: المطابقات أولاً ← بها عرض ← بالاسم.
-     */
-    private function sortLines(array $lines): array
+    private function buildPairLine(array $entryA, array $entryB, Upload $socketB, float $similarity): array
+    {
+        $productA = $entryA['product'];
+        $productB = $entryB['product'];
+        $offerA = $entryA['offer'];
+        $offerB = $entryB['offer'];
+
+        $nameA = $productA->name_ar ?: $productA->name_en;
+        $nameB = $productB->name_ar ?: $productB->name_en;
+
+        $priceA = $offerA->price !== null ? (float) $offerA->price : null;
+        $priceB = $offerB->price !== null ? (float) $offerB->price : null;
+
+        return [
+            'query' => $nameA,
+            'price' => $priceA,
+            'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
+            'matched_product' => $nameB,
+            'similarity' => $similarity,
+            'platform_best' => [
+                'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
+                'price' => $priceB,
+                'discount' => $offerB->discount !== null ? (float) $offerB->discount : null,
+            ],
+            'status' => 'both',
+        ];
+    }
+
+    private function buildOnlyALine(array $entryA): array
+    {
+        $productA = $entryA['product'];
+        $offerA = $entryA['offer'];
+
+        $nameA = $productA->name_ar ?: $productA->name_en;
+
+        return [
+            'query' => $nameA,
+            'price' => $offerA->price !== null ? (float) $offerA->price : null,
+            'discount' => $offerA->discount !== null ? (float) $offerA->discount : null,
+            'matched_product' => $nameA,
+            'similarity' => 0.0,
+            'platform_best' => null,
+            'status' => 'only_a',
+        ];
+    }
+
+    private function buildOnlyBLine(array $entryB, Upload $socketB): array
+    {
+        $productB = $entryB['product'];
+        $offerB = $entryB['offer'];
+
+        $nameB = $productB->name_ar ?: $productB->name_en;
+
+        return [
+            'query' => $nameB,
+            'price' => null,
+            'discount' => null,
+            'matched_product' => $nameB,
+            'similarity' => 0.0,
+            'platform_best' => [
+                'supplier' => $socketB->supplier?->name ?: $offerB->supplier?->name,
+                'price' => $offerB->price !== null ? (float) $offerB->price : null,
+                'discount' => $offerB->discount !== null ? (float) $offerB->discount : null,
+            ],
+            'status' => 'only_b',
+        ];
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Text Analysis Helpers (shared by mode 3)
+    // ════════════════════════════════════════════════════════════════
+
+    private function prepareName(string $name): array
+    {
+        return $this->namePrepareCache[$name] ??= [
+            'tokens' => $this->contentTokens($name),
+            'numbers' => $this->contentNumbers($name),
+        ];
+    }
+
+    private function contentTokens(string $name): array
+    {
+        preg_match_all('/\p{L}+/u', $name, $matches);
+
+        $out = [];
+
+        foreach ($matches[0] as $run) {
+            $lower = mb_strtolower($run);
+            $lower = str_replace(
+                ['أ', 'إ', 'آ', 'ٱ', 'ى', 'ئ', 'ة', 'ؤ', 'ء'],
+                ['ا', 'ا', 'ا', 'ا', 'ي', 'ي', 'ه', 'و', ''],
+                $lower
+            );
+
+            if (mb_strlen($lower) < 2) {
+                continue;
+            }
+
+            if (isset(self::stopWordMap()[$lower])) {
+                continue;
+            }
+
+            $out[] = $lower;
+        }
+
+        return $out;
+    }
+
+    private static function stopWordMap(): array
+    {
+        return self::$stopWordMap ??= array_flip(self::DRUG_STOP_WORDS());
+    }
+
+    private static function DRUG_STOP_WORDS(): array
+    {
+        return [
+            'اقراص', 'قرص', 'كبسول', 'كبسوله', 'كبسولات', 'حبوب', 'شراب', 'حقن',
+            'قطرات', 'قطره', 'نقط', 'مرهم', 'كريم', 'جل', 'بخاخ', 'سبراي', 'محلول',
+            'معلق', 'لبوس', 'تحاميل', 'امبول', 'امبولات', 'شريط', 'شرايط', 'باكت',
+            'علبه', 'زجاجه', 'مسحوق', 'بودره', 'سيروم', 'لوشن', 'لوسيون', 'مجم',
+            'ملجم', 'مليجرام', 'جرام', 'ملى', 'مللى', 'مل', 'سم', 'لتر', 'كجم',
+            'فموي', 'وريدي', 'موضعي', 'مستمر', 'معجل', 'مؤخر', 'سعر', 'جنيه', 'جنية',
+            'مع', 'وزن', 'عبوه', 'محيط', 'العين', 'مطهر', 'غسول', 'جديد', 'احمر',
+            'اكسترا', 'ال', 'جيل', 'كبير', 'صغير', 'كبيره', 'صغيره', 'صن', 'بلوك',
+            'بديل', 'سيرم', 'شامبو', 'مضاد', 'حيوي', 'ادويه', 'علاج', 'دواء', 'مستحضر',
+            'كبسولات',
+        ];
+    }
+
+    private function contentNumbers(string $name): array
+    {
+        $text = str_replace(['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], $name);
+
+        preg_match_all('/\d+(?:\.\d+)?/u', $text, $matches);
+
+        return $matches[0];
+    }
+
+    private function drugOverlapScorePrepared(
+        array $tokensA,
+        array $tokensB,
+        array $numbersA,
+        array $numbersB,
+    ): float {
+        if (! empty($numbersA) && ! empty($numbersB)) {
+            if (array_intersect($numbersA, $numbersB) === []) {
+                return 0.0;
+            }
+
+            if (($numbersA[0] ?? null) !== ($numbersB[0] ?? null)) {
+                return 0.0;
+            }
+        }
+
+        if (empty($tokensA) || empty($tokensB)) {
+            return 0.0;
+        }
+
+        if (($tokensA[0] ?? '') !== ($tokensB[0] ?? '')) {
+            return 0.0;
+        }
+
+        if (isset($tokensA[1], $tokensB[1]) && $tokensA[1] !== $tokensB[1]) {
+            return 0.0;
+        }
+
+        $shared = [];
+
+        foreach ($tokensA as $tokenA) {
+            if (in_array($tokenA, $tokensB, true)) {
+                $shared[] = $tokenA;
+            }
+        }
+
+        if (empty($shared)) {
+            return 0.0;
+        }
+
+        $longestShared = max(array_map('mb_strlen', $shared));
+
+        if ($longestShared < 4) {
+            return 0.0;
+        }
+
+        return round((count($shared) / max(count($tokensA), count($tokensB))) * 100, 1);
+    }
+
+    private function applyPriceScore(?float $sheetPrice, ?float $productPrice, float $nameScore): float
+    {
+        if ($sheetPrice === null || $productPrice === null || $sheetPrice <= 0 || $productPrice <= 0) {
+            return $nameScore;
+        }
+
+        $ratio = min($sheetPrice, $productPrice) / max($sheetPrice, $productPrice);
+
+        if ($ratio >= self::PRICE_EQUAL_RATIO) {
+            return min(100.0, $nameScore + 10);
+        }
+
+        if ($ratio < self::PRICE_CLOSE_RATIO) {
+            return $nameScore * self::PRICE_FAR_PENALTY;
+        }
+
+        if ($nameScore < 100.0) {
+            return $nameScore * 0.6;
+        }
+
+        return $nameScore;
+    }
+
+    private function sortLinesMode3(array $lines): array
     {
         usort($lines, function (array $a, array $b): int {
             $aMatch = (int) (($a['similarity'] ?? 0) > 0);
@@ -1244,94 +607,141 @@ class ClientPlatformCompareController extends Controller
         return $lines;
     }
 
-    /**
-     * حساب نسبة التشابه بين اسم من الشيت واسم منتج من الـ DB.
-     *
-     * بخلاف النسخة القديمة التي كانت تعتمد على similar_text (تُعطي نتائج
-     * مضللة في العربية لأنها تحتسب الأحرف المشتركة بين أي اسمين مثل اتورستات ↔
-     * اتوريزا)، تُعتمد هنا نسبة تداخل كلمات المحتوى الحرفية بعد تجريد الأرقام
-     * واستبعاد كلمات الصيغة العامة، مع فلتر سعر يؤكد المطابقة عندما تتساوى
-     * الأسعار (المتعارف عليه في السوق أن سعر المنتج الواحد موحد) ويرفضها
-     * عندما تتباعد الأسعار بشكل كبير.
-     */
-    private function matchScore(
-        string $normalizedQuery,
-        string $rawQuery,
-        string $normalizedName,
-        string $nameAr,
-        string $nameEn,
-        ?float $sheetPrice = null,
-        ?float $productPrice = null,
-    ): float {
-        $scores = [];
+    // ════════════════════════════════════════════════════════════════
+    //  Data Loading Helpers (modes 1, 2)
+    // ════════════════════════════════════════════════════════════════
 
-        if ($normalizedName !== '') {
-            $scores[] = $this->drugOverlapScore($normalizedQuery, $normalizedName);
+    private function readRows(Request $request): array
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        $path = $request->file('file')->store('temp/compare-platform/'.now()->format('Y/m'), 'local');
+        $fullPath = Storage::disk('local')->path($path);
+
+        Log::info('PlatformCompare: readRows - file stored', [
+            'path' => $path,
+            'fullPath' => $fullPath,
+            'exists' => file_exists($fullPath),
+            'size' => @filesize($fullPath),
+        ]);
+
+        try {
+            $rows = $this->excelSearchService->readRowsAutoForPlatformCompare($fullPath, self::MAX_ROWS);
+
+            Log::info('PlatformCompare: readRows - parsed', [
+                'rows_count' => count($rows),
+                'first_row' => $rows[0] ?? null,
+            ]);
+
+            return $rows;
+        } finally {
+            Storage::disk('local')->delete($path);
         }
-
-        if ($nameAr !== '') {
-            $scores[] = $this->drugOverlapScore($normalizedQuery, $this->normalizer->normalize($nameAr));
-        }
-
-        if ($nameEn !== '') {
-            $scores[] = $this->drugOverlapScore($normalizedQuery, $nameEn);
-        }
-
-        $nameScore = $scores ? max($scores) : 0.0;
-
-        if ($nameScore <= 0.0) {
-            return 0.0;
-        }
-
-        return $this->applyPriceScore($sheetPrice, $productPrice, $nameScore);
     }
 
-    /**
-     * فلتر السعر: لا يُقبل التطابق إلا إذا كان السعر متساويًا أو قريبًا.
-     *
-     * القاعدة: المنتج الدوائي الواحد في السوق له سعر واحد (مُحدَّد رسميًا في
-     * الغالب)، فالاسم المتشابه مع سعر مختلف بشدة (نوع/جرامات/تركيبة مختلفة مثل
-     * سعر 14 مقابل 72) يعني غالبًا منتجًا مختلفًا مهما بلغت نسبة تشابه الاسم.
-     * التطابق الجزئي (كلمات زائدة مثل "بلس"/"اكسستر") يتطلب سعرًا متقاربًا
-     * جدًا (≥ 95%) ليكون مقبولًا، أما التطابق التام للاسم فيقبل التباين
-     * المعقول في السعر ولا يُرفض إلا عند تباعد شديد.
-     */
-    private function applyPriceScore(?float $sheetPrice, ?float $productPrice, float $nameScore): float
+    private function loadAllPlatformCache(array $rows): Collection
     {
-        if ($sheetPrice === null || $productPrice === null || $sheetPrice <= 0 || $productPrice <= 0) {
-            return $nameScore;
+        $dbStart = microtime(true);
+
+        $firstWords = [];
+        foreach ($rows as $row) {
+            $query = trim((string) $row['name']);
+            if (mb_strlen($query) < 3) {
+                continue;
+            }
+            $normalized = $this->normalizer->normalize($query);
+            $firstWord = explode(' ', $normalized)[0] ?? '';
+            if (mb_strlen($firstWord) >= 2) {
+                $firstWords[$firstWord] = true;
+            }
         }
 
-        $ratio = min($sheetPrice, $productPrice) / max($sheetPrice, $productPrice);
+        if (empty($firstWords)) {
+            $products = Product::query()
+                ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                ->whereHas('offers', fn ($q) => $q->active())
+                ->get();
+        } else {
+            $keywords = array_keys($firstWords);
+            $chunks = array_chunk($keywords, 50);
+            $productsById = [];
 
-        if ($ratio >= self::PRICE_EQUAL_RATIO) {
-            return min(100.0, $nameScore + 10);
+            foreach ($chunks as $chunk) {
+                $chunkProducts = Product::query()
+                    ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                    ->whereHas('offers', fn ($q) => $q->active())
+                    ->where(function ($q) use ($chunk) {
+                        foreach ($chunk as $kw) {
+                            $q->orWhere('normalized_name', 'LIKE', $kw.'%');
+                        }
+                    })
+                    ->get();
+
+                foreach ($chunkProducts as $product) {
+                    $productsById[$product->id] = $product;
+                }
+            }
+
+            $products = new Collection(array_values($productsById));
         }
 
-        if ($ratio < self::PRICE_CLOSE_RATIO) {
-            return $nameScore * self::PRICE_FAR_PENALTY;
-        }
+        Log::info('PlatformCompare: loadAllPlatformCache done', [
+            'keywords_count' => count($firstWords),
+            'chunks_count' => isset($chunks) ? count($chunks) : 0,
+            'products_loaded' => $products->count(),
+            'db_elapsed_ms' => round((microtime(true) - $dbStart) * 1000),
+        ]);
 
-        if ($nameScore < 100.0) {
-            return $nameScore * 0.6;
-        }
-
-        return $nameScore;
+        return $products;
     }
 
-    /**
-     * سطر "لم يُعثر على مطابق".
-     */
-    private function noMatchLine(array $row, string $rawQuery): array
+    private function loadBestOffersForProducts(array $productIds, ?int $uploadId = null): Collection
     {
-        return [
-            'query' => $rawQuery,
-            'price' => $row['price'] ?? null,
-            'discount' => $row['discount'] ?? null,
-            'matched_product' => null,
-            'similarity' => 0,
-            'platform_best' => null,
-            'status' => 'no_match',
-        ];
+        if (empty($productIds)) {
+            return new Collection;
+        }
+
+        $query = Offer::query()
+            ->whereIn('product_id', $productIds)
+            ->active()
+            ->with('supplier:id,name')
+            ->orderBy('price');
+
+        if ($uploadId !== null) {
+            $query->where('upload_id', $uploadId);
+        }
+
+        return $query->get()
+            ->groupBy('product_id')
+            ->map(fn ($offers) => $offers->first());
+    }
+
+    private function loadUploadCache(int $uploadId): Collection
+    {
+        $bestOffers = $this->bestOffersByProduct($uploadId);
+
+        if ($bestOffers->isEmpty()) {
+            return new Collection;
+        }
+
+        $products = Product::query()
+            ->whereIn('id', $bestOffers->keys()->all())
+            ->get(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+            ->keyBy('id');
+
+        $result = [];
+
+        foreach ($bestOffers as $productId => $offer) {
+            $product = $products->get($productId);
+            if (! $product) {
+                continue;
+            }
+            $product->setRelation('offers', collect([$offer]));
+            $result[] = $product;
+        }
+
+        return new Collection($result);
     }
 }

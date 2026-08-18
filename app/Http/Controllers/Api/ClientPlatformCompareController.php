@@ -31,6 +31,9 @@ class ClientPlatformCompareController extends Controller
     /** نسبة السعر "القريب": يُقبل عندها التطابق دون رفض */
     private const PRICE_CLOSE_RATIO = 0.80;
 
+    /** نسبة تقارب السعر الصارمة قبل المطابقة النصية: ±2% */
+    private const PRICE_PROXIMITY_RATIO = 0.02;
+
     /** مضاعف رفض التطابق عندما يتباعد السعر بشدة (نوع/جرامات مختلفة) */
     private const PRICE_FAR_PENALTY = 0.3;
 
@@ -185,15 +188,19 @@ class ClientPlatformCompareController extends Controller
             throw $e;
         }
 
-        Log::info('PlatformCompare: loadAllPlatformCache done', [
+        // تحميل أفضل عرض لكل منتج مُحمَّل قبل المطابقة — يُستخدم لفلتر تقارب السعر98%.
+        $offerMap = $this->loadBestOffersForProducts($cache->pluck('id')->all())->all();
+
+        Log::info('PlatformCompare: cache + offers loaded', [
             'products_loaded' => $cache->count(),
+            'offers_loaded' => count($offerMap),
             'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
         ]);
 
         $buildStart = microtime(true);
 
         try {
-            $lines = $this->buildLines($rows, $cache);
+            $lines = $this->buildLines($rows, $cache, null, $offerMap);
         } catch (\Throwable $e) {
             Log::error('PlatformCompare: buildLines FAILED', [
                 'message' => $e->getMessage(),
@@ -775,18 +782,59 @@ class ClientPlatformCompareController extends Controller
     {
         $dbStart = microtime(true);
 
-        // تحميل خفيف: الاسم فقط بدون عروض/موردين — يكفي لبناء فهرس المطابقة.
-        $allProducts = Product::query()
-            ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-            ->whereHas('offers', fn($q) => $q->active())
-            ->get();
+        // استخراج كلمات مفتاحية من الملف بناءً على أول كلمة في كل صف.
+        $firstWords = [];
+        foreach ($rows as $row) {
+            $query = trim((string) $row['name']);
+            if (mb_strlen($query) < 3) {
+                continue;
+            }
+            $normalized = $this->normalizer->normalize($query);
+            $firstWord = explode(' ', $normalized)[0] ?? '';
+            if (mb_strlen($firstWord) >= 2) {
+                $firstWords[$firstWord] = true;
+            }
+        }
 
-        Log::info('PlatformCompare: loadAllPlatformCache - lightweight query done', [
-            'total_products' => $allProducts->count(),
+        if (empty($firstWords)) {
+            $products = Product::query()
+                ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                ->whereHas('offers', fn($q) => $q->active())
+                ->get();
+        } else {
+            // تقسيم الكلمات لمجموعات صغيرة لتفادي استعلام بـ hundreds of OR conditions
+            // الذي يبطّي MySQL query planner ويمنع استخدام الـ index بكفاءة.
+            $keywords = array_keys($firstWords);
+            $chunks = array_chunk($keywords, 50);
+            $productsById = [];
+
+            foreach ($chunks as $chunk) {
+                $chunkProducts = Product::query()
+                    ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                    ->whereHas('offers', fn($q) => $q->active())
+                    ->where(function ($q) use ($chunk) {
+                        foreach ($chunk as $kw) {
+                            $q->orWhere('normalized_name', 'LIKE', $kw . '%');
+                        }
+                    })
+                    ->get();
+
+                foreach ($chunkProducts as $product) {
+                    $productsById[$product->id] = $product;
+                }
+            }
+
+            $products = new Collection(array_values($productsById));
+        }
+
+        Log::info('PlatformCompare: loadAllPlatformCache done', [
+            'keywords_count' => count($firstWords),
+            'chunks_count' => isset($chunks) ? count($chunks) : 0,
+            'products_loaded' => $products->count(),
             'db_elapsed_ms' => round((microtime(true) - $dbStart) * 1000),
         ]);
 
-        return $allProducts;
+        return $products;
     }
 
     /**
@@ -849,10 +897,12 @@ class ClientPlatformCompareController extends Controller
      * 1. تجهيز كلمات المحتوى والأرقام لكل منتج مرة واحدة (وليس في كل مقارنة).
      * 2. استخدام drugOverlapScorePrepared مباشرة بدلاً من matchScore→drugOverlapScore.
      * 3. إيقاف مبكر عند تطابق 100%.
+     * 4. فلتر تقارب السعر 98% قبل المطابقة النصية لتضييق المرشحين.
      *
      * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<int, Offer>  $offerMap  أفضل عرض لكل product_id (مُحمَّل مسبقاً).
      */
-    private function buildLines(array $rows, Collection $cachedProducts, ?int $uploadId = null): array
+    private function buildLines(array $rows, Collection $cachedProducts, ?int $uploadId = null, array $offerMap = []): array
     {
         $lines = [];
         $index = $this->buildProductIndex($cachedProducts);
@@ -917,6 +967,33 @@ class ClientPlatformCompareController extends Controller
                     return $partialQuery !== null && str_contains($name, $partialQuery);
                 });
             }
+
+            $prePriceCount = $candidates->count();
+
+            // فلتر تقارب السعر 98%: يرفض أي مرشح سعره يبعد عن سعر الصف أكثر من ±2%.
+            // يُفعَّل فقط عندما يكون $offerMap مُحمَّلاً مسبقاً (الوضع 1).
+            $rowPrice = (float) ($row['price'] ?? 0);
+            if ($rowPrice > 0 && $candidates->isNotEmpty() && ! empty($offerMap)) {
+                $candidates = $candidates->filter(function (Product $p) use ($rowPrice, $offerMap) {
+                    $offer = $offerMap[$p->id] ?? null;
+                    if (! $offer || (float) $offer->price <= 0) {
+                        return false;
+                    }
+
+                    $offerPrice = (float) $offer->price;
+
+                    return abs($offerPrice - $rowPrice) / $rowPrice <= self::PRICE_PROXIMITY_RATIO;
+                });
+            }
+
+            $postPriceCount = $candidates->count();
+
+            Log::debug('PlatformCompare: row candidates', [
+                'query'          => mb_substr($rawQuery, 0, 40),
+                'row_price'      => $rowPrice,
+                'pre_price'      => $prePriceCount,
+                'post_price'     => $postPriceCount,
+            ]);
 
             $bestScore = 0.0;
             $bestProduct = null;
@@ -996,7 +1073,7 @@ class ClientPlatformCompareController extends Controller
         $offerStart = microtime(true);
 
         // الوضع 2 (ملف يمقارنة مع ملف من المنصة): العروض محملة بالفعل في الكاش.
-        // الوضع 1 (ملف يمقارنة مع المنصة ككل): نجلب أفضل عرض لكل منتج مطابق.
+        // الوضع 1 (ملف يمقارنة مع المنصة ككل): العروض مُحمَّلة مسبقاً في __invoke.
         if ($uploadId !== null) {
             $offerMap = [];
             foreach ($cachedProducts as $product) {
@@ -1005,13 +1082,11 @@ class ClientPlatformCompareController extends Controller
                     $offerMap[$product->id] = $offer;
                 }
             }
-        } else {
-            $offerMap = $this->loadBestOffersForProducts(array_keys($matchedProductIds));
         }
 
         Log::info('PlatformCompare: buildLines - offers resolved', [
             'matched_products' => count($matchedProductIds),
-            'offers_loaded' => count($offerMap),
+            'offers_available' => count($offerMap),
             'elapsed_ms' => round((microtime(true) - $offerStart) * 1000),
         ]);
 
@@ -1022,20 +1097,6 @@ class ClientPlatformCompareController extends Controller
 
             $offer = $offerMap[$line['_product_id']] ?? null;
             $platformPrice = $offer ? (float) $offer->price : null;
-
-            // فلتر السعر بعد تحميل العرض: لو السعر مختلف بشكل كبير، نرفض المطابقة.
-            $sheetPrice = $line['price'] !== null ? (float) $line['price'] : null;
-            if ($sheetPrice !== null && $platformPrice !== null && $platformPrice > 0) {
-                $ratio = min($sheetPrice, $platformPrice) / max($sheetPrice, $platformPrice);
-                if ($ratio < self::PRICE_CLOSE_RATIO) {
-                    $line['status'] = 'no_match';
-                    $line['matched_product'] = null;
-                    $line['similarity'] = 0;
-                    $line['platform_best'] = null;
-                    unset($line['_product_id']);
-                    continue;
-                }
-            }
 
             $line['platform_best'] = $offer ? [
                 'supplier' => $offer->supplier?->name,

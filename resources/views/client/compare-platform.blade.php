@@ -220,8 +220,8 @@
         }
 
         .platform-file-search:focus {
-            border-color: rgba(239, 35, 60, 0.42);
-            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
+            border-color: rgba(59, 130, 246, 0.42);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
         }
 
         .platform-file-search::placeholder {
@@ -241,12 +241,12 @@
             border-radius: 999px;
             display: grid;
             place-items: center;
-            background: linear-gradient(135deg, rgba(74, 10, 19, 0.9), rgba(121, 17, 32, 0.8));
-            border: 2px solid rgba(176, 39, 59, 0.75);
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.92), rgba(59, 130, 246, 0.8));
+            border: 2px solid rgba(96, 165, 250, 0.75);
             color: #fff;
             font-size: 2.4rem;
             font-weight: 900;
-            box-shadow: 0 0 20px rgba(121, 17, 32, 0.3);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
         }
 
         .main-action {
@@ -260,11 +260,11 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 1rem 1.3rem;
             border-radius: 14px;
-            background: linear-gradient(90deg, #1b070d, #4f0a19, #1b070d);
+            background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);
             color: #fff;
             font-weight: 800;
             font-size: 1rem;
-            box-shadow: 0 16px 24px rgba(33, 4, 10, 0.45);
+            box-shadow: 0 16px 24px rgba(37, 99, 235, 0.35);
             transition: transform 0.2s ease, filter 0.2s ease;
         }
 

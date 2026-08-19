@@ -114,9 +114,9 @@
             border-radius: 16px;
             padding: 1rem 1.3rem;
             font-weight: 800;
-            background: linear-gradient(90deg, #1b070d, #4f0a19, #1b070d);
+            background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);
             color: #fff;
-            box-shadow: 0 16px 24px rgba(33, 4, 10, 0.45);
+            box-shadow: 0 16px 24px rgba(37, 99, 235, 0.35);
             transition: transform 0.15s ease, filter 0.15s ease;
         }
 

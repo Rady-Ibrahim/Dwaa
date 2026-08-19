@@ -490,7 +490,7 @@ class PlatformCompareService
         if ($uploadId !== null) {
             $offerMap = [];
             foreach ($cachedProducts as $product) {
-                $offer = $product->offers->first();
+                $offer = $product->best_offer ?? $product->offers?->first();
                 if ($offer) {
                     $offerMap[$product->id] = $offer;
                 }

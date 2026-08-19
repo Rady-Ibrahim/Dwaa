@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Row as ExcelRow;
@@ -119,6 +120,12 @@ class ProcessUploadJob implements ShouldQueue
             'unmatched_count' => 0,
             'finished_at' => now(),
         ]);
+
+        try {
+            Cache::forget('platform_compare_products_cache_v2');
+        } catch (Throwable) {
+            // Cache driver failure should never block the upload process.
+        }
 
         $rankingService->recalculateForSupplier($this->upload->supplier_id);
     }

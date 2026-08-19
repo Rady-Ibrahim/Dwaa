@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 class Offer extends Model
 {
@@ -17,6 +18,21 @@ class Offer extends Model
         'bonus',
         'expires_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => self::invalidatePlatformCache());
+        static::deleted(fn () => self::invalidatePlatformCache());
+    }
+
+    private static function invalidatePlatformCache(): void
+    {
+        try {
+            Cache::forget('platform_compare_products_cache_v2');
+        } catch (\Throwable) {
+            // Cache driver failure should never block Offer operations.
+        }
+    }
 
     protected function casts(): array
     {

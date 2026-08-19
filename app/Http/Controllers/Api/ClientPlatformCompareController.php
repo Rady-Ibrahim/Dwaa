@@ -168,6 +168,8 @@ class ClientPlatformCompareController extends Controller
      */
     public function fileToUpload(Request $request)
     {
+        $startMs = microtime(true);
+
         if (function_exists('set_time_limit')) {
             @set_time_limit(600);
         }
@@ -184,10 +186,38 @@ class ClientPlatformCompareController extends Controller
         }
 
         $uploadId = (int) $data['upload_id'];
+
+        $cacheStart = microtime(true);
+
         $cache = $this->loadUploadCache($uploadId);
+
+        $offerMap = [];
+        foreach ($cache->all() as $product) {
+            if (isset($product->best_offer)) {
+                $offerMap[$product->id] = $product->best_offer;
+            }
+        }
+
+        Log::info('PlatformCompare: fileToUpload cache loaded', [
+            'upload_id' => $uploadId,
+            'products_loaded' => $cache->count(),
+            'offers_loaded' => count($offerMap),
+            'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
+        ]);
+
+        $buildStart = microtime(true);
+
         $lines = $this->platformCompareService->sortLines(
             $this->platformCompareService->buildLines($rows, $cache, $uploadId),
         );
+
+        Log::info('PlatformCompare: fileToUpload DONE', [
+            'upload_id' => $uploadId,
+            'rows_count' => count($rows),
+            'lines_count' => count($lines),
+            'total_elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+            'build_elapsed_ms' => round((microtime(true) - $buildStart) * 1000),
+        ]);
 
         return response()->json([
             'rows_read' => count($rows),
@@ -661,7 +691,7 @@ class ClientPlatformCompareController extends Controller
     {
         $startMs = microtime(true);
 
-        $cacheKey = 'platform_compare_products_cache_v1';
+        $cacheKey = 'platform_compare_products_cache_v2';
 
         $products = Cache::remember($cacheKey, 12 * 60 * 60, function (): Collection {
             $rows = DB::table('products')
@@ -775,30 +805,77 @@ class ClientPlatformCompareController extends Controller
         return new Collection($result);
     }
 
+    /**
+     * تحميل منتجات ملف مرفوع مع أفضل عرض لكل منتج (وضع 2).
+     *
+     * - استعلام واحد: products × offers × suppliers WHERE upload_id = X.
+     * - مخزون مؤقت لمدة 1 ساعة لكل upload_id.
+     * - لا ORM Hydration: stdObject مباشرة من DB.
+     *
+     * @return Collection<\stdClass>
+     */
     private function loadUploadCache(int $uploadId): Collection
     {
-        $bestOffers = $this->bestOffersByProduct($uploadId);
+        $startMs = microtime(true);
 
-        if ($bestOffers->isEmpty()) {
-            return new Collection;
-        }
+        $cacheKey = "upload_compare_cache_v2_{$uploadId}";
 
-        $products = Product::query()
-            ->whereIn('id', $bestOffers->keys()->all())
-            ->get(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-            ->keyBy('id');
+        $products = Cache::remember($cacheKey, 60 * 60, function () use ($uploadId): Collection {
+            $rows = DB::table('products')
+                ->join('offers', function ($join) use ($uploadId) {
+                    $join->on('offers.product_id', '=', 'products.id')
+                        ->where('offers.upload_id', '=', $uploadId);
+                })
+                ->leftJoin('suppliers', 'suppliers.id', '=', 'offers.supplier_id')
+                ->select([
+                    'products.id',
+                    'products.name_ar',
+                    'products.name_en',
+                    'products.code',
+                    'products.normalized_name',
+                    'offers.id as offer_id',
+                    'offers.price as offer_price',
+                    'offers.discount as offer_discount',
+                    'suppliers.name as supplier_name',
+                ])
+                ->orderBy('products.id')
+                ->orderBy('offers.price')
+                ->get();
 
-        $result = [];
+            $productsById = [];
 
-        foreach ($bestOffers as $productId => $offer) {
-            $product = $products->get($productId);
-            if (! $product) {
-                continue;
+            foreach ($rows as $row) {
+                $pid = (int) $row->id;
+
+                if (! isset($productsById[$pid])) {
+                    $p = new \stdClass;
+                    $p->id = $pid;
+                    $p->name_ar = $row->name_ar;
+                    $p->name_en = $row->name_en;
+                    $p->code = $row->code;
+                    $p->normalized_name = $row->normalized_name;
+
+                    $offer = new \stdClass;
+                    $offer->id = (int) $row->offer_id;
+                    $offer->product_id = $pid;
+                    $offer->price = $row->offer_price;
+                    $offer->discount = $row->offer_discount;
+                    $offer->supplier_name = $row->supplier_name;
+                    $p->best_offer = $offer;
+
+                    $productsById[$pid] = $p;
+                }
             }
-            $product->setRelation('offers', collect([$offer]));
-            $result[] = $product;
-        }
 
-        return new Collection($result);
+            return new Collection(array_values($productsById));
+        });
+
+        Log::info('PlatformCompare: loadUploadCache done', [
+            'upload_id' => $uploadId,
+            'products_loaded' => $products->count(),
+            'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+        ]);
+
+        return $products;
     }
 }

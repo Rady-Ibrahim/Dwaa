@@ -18,7 +18,7 @@
             padding: 1rem 1.2rem;
             border-radius: 22px;
             background: rgba(18, 18, 18, 0.75);
-            border: 1px solid rgba(239, 35, 60, 0.45);
+            border: 1px solid rgba(59, 130, 246, 0.45);
             box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
         }
 
@@ -37,8 +37,8 @@
             border-radius: 12px;
             display: grid;
             place-items: center;
-            background: rgba(239, 35, 60, 0.14);
-            border: 1px solid rgba(239, 35, 60, 0.38);
+            background: rgba(37, 99, 235, 0.14);
+            border: 1px solid rgba(59, 130, 246, 0.38);
             color: var(--accent-soft);
         }
 
@@ -53,7 +53,7 @@
             padding: 0.5rem 0.8rem;
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(239, 35, 60, 0.28);
+            border: 1px solid rgba(59, 130, 246, 0.28);
             color: var(--text-soft);
             font-size: 0.8rem;
         }
@@ -62,12 +62,12 @@
             padding: 1.2rem;
             border-radius: 22px;
             background: rgba(18, 18, 18, 0.75);
-            border: 1px solid rgba(239, 35, 60, 0.45);
+            border: 1px solid rgba(59, 130, 246, 0.45);
             box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
         }
 
         .file-drop-zone {
-            border: 2px dashed rgba(239, 35, 60, 0.45);
+            border: 2px dashed rgba(59, 130, 246, 0.45);
             background: rgba(255, 255, 255, 0.01);
             transition: all 0.25s ease;
             min-height: 170px;
@@ -80,13 +80,13 @@
         }
 
         .file-drop-zone:hover {
-            border-color: rgba(255, 105, 120, 0.8);
-            background: rgba(239, 35, 60, 0.04);
+            border-color: rgba(96, 165, 250, 0.8);
+            background: rgba(37, 99, 235, 0.04);
         }
 
         .file-drop-zone.active {
-            border-color: rgba(255, 105, 120, 0.9);
-            box-shadow: 0 0 0 4px rgba(239, 35, 60, 0.08);
+            border-color: rgba(96, 165, 250, 0.9);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
         }
 
         .file-drop-zone .inner {
@@ -103,8 +103,8 @@
             border-radius: 18px;
             display: grid;
             place-items: center;
-            background: rgba(239, 35, 60, 0.1);
-            border: 1px solid rgba(239, 35, 60, 0.24);
+            background: rgba(37, 99, 235, 0.10);
+            border: 1px solid rgba(59, 130, 246, 0.24);
             color: var(--accent-soft);
             font-size: 1.7rem;
         }
@@ -134,13 +134,13 @@
             overflow: hidden;
             border-radius: 22px;
             background: rgba(18, 18, 18, 0.75);
-            border: 1px solid rgba(239, 35, 60, 0.45);
+            border: 1px solid rgba(59, 130, 246, 0.45);
             box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
         }
 
         .compare-filters {
             padding: 1rem 1rem 0.8rem;
-            border-bottom: 1px solid rgba(239, 35, 60, 0.18);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.18);
             background: rgba(255, 255, 255, 0.02);
         }
 
@@ -161,8 +161,8 @@
         }
 
         .compare-filter-box:focus {
-            border-color: rgba(239, 35, 60, 0.45);
-            box-shadow: 0 0 0 4px rgba(239, 35, 60, 0.08);
+            border-color: rgba(59, 130, 246, 0.45);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
         }
 
         .compare-table thead th {
@@ -171,7 +171,7 @@
             text-transform: uppercase;
             font-size: 0.74rem;
             letter-spacing: 0.05em;
-            border-bottom: 1px solid rgba(239, 35, 60, 0.18);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.18);
         }
 
         .compare-table tbody tr {

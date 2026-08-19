@@ -4,11 +4,12 @@
 
 @section('content')
     <div class="space-y-6">
-        <div class="bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/50 rounded-2xl p-5">
+        <div class="bg-[#121212]/90 backdrop-blur-xl border border-blue-500/40 rounded-2xl p-5">
             <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-xl bg-[#ef233c]/15 flex items-center justify-center">🕐</div>
+                <div class="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">🕐</div>
                 <h4 class="text-xl font-bold text-white">موردين اليوم</h4>
-                <span id="suppliersTodayCount" class="mr-auto text-2xl font-black text-[#ff7585] bg-[#ef233c]/10 border border-[#ef233c]/25 rounded-xl px-5 py-1.5 tabular-nums leading-none">—</span>
+                <span id="suppliersTodayCount"
+                    class="mr-auto text-2xl font-black text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded-xl px-5 py-1.5 tabular-nums leading-none">—</span>
             </div>
             <p class="text-sm text-slate-400">الموردون الذين حدّثوا عروضهم اليوم</p>
         </div>

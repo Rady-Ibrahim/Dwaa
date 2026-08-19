@@ -6,8 +6,8 @@
     <style>
         body.search-scene {
             background:
-                radial-gradient(circle at top left, rgba(239, 35, 60, 0.15), transparent 20%),
-                radial-gradient(circle at bottom right, rgba(239, 35, 60, 0.08), transparent 24%),
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.15), transparent 20%),
+                radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.08), transparent 24%),
                 var(--client-bg);
             background-attachment: fixed;
             background-size: cover;
@@ -85,14 +85,14 @@
             padding: 0.8rem 1rem 0.8rem 1.15rem;
             border-radius: 30px;
             background: rgba(15, 15, 15, 0.8);
-            border: 2px solid rgba(136, 12, 34, 0.95);
-            box-shadow: inset 0 0 0 1px rgba(136, 12, 34, 0.12), 0 0 22px rgba(136, 12, 34, 0.15);
+            border: 2px solid rgba(37, 99, 235, 0.95);
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12), 0 0 22px rgba(37, 99, 235, 0.15);
             transition: all 0.2s ease;
         }
 
         .search-box-wrapper:focus-within {
-            box-shadow: inset 0 0 0 1px rgba(136, 12, 34, 0.22), 0 0 28px rgba(136, 12, 34, 0.20);
-            border-color: rgba(175, 20, 49, 0.95);
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.22), 0 0 28px rgba(37, 99, 235, 0.20);
+            border-color: rgba(59, 130, 246, 0.95);
         }
 
         .search-input {
@@ -115,9 +115,9 @@
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: rgba(136, 12, 34, 0.14);
+            background: rgba(37, 99, 235, 0.14);
             color: var(--accent-soft);
-            border: 1px solid rgba(136, 12, 34, 0.28);
+            border: 1px solid rgba(37, 99, 235, 0.28);
         }
 
         .feature-grid {

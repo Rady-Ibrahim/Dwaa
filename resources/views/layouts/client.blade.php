@@ -40,16 +40,16 @@
             --client-border: rgba(255, 255, 255, 0.08);
             --client-text: #f3f4f6;
             --client-text-soft: #d1d5db;
-            --client-accent: #8d0f30;
-            --client-accent-2: #c11243;
-            --client-danger: #d81d3d;
+            --client-accent: #2563eb;
+            --client-accent-2: #3b82f6;
+            --client-danger: #2563eb;
             --client-success: #22c55e;
             --client-warning: #f59e0b;
-            --client-topbar-bg: linear-gradient(90deg, rgba(0, 0, 0, 0.98), rgba(22, 22, 22, 0.97), rgba(0, 0, 0, 0.98));
-            --client-btn-bg: rgba(87, 10, 21, 0.7);
-            --client-btn-border: rgba(255, 146, 166, 0.18);
+            --client-topbar-bg: linear-gradient(90deg, rgba(0, 0, 0, 0.98), rgba(15, 23, 42, 0.97), rgba(0, 0, 0, 0.98));
+            --client-btn-bg: rgba(37, 99, 235, 0.16);
+            --client-btn-border: rgba(96, 165, 250, 0.3);
             --client-btn-color: #f3f4f6;
-            --client-sidebar-bg: linear-gradient(180deg, rgba(22, 10, 13, 0.98), rgba(10, 8, 10, 0.98));
+            --client-sidebar-bg: linear-gradient(180deg, rgba(10, 13, 20, 0.98), rgba(8, 10, 14, 0.98));
             --client-sidebar-shadow: -18px 0 42px rgba(0, 0, 0, 0.55);
             --surface-rgb: 14, 14, 14;
             --border-rgb: 255, 255, 255;
@@ -58,57 +58,57 @@
             --text-soft2: #f3f4f6;
             --text-soft: #d4d4d8;
             --text-muted: #a1a1aa;
-            --accent-soft: #d81d3d;
-            --accent-pale: #f5b8c2;
-            --danger-soft: #d81d3d;
-            --danger-pale: #f59aa8;
+            --accent-soft: #60a5fa;
+            --accent-pale: #bfdbfe;
+            --danger-soft: #60a5fa;
+            --danger-pale: #bfdbfe;
             --warn-soft: #fbbf24;
             --success-soft: #4ade80;
-            --violet-soft: #f9a8d4;
+            --violet-soft: #93c5fd;
             --option-bg: #111111;
             --option-color: #ffffff;
-            --brand-red: #a40c2a;
-            --brand-blue: #f5f5f5;
+            --brand-red: #2563eb;
+            --brand-blue: #60a5fa;
         }
 
         html.theme-light {
-            color-scheme: light;
-            --client-bg: #f5f1f2;
-            --client-bg-soft: #efe9eb;
-            --client-panel: rgba(255, 255, 255, 0.82);
-            --client-panel-strong: rgba(255, 255, 255, 0.96);
-            --client-border: rgba(58, 18, 27, 0.12);
-            --client-text: #17181d;
-            --client-text-soft: #475569;
-            --client-accent: #7f1029;
-            --client-accent-2: #a51432;
-            --client-danger: #b91c3f;
-            --client-success: #16824a;
-            --client-warning: #c77608;
-            --client-topbar-bg: linear-gradient(90deg, #000000 0%, #141414 52%, #000000 100%);
-            --client-btn-bg: rgba(255, 255, 255, 0.25);
-            --client-btn-border: rgba(89, 17, 31, 0.15);
-            --client-btn-color: #f8f1f3;
-            --client-sidebar-bg: linear-gradient(180deg, #fff9fa, #f5eff1);
-            --client-sidebar-shadow: -18px 0 42px rgba(15, 23, 42, 0.08);
-            --surface-rgb: 255, 255, 255;
-            --border-rgb: 148, 163, 184;
-            --overlay-rgb: 15, 23, 42;
-            --text-main: #1f2937;
-            --text-soft2: #374151;
-            --text-soft: #4b5563;
-            --text-muted: #6b7280;
-            --accent-soft: #9d1338;
-            --accent-pale: #f8d3db;
-            --danger-soft: #b91c3f;
-            --danger-pale: #d34166;
-            --warn-soft: #d97706;
-            --success-soft: #16a34a;
-            --violet-soft: #7c3aed;
-            --option-bg: #ffffff;
-            --option-color: #111827;
-            --brand-red: #8d0f2f;
-            --brand-blue: #1f2937;
+            color-scheme: dark;
+            --client-bg: #090909;
+            --client-bg-soft: #111111;
+            --client-panel: rgba(20, 20, 20, 0.74);
+            --client-panel-strong: rgba(12, 12, 12, 0.96);
+            --client-border: rgba(255, 255, 255, 0.08);
+            --client-text: #f3f4f6;
+            --client-text-soft: #d1d5db;
+            --client-accent: #2563eb;
+            --client-accent-2: #3b82f6;
+            --client-danger: #2563eb;
+            --client-success: #22c55e;
+            --client-warning: #f59e0b;
+            --client-topbar-bg: linear-gradient(90deg, rgba(0, 0, 0, 0.98), rgba(15, 23, 42, 0.97), rgba(0, 0, 0, 0.98));
+            --client-btn-bg: rgba(37, 99, 235, 0.16);
+            --client-btn-border: rgba(96, 165, 250, 0.3);
+            --client-btn-color: #f3f4f6;
+            --client-sidebar-bg: linear-gradient(180deg, rgba(10, 13, 20, 0.98), rgba(8, 10, 14, 0.98));
+            --client-sidebar-shadow: -18px 0 42px rgba(0, 0, 0, 0.55);
+            --surface-rgb: 14, 14, 14;
+            --border-rgb: 255, 255, 255;
+            --overlay-rgb: 255, 255, 255;
+            --text-main: #ffffff;
+            --text-soft2: #f3f4f6;
+            --text-soft: #d4d4d8;
+            --text-muted: #a1a1aa;
+            --accent-soft: #60a5fa;
+            --accent-pale: #bfdbfe;
+            --danger-soft: #60a5fa;
+            --danger-pale: #bfdbfe;
+            --warn-soft: #fbbf24;
+            --success-soft: #4ade80;
+            --violet-soft: #93c5fd;
+            --option-bg: #111111;
+            --option-color: #ffffff;
+            --brand-red: #2563eb;
+            --brand-blue: #60a5fa;
         }
 
         * {
@@ -122,8 +122,8 @@
         body.client-shell {
             min-height: 100vh;
             background:
-                radial-gradient(circle at top right, rgba(126, 14, 33, 0.42), transparent 32%),
-                radial-gradient(circle at bottom left, rgba(160, 18, 43, 0.26), transparent 26%),
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 32%),
+                radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.12), transparent 26%),
                 var(--client-bg);
             color: var(--client-text);
             font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
@@ -132,9 +132,9 @@
 
         html.theme-light body.client-shell {
             background:
-                radial-gradient(circle at top right, rgba(120, 18, 38, 0.12), transparent 30%),
-                radial-gradient(circle at bottom left, rgba(120, 18, 38, 0.08), transparent 28%),
-                linear-gradient(180deg, #f8f5f6 0%, #f0ebed 100%);
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.14), transparent 30%),
+                radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.10), transparent 28%),
+                var(--client-bg);
         }
 
         .client-topbar {
@@ -234,16 +234,16 @@
         }
 
         .topbar-action-btn.primary {
-            background: linear-gradient(135deg, rgba(66, 10, 18, 0.96), rgba(117, 16, 33, 0.95));
-            border-color: rgba(255, 171, 186, 0.18);
-            color: #fff1f4;
-            box-shadow: 0 8px 22px rgba(77, 10, 18, 0.3);
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.96), rgba(37, 99, 235, 0.95));
+            border-color: rgba(147, 197, 253, 0.24);
+            color: #eff6ff;
+            box-shadow: 0 8px 22px rgba(37, 99, 235, 0.28);
         }
 
         .topbar-action-btn.warning {
-            background: linear-gradient(135deg, rgba(66, 10, 18, 0.96), rgba(117, 16, 33, 0.95));
-            border-color: rgba(255, 171, 186, 0.18);
-            color: #fff1f4;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.96), rgba(37, 99, 235, 0.95));
+            border-color: rgba(147, 197, 253, 0.24);
+            color: #eff6ff;
         }
 
         .topbar-action-btn.theme-btn {
@@ -333,10 +333,10 @@
         }
 
         .client-side-link.active {
-            background: linear-gradient(90deg, rgba(225, 29, 72, 0.18), rgba(225, 29, 72, 0.04));
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.18), rgba(59, 130, 246, 0.05));
             color: var(--accent-pale);
-            border: 1px solid rgba(225, 29, 72, 0.28);
-            box-shadow: inset 0 0 0 1px rgba(225, 29, 72, 0.08);
+            border: 1px solid rgba(96, 165, 250, 0.32);
+            box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.08);
         }
 
         .client-side-link span:first-child {

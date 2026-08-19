@@ -11,16 +11,16 @@
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s ease;
-            border: 1px solid rgba(239, 35, 60, 0.35);
+            border: 1px solid rgba(96, 165, 250, 0.35);
             background: rgba(15, 15, 15, 0.7);
             color: var(--text-soft);
         }
 
         .rank-tab.active {
-            background: linear-gradient(135deg, rgba(239, 35, 60, 0.24), rgba(239, 35, 60, 0.10));
-            border-color: rgba(239, 35, 60, 0.68);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.24), rgba(59, 130, 246, 0.10));
+            border-color: rgba(96, 165, 250, 0.68);
             color: var(--accent-pale);
-            box-shadow: 0 0 16px rgba(239, 35, 60, 0.12);
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.12);
         }
 
         .rank-badge {
@@ -33,12 +33,12 @@
             font-size: 0.85rem;
             background: rgba(255, 255, 255, 0.04);
             color: var(--text-soft);
-            border: 1px solid rgba(239, 35, 60, 0.22);
+            border: 1px solid rgba(96, 165, 250, 0.22);
         }
 
         .rank-badge.top-1 {
-            background: linear-gradient(135deg, rgba(239, 35, 60, 0.25), rgba(239, 35, 60, 0.10));
-            border-color: rgba(239, 35, 60, 0.6);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(59, 130, 246, 0.10));
+            border-color: rgba(96, 165, 250, 0.6);
             color: var(--danger-soft);
         }
 
@@ -49,16 +49,16 @@
         }
 
         .rank-badge.top-3 {
-            background: rgba(239, 35, 60, 0.12);
-            border-color: rgba(239, 35, 60, 0.35);
+            background: rgba(37, 99, 235, 0.12);
+            border-color: rgba(96, 165, 250, 0.35);
             color: var(--warn-soft);
         }
     </style>
 
     <div class="space-y-6">
-        <div class="bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/50 rounded-2xl p-5">
+        <div class="bg-[#121212]/90 backdrop-blur-xl border border-blue-500/40 rounded-2xl p-5">
             <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-xl bg-[#ef233c]/15 flex items-center justify-center">🏆</div>
+                <div class="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">🏆</div>
                 <h4 class="text-xl font-bold text-white">ترتيب الموردين</h4>
             </div>
             <p class="text-sm text-slate-400">قارن الموردين حسب حجم الكتالوج أو جودة الخصومات المتاحة</p>

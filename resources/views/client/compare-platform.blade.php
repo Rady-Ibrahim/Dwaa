@@ -21,7 +21,7 @@
             gap: 1rem;
             padding: 0.65rem 0.9rem 0.8rem;
             border-radius: 14px;
-            background: linear-gradient(90deg, #2f0713, #5e0d1d, #2f0713);
+            background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
         }
@@ -41,8 +41,8 @@
             border-radius: 10px;
             display: grid;
             place-items: center;
-            background: rgba(239, 35, 60, 0.08);
-            border: 1px solid rgba(239, 35, 60, 0.26);
+            background: rgba(37, 99, 235, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.26);
             color: var(--accent-soft);
         }
 
@@ -57,7 +57,7 @@
         .platform-topbar .meta .pill {
             padding: 0.5rem 0.9rem;
             border-radius: 999px;
-            border: 1px solid rgba(239, 35, 60, 0.30);
+            border: 1px solid rgba(59, 130, 246, 0.30);
             background: rgba(22, 22, 22, 0.8);
         }
 
@@ -73,7 +73,7 @@
             gap: 0.5rem;
             padding: 0.7rem 1.1rem;
             border-radius: 12px;
-            border: 1px solid rgba(239, 35, 60, 0.28);
+            border: 1px solid rgba(59, 130, 246, 0.28);
             background: rgba(18, 18, 18, 0.7);
             color: var(--text-soft);
             font-weight: 700;
@@ -83,12 +83,12 @@
         }
 
         .mode-btn:hover {
-            border-color: rgba(255, 105, 120, 0.6);
+            border-color: rgba(96, 165, 250, 0.6);
         }
 
         .mode-btn.active {
-            background: linear-gradient(135deg, rgba(68, 10, 19, 0.9), rgba(110, 13, 29, 0.8));
-            border-color: rgba(173, 27, 52, 0.9);
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.9), rgba(37, 99, 235, 0.8));
+            border-color: rgba(96, 165, 250, 0.9);
             color: #fff;
         }
 
@@ -101,7 +101,7 @@
         .compare-panel {
             position: relative;
             background: linear-gradient(180deg, rgba(18, 18, 18, 0.78), rgba(12, 12, 12, 0.72));
-            border: 1px solid rgba(239, 35, 60, 0.34);
+            border: 1px solid rgba(59, 130, 246, 0.34);
             border-radius: 20px;
             min-height: 270px;
             padding: 1.5rem 1.4rem;
@@ -120,8 +120,8 @@
             width: 52px;
             height: 52px;
             border-radius: 16px;
-            background: rgba(239, 35, 60, 0.08);
-            border: 1px solid rgba(239, 35, 60, 0.25);
+            background: rgba(37, 99, 235, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.25);
             display: grid;
             place-items: center;
             font-size: 1.7rem;
@@ -159,8 +159,8 @@
             min-width: 150px;
             padding: 0.8rem 1.1rem;
             border-radius: 14px;
-            border: 1px solid rgba(239, 35, 60, 0.28);
-            background: rgba(239, 35, 60, 0.06);
+            border: 1px solid rgba(59, 130, 246, 0.28);
+            background: rgba(37, 99, 235, 0.06);
             color: var(--text-soft2);
             font-weight: 700;
             cursor: pointer;
@@ -168,8 +168,8 @@
         }
 
         .compare-panel .file-input-label:hover {
-            border-color: rgba(255, 105, 120, 0.6);
-            background: rgba(239, 35, 60, 0.10);
+            border-color: rgba(96, 165, 250, 0.6);
+            background: rgba(37, 99, 235, 0.10);
         }
 
         .compare-panel .file-name {
@@ -184,7 +184,7 @@
             max-width: 260px;
             padding: 0.75rem 1rem;
             border-radius: 12px;
-            border: 1px solid rgba(239, 35, 60, 0.18);
+            border: 1px solid rgba(59, 130, 246, 0.18);
             background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             font-weight: 600;
@@ -195,8 +195,8 @@
         }
 
         .platform-select:focus {
-            border-color: rgba(239, 35, 60, 0.42);
-            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
+            border-color: rgba(59, 130, 246, 0.42);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
         }
 
         .platform-select option {
@@ -211,7 +211,7 @@
             margin-bottom: 0.5rem;
             padding: 0 0.85rem;
             border-radius: 10px;
-            border: 1px solid rgba(239, 35, 60, 0.18);
+            border: 1px solid rgba(59, 130, 246, 0.18);
             background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             font-size: 0.82rem;
@@ -955,12 +955,12 @@
                 const platformPrice = best.price;
                 const platformDiscount = best.discount;
 
-                const priceDiff = (onlyA || onlyB || sheetPrice == null || platformPrice == null)
-                    ? null
-                    : Math.round((sheetPrice - platformPrice) * 100) / 100;
-                const discountDiff = (onlyA || onlyB || sheetDiscount == null || platformDiscount == null)
-                    ? null
-                    : Math.round((sheetDiscount - platformDiscount) * 100) / 100;
+                const priceDiff = (onlyA || onlyB || sheetPrice == null || platformPrice == null) ?
+                    null :
+                    Math.round((sheetPrice - platformPrice) * 100) / 100;
+                const discountDiff = (onlyA || onlyB || sheetDiscount == null || platformDiscount == null) ?
+                    null :
+                    Math.round((sheetDiscount - platformDiscount) * 100) / 100;
 
                 const priceCls = priceDiff === null ? 'text-slate-400' : (priceDiff > 0 ? 'text-rose-400' : (
                     priceDiff < 0 ? 'text-emerald-400' : 'text-slate-200'));

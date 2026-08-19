@@ -7,12 +7,12 @@
         .fav-card {
             background: rgba(18, 18, 18, 0.7);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(239, 35, 60, 0.18);
+            border: 1px solid rgba(59, 130, 246, 0.18);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .fav-card:hover {
-            border-color: rgba(255, 117, 133, 0.35);
+            border-color: rgba(96, 165, 250, 0.35);
             transform: translateY(-2px);
             background: rgba(24, 24, 24, 0.9);
         }
@@ -29,18 +29,18 @@
         }
 
         .fav-table thead th {
-            color: #ff7585;
+            color: #93c5fd;
             text-align: right;
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             padding: 1rem 1.25rem;
-            border-bottom: 1px solid rgba(239, 35, 60, 0.18);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.18);
         }
 
         .fav-table tbody tr {
             background: rgba(16, 16, 16, 0.8);
-            border: 1px solid rgba(239, 35, 60, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.12);
             border-radius: 1.5rem;
         }
 
@@ -68,13 +68,13 @@
             width: 42px;
             height: 42px;
             border-radius: 14px;
-            background: rgba(239, 35, 60, 0.12);
+            background: rgba(59, 130, 246, 0.12);
             color: var(--danger-soft);
             transition: all 0.2s ease;
         }
 
         .fav-delete-btn:hover {
-            background: rgba(239, 35, 60, 0.2);
+            background: rgba(59, 130, 246, 0.2);
             color: var(--danger-pale);
         }
 
@@ -89,8 +89,8 @@
         }
 
         .fav-pill.price {
-            background: rgba(239, 35, 60, 0.12);
-            color: #ff7585;
+            background: rgba(59, 130, 246, 0.12);
+            color: #93c5fd;
         }
 
         .fav-pill.discount {
@@ -101,16 +101,16 @@
 
     <div class="space-y-6">
         <div
-            class="flex items-center justify-between bg-[#121212]/90 backdrop-blur-xl border border-[#ef233c]/50 rounded-2xl p-5">
+            class="flex items-center justify-between bg-[#121212]/90 backdrop-blur-xl border border-blue-500/40 rounded-2xl p-5">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-[#ef233c]/15 flex items-center justify-center text-2xl">⭐</div>
+                <div class="w-12 h-12 rounded-2xl bg-blue-500/15 flex items-center justify-center text-2xl">⭐</div>
                 <div>
                     <h3 class="text-xl font-bold text-white">قائمة المفضلة</h3>
                     <p class="text-slate-400 text-sm">المنتجات التي قمت بحفظها للرجوع إليها لاحقاً</p>
                 </div>
             </div>
             <div id="favCount"
-                class="px-4 py-1 bg-[#1b1b1b] border border-[#ef233c]/25 rounded-full text-xs font-mono text-slate-300">
+                class="px-4 py-1 bg-[#1b1b1b] border border-blue-500/25 rounded-full text-xs font-mono text-slate-300">
                 0 منتجات
             </div>
         </div>

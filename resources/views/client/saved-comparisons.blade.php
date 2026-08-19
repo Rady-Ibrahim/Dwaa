@@ -4,7 +4,8 @@
 
 @section('content')
     <div class="space-y-6">
-        <div class="bg-[#111111]/95 backdrop-blur-xl border border-[#ef233c]/45 rounded-2xl p-5 shadow-[0_18px_45px_rgba(239,35,60,0.08)]">
+        <div
+            class="bg-[#111111]/95 backdrop-blur-xl border border-blue-500/35 rounded-2xl p-5 shadow-[0_18px_45px_rgba(37,99,235,0.08)]">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h3 class="text-xl font-semibold text-white">المقارنات المحفوظة</h3>
@@ -12,10 +13,10 @@
                 </div>
                 <div class="flex gap-3">
                     <input id="searchInput" type="text" placeholder="ابحث باسم المقارنة"
-                        class="w-full lg:w-80 rounded-xl bg-[#0b0b0b] border border-[#ef233c]/25 px-4 py-3 text-sm text-white placeholder:text-slate-500 shadow-inner shadow-black/30 transition duration-200 focus:outline-none focus:border-[#ff4d63] focus:ring-2 focus:ring-[#ef233c]/20">
+                        class="w-full lg:w-80 rounded-xl bg-[#0b0b0b] border border-blue-500/25 px-4 py-3 text-sm text-white placeholder:text-slate-500 shadow-inner shadow-black/30 transition duration-200 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
                     <button onclick="loadComparisons(1)"
                         class="px-5 py-3 rounded-xl text-white font-bold transition-all duration-200 hover:brightness-110 active:scale-[0.99]"
-                        style="background: linear-gradient(135deg, #a40c2a 0%, #d81d3d 52%, #731327 100%); border: 1px solid rgba(255, 146, 166, 0.25); box-shadow: 0 12px 25px rgba(168, 12, 42, 0.35);">
+                        style="background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 52%, #1e3a8a 100%); border: 1px solid rgba(147, 197, 253, 0.25); box-shadow: 0 12px 25px rgba(37, 99, 235, 0.35);">
                         بحث
                     </button>
                 </div>
@@ -23,23 +24,23 @@
         </div>
 
         <div
-            class="bg-[#121212]/90 backdrop-blur-2xl border border-[#ef233c]/30 rounded-[1.5rem] overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
+            class="bg-[#121212]/90 backdrop-blur-2xl border border-blue-500/30 rounded-[1.5rem] overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-right border-collapse">
                     <thead>
                         <tr
-                            class="bg-[#0d0d0d] text-slate-300 uppercase text-xs tracking-widest border-b border-[#ef233c]/20">
+                            class="bg-[#0d0d0d] text-slate-300 uppercase text-xs tracking-widest border-b border-blue-500/20">
                             <th class="p-5 font-bold">اسم المقارنة</th>
                             <th class="p-5 font-bold">التاريخ</th>
                             <th class="p-5 font-bold text-center">المنتجات المطابقة</th>
                             <th class="p-5 font-bold text-center w-40">الإجراءات</th>
                         </tr>
                     </thead>
-                    <tbody id="comparisonsTable" class="divide-y divide-[#ef233c]/10"></tbody>
+                    <tbody id="comparisonsTable" class="divide-y divide-blue-500/10"></tbody>
                 </table>
             </div>
 
-            <div id="comparisonsPagination" class="p-6 bg-[#0d0d0d]/70 border-t border-[#ef233c]/20"></div>
+            <div id="comparisonsPagination" class="p-6 bg-[#0d0d0d]/70 border-t border-blue-500/20"></div>
         </div>
     </div>
 @endsection
@@ -126,12 +127,12 @@
                         <div class="flex items-center justify-center gap-2">
                             <a href="/client/saved-comparisons/${item.id}" 
                                class="flex-1 text-center py-2 px-3 rounded-xl transition-all duration-300 text-xs font-bold"
-                               style="background: linear-gradient(135deg, rgba(59, 11, 19, 0.95), rgba(132, 16, 35, 0.95)); border: 1px solid rgba(255, 146, 166, 0.18); color: #ff9aad; box-shadow: 0 8px 18px rgba(120, 15, 32, 0.18);">
+                               style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.95), rgba(37, 99, 235, 0.95)); border: 1px solid rgba(147, 197, 253, 0.18); color: #dbeafe; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);">
                                 عرض
                             </a>
                             <button onclick="confirmDelete(${item.id})" 
                                     class="flex-1 py-2 px-3 rounded-xl transition-all duration-300 text-xs font-bold"
-                                    style="background: linear-gradient(135deg, rgba(68, 12, 20, 0.95), rgba(150, 17, 39, 0.95)); border: 1px solid rgba(255, 146, 166, 0.18); color: #ff9aad; box-shadow: 0 8px 18px rgba(120, 15, 32, 0.18);">
+                                    style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.95), rgba(37, 99, 235, 0.95)); border: 1px solid rgba(147, 197, 253, 0.18); color: #dbeafe; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);">
                                 حذف
                             </button>
                         </div>
@@ -154,13 +155,13 @@
                     <button ${!response.prev_page_url ? 'disabled' : ''} 
                             onclick="loadComparisons(${response.current_page - 1})"
                             class="px-5 py-2 rounded-xl text-xs font-bold transition-all ${!response.prev_page_url ? 'opacity-20 cursor-not-allowed' : 'active:scale-95'}"
-                            style="${!response.prev_page_url ? '' : 'background: linear-gradient(135deg, rgba(40, 7, 13, 0.96), rgba(128, 12, 32, 0.96)); border: 1px solid rgba(255, 146, 166, 0.18); color: #ff9faf; box-shadow: 0 8px 18px rgba(120, 15, 32, 0.18);'}">
+                            style="${!response.prev_page_url ? '' : 'background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(37, 99, 235, 0.96)); border: 1px solid rgba(147, 197, 253, 0.18); color: #dbeafe; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);'}">
                         السابق
                     </button>
                     <button ${!response.next_page_url ? 'disabled' : ''} 
                             onclick="loadComparisons(${response.current_page + 1})"
                             class="px-5 py-2 rounded-xl text-xs font-bold transition-all ${!response.next_page_url ? 'opacity-20 cursor-not-allowed' : 'active:scale-95'}"
-                            style="${!response.next_page_url ? '' : 'background: linear-gradient(135deg, rgba(40, 7, 13, 0.96), rgba(128, 12, 32, 0.96)); border: 1px solid rgba(255, 146, 166, 0.18); color: #ff9faf; box-shadow: 0 8px 18px rgba(120, 15, 32, 0.18);'}">
+                            style="${!response.next_page_url ? '' : 'background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(37, 99, 235, 0.96)); border: 1px solid rgba(147, 197, 253, 0.18); color: #dbeafe; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);'}">
                         التالي
                     </button>
                 </div>

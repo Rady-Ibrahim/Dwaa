@@ -18,8 +18,8 @@
         }
 
         .badge-price {
-            background: rgba(239, 35, 60, 0.12);
-            color: #ff7585;
+            background: rgba(59, 130, 246, 0.12);
+            color: #93c5fd;
             padding: 4px 10px;
             border-radius: 10px;
             font-weight: 700;
@@ -45,7 +45,7 @@
         }
 
         .produto-table thead th {
-            background: linear-gradient(90deg, #2a0c13, #5c1220, #2a0c13);
+            background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);
             color: white;
             font-weight: 800;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -57,7 +57,7 @@
         }
 
         .produto-table tbody tr:hover {
-            background: rgba(239, 35, 60, 0.03);
+            background: rgba(37, 99, 235, 0.03);
         }
 
         @media (max-width: 1200px) {
@@ -76,18 +76,18 @@
     <div class="product-shell">
         <div class="panel-red p-5">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-[#ef233c]/15 flex items-center justify-center">📦</div>
+                <div class="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">📦</div>
                 <h4 class="text-xl font-bold text-white">كل المنتجات</h4>
             </div>
         </div>
 
         <div class="panel-red overflow-hidden">
-            <div class="p-4 border-b border-[#ef233c]/20 bg-[#0d0d0d]/60">
+            <div class="p-4 border-b border-blue-500/20 bg-[#0d0d0d]/60">
                 <div class="filter-grid">
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1 mr-1">المورد</label>
                         <select id="productsSupplierFilter"
-                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-[#ef233c]/30 text-sm text-white focus:outline-none focus:border-[#ff4d63] appearance-none cursor-pointer">
+                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-blue-500/30 text-sm text-white focus:outline-none focus:border-blue-400 appearance-none cursor-pointer">
                             <option value="all" selected>كل الموردين</option>
                         </select>
                     </div>
@@ -95,32 +95,32 @@
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1 mr-1">سعر من</label>
                         <input id="productsMinPrice" type="number" step="0.01" placeholder="0.00"
-                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-[#ef233c]/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#ff4d63]">
+                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-blue-500/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400">
                     </div>
 
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1 mr-1">سعر إلى</label>
                         <input id="productsMaxPrice" type="number" step="0.01" placeholder="0.00"
-                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-[#ef233c]/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#ff4d63]">
+                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-blue-500/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400">
                     </div>
 
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1 mr-1">خصم من %</label>
                         <input id="productsMinDiscount" type="number" step="0.1" placeholder="0%"
-                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-[#ef233c]/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#ff4d63]">
+                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-blue-500/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400">
                     </div>
 
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1 mr-1">خصم إلى %</label>
                         <input id="productsMaxDiscount" type="number" step="0.1" placeholder="100%"
-                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-[#ef233c]/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#ff4d63]">
+                            class="filter-input-slim w-full rounded-xl bg-[#0f0f0f] border border-blue-500/30 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400">
                     </div>
 
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1 mr-1 opacity-0">تطبيق</label>
                         <button id="applyProductsFiltersBtn"
-                            class="w-full filter-input-slim rounded-xl border border-white/10 text-white font-extrabold transition-all flex items-center justify-center gap-2 shadow-[0_16px_24px_rgba(33,4,10,0.32)] hover:brightness-110"
-                            style="background: linear-gradient(90deg, #2a0c13, #5c1220, #2a0c13);">
+                            class="w-full filter-input-slim rounded-xl border border-white/10 text-white font-extrabold transition-all flex items-center justify-center gap-2 shadow-[0_16px_24px_rgba(37,99,235,0.32)] hover:brightness-110"
+                            style="background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -133,8 +133,8 @@
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1 mr-1 opacity-0">مسح</label>
                         <button id="clearProductsFiltersBtn" title="مسح الفلاتر"
-                            class="w-full filter-input-slim rounded-xl border border-white/10 text-white font-extrabold transition-all flex items-center justify-center gap-2 group shadow-[0_16px_24px_rgba(33,4,10,0.32)] hover:brightness-110"
-                            style="background: linear-gradient(90deg, #2a0c13, #5c1220, #2a0c13);">
+                            class="w-full filter-input-slim rounded-xl border border-white/10 text-white font-extrabold transition-all flex items-center justify-center gap-2 group shadow-[0_16px_24px_rgba(37,99,235,0.32)] hover:brightness-110"
+                            style="background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);">
                             <svg xmlns="http://www.w3.org/2000/svg"
                                 class="h-4 w-4 transition-transform group-hover:rotate-12" fill="none"
                                 viewBox="0 0 24 24" stroke="currentColor">

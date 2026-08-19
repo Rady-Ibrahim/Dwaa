@@ -239,7 +239,7 @@ class PlatformCompareService
         return $result;
     }
 
-    private function matchesProductCandidate(string $normalizedQuery, string $firstWord, array $queryTokens, Product $product): bool
+    private function matchesProductCandidate(string $normalizedQuery, string $firstWord, array $queryTokens, object $product): bool
     {
         $productName = (string) ($product->normalized_name ?? '');
         if ($productName === '') {
@@ -312,12 +312,12 @@ class PlatformCompareService
     /**
      * تجهيز بيانات المنتج مرة واحدة فقط (lazy) ثم إعادة استخدامها في كل مقارنة.
      */
-    private function getProductData(int $productId, Product $product): array
+    private function getProductData(int $productId, object $product): array
     {
         return $this->productDataCache[$productId] ??= $this->buildProductData($product);
     }
 
-    private function buildProductData(Product $product): array
+    private function buildProductData(object $product): array
     {
         $normName = (string) ($product->normalized_name ?? '');
         $nameAr = (string) ($product->name_ar ?? '');
@@ -505,8 +505,15 @@ class PlatformCompareService
             $offer = $offerMap[$line['_product_id']] ?? null;
             $platformPrice = $offer ? (float) $offer->price : null;
 
+            $supplierName = null;
+            if (isset($offer->supplier) && is_object($offer->supplier)) {
+                $supplierName = $offer->supplier->name;
+            } elseif (isset($offer->supplier_name)) {
+                $supplierName = $offer->supplier_name;
+            }
+
             $line['platform_best'] = $offer ? [
-                'supplier' => $offer->supplier?->name,
+                'supplier' => $supplierName,
                 'price' => $platformPrice,
                 'discount' => (float) $offer->discount,
             ] : null;

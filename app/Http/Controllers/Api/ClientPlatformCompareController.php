@@ -11,6 +11,8 @@ use App\Services\NormalizerService;
 use App\Services\PlatformCompareService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -92,7 +94,12 @@ class ClientPlatformCompareController extends Controller
             throw $e;
         }
 
-        $offerMap = $this->loadBestOffersForProducts($cache->pluck('id')->all())->all();
+        $offerMap = [];
+        foreach ($cache->all() as $product) {
+            if (isset($product->best_offer)) {
+                $offerMap[$product->id] = $product->best_offer;
+            }
+        }
 
         Log::info('PlatformCompare: cache + offers loaded', [
             'products_loaded' => $cache->count(),
@@ -641,81 +648,131 @@ class ClientPlatformCompareController extends Controller
         }
     }
 
+    /**
+     * تحميل جميع منتجات المنصة النشطة (ذات العروض النشطة) مع أفضل عرض لكل منتج.
+     *
+     * - استعلام واحد直达 من DB::table بدلاً من chunked Eloquent LIKE queries.
+     * - مُخزون مؤقت لمدة 12 ساعة لتخطي DB تماماً في الطلبات التالية.
+     * - لا ORM Hydration: نتائج DB مباشرة كـ stdClass.
+     *
+     * @return Collection<\stdClass>
+     */
     private function loadAllPlatformCache(array $rows): Collection
     {
-        $dbStart = microtime(true);
+        $startMs = microtime(true);
 
-        $firstWords = [];
-        foreach ($rows as $row) {
-            $query = trim((string) $row['name']);
-            if (mb_strlen($query) < 3) {
-                continue;
-            }
-            $normalized = $this->normalizer->normalize($query);
-            $firstWord = explode(' ', $normalized)[0] ?? '';
-            if (mb_strlen($firstWord) >= 2) {
-                $firstWords[$firstWord] = true;
-            }
-        }
+        $cacheKey = 'platform_compare_products_cache_v1';
 
-        if (empty($firstWords)) {
-            $products = Product::query()
-                ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                ->whereHas('offers', fn ($q) => $q->active())
+        $products = Cache::remember($cacheKey, 12 * 60 * 60, function (): Collection {
+            $rows = DB::table('products')
+                ->join('offers', function ($join) {
+                    $join->on('offers.product_id', '=', 'products.id')
+                        ->where(function ($q) {
+                            $q->where('expires_at', '>', now())
+                                ->orWhereNull('expires_at');
+                        });
+                })
+                ->leftJoin('suppliers', 'suppliers.id', '=', 'offers.supplier_id')
+                ->select([
+                    'products.id',
+                    'products.name_ar',
+                    'products.name_en',
+                    'products.code',
+                    'products.normalized_name',
+                    'offers.id as offer_id',
+                    'offers.price as offer_price',
+                    'offers.discount as offer_discount',
+                    'offers.supplier_id as offer_supplier_id',
+                    'suppliers.name as supplier_name',
+                ])
+                ->orderBy('products.id')
+                ->orderBy('offers.price')
                 ->get();
-        } else {
-            $keywords = array_keys($firstWords);
-            $chunks = array_chunk($keywords, 50);
+
             $productsById = [];
 
-            foreach ($chunks as $chunk) {
-                $chunkProducts = Product::query()
-                    ->select(['id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                    ->whereHas('offers', fn ($q) => $q->active())
-                    ->where(function ($q) use ($chunk) {
-                        foreach ($chunk as $kw) {
-                            $q->orWhere('normalized_name', 'LIKE', $kw.'%');
-                        }
-                    })
-                    ->get();
+            foreach ($rows as $row) {
+                $pid = (int) $row->id;
 
-                foreach ($chunkProducts as $product) {
-                    $productsById[$product->id] = $product;
+                if (! isset($productsById[$pid])) {
+                    $p = new \stdClass;
+                    $p->id = $pid;
+                    $p->name_ar = $row->name_ar;
+                    $p->name_en = $row->name_en;
+                    $p->code = $row->code;
+                    $p->normalized_name = $row->normalized_name;
+
+                    $offer = new \stdClass;
+                    $offer->id = (int) $row->offer_id;
+                    $offer->product_id = $pid;
+                    $offer->price = $row->offer_price;
+                    $offer->discount = $row->offer_discount;
+                    $offer->supplier_name = $row->supplier_name;
+                    $p->best_offer = $offer;
+
+                    $productsById[$pid] = $p;
                 }
             }
 
-            $products = new Collection(array_values($productsById));
-        }
+            return new Collection(array_values($productsById));
+        });
 
         Log::info('PlatformCompare: loadAllPlatformCache done', [
-            'keywords_count' => count($firstWords),
-            'chunks_count' => isset($chunks) ? count($chunks) : 0,
             'products_loaded' => $products->count(),
-            'db_elapsed_ms' => round((microtime(true) - $dbStart) * 1000),
+            'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+            'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 1),
         ]);
 
         return $products;
     }
 
-    private function loadBestOffersForProducts(array $productIds, ?int $uploadId = null): Collection
+    /**
+     * جلب أفضل عرض (أقل سعر) لكل منتج من قاعدة البيانات مباشرة.
+     *
+     * - استعلام واحد مع correlated subquery بدلاً من تحميل كل العروض ثم groupBy في PHP.
+     * - لا ORM Hydration: نتائج DB مباشرة كـ stdClass.
+     *
+     * @param  array<int>  $productIds
+     * @return Collection<int, \stdClass> keyed by product_id — كل عنصر يحوي price, discount, supplier_name
+     */
+    private function loadBestOffersForProducts(array $productIds): Collection
     {
         if (empty($productIds)) {
             return new Collection;
         }
 
-        $query = Offer::query()
-            ->whereIn('product_id', $productIds)
-            ->active()
-            ->with('supplier:id,name')
-            ->orderBy('price');
+        $rows = DB::table('offers')
+            ->join('suppliers', 'suppliers.id', '=', 'offers.supplier_id')
+            ->whereIn('offers.product_id', $productIds)
+            ->where(function ($q) {
+                $q->where('expires_at', '>', now())
+                    ->orWhereNull('expires_at');
+            })
+            ->whereColumn('offers.price', '=', DB::raw('(
+                SELECT MIN(o2.price) FROM offers o2
+                WHERE o2.product_id = offers.product_id
+                AND (o2.expires_at > NOW() OR o2.expires_at IS NULL)
+            )'))
+            ->select([
+                'offers.product_id',
+                'offers.id as offer_id',
+                'offers.price',
+                'offers.discount',
+                'suppliers.name as supplier_name',
+            ])
+            ->get();
 
-        if ($uploadId !== null) {
-            $query->where('upload_id', $uploadId);
+        $result = [];
+        foreach ($rows as $row) {
+            $offer = new \stdClass;
+            $offer->id = (int) $row->offer_id;
+            $offer->price = $row->price;
+            $offer->discount = $row->discount;
+            $offer->supplier_name = $row->supplier_name;
+            $result[(int) $row->product_id] = $offer;
         }
 
-        return $query->get()
-            ->groupBy('product_id')
-            ->map(fn ($offers) => $offers->first());
+        return new Collection($result);
     }
 
     private function loadUploadCache(int $uploadId): Collection

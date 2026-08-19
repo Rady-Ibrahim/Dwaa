@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function () {
 
         // صفحة إدارة أجهزة المستخدم
         Route::get('/users/{user}/devices', [DashboardUserDevicesController::class, 'show'])->name('dashboard.users.devices');
+        Route::patch('/users/{user}/devices/max', [DashboardUserDevicesController::class, 'updateMaxDevices'])->name('dashboard.users.devices.max');
         Route::delete('/users/{user}/devices', [DashboardUserDevicesController::class, 'destroyAll'])->name('dashboard.users.devices.destroyAll');
         Route::delete('/users/{user}/devices/{device}', [DashboardUserDevicesController::class, 'destroy'])->name('dashboard.users.devices.destroy');
 

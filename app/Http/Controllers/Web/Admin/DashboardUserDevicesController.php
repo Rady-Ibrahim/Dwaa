@@ -17,22 +17,37 @@ class DashboardUserDevicesController extends Controller
             ->get();
 
         return view('dashboard.user-devices', [
-            'user'        => $user,
-            'devices'     => $devices,
-            'max_devices' => 5,
+            'user' => $user,
+            'devices' => $devices,
+            'max_devices' => $user->max_devices ?? 5,
+        ]);
+    }
+
+    public function updateMaxDevices(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'max_devices' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $user->update(['max_devices' => $validated['max_devices']]);
+
+        return response()->json([
+            'message' => 'تم تحديث الحد الأقصى للأجهزة',
+            'max_devices' => $user->max_devices,
         ]);
     }
 
     public function destroy(Request $request, User $user, UserDevice $device)
     {
         \Log::info('Device destroy called', [
-            'user_id'   => $user->id,
+            'user_id' => $user->id,
             'device_id' => $device->id,
             'device_user_id' => $device->user_id,
         ]);
 
         if ($device->user_id !== $user->id) {
             \Log::warning('Device does not belong to user');
+
             return response()->json(['message' => 'الجهاز لا ينتمي لهذا المستخدم'], 403);
         }
 
@@ -54,7 +69,7 @@ class DashboardUserDevicesController extends Controller
         \Log::info('All devices deleted', ['count' => $count]);
 
         return response()->json([
-            'message'       => 'تم حذف جميع الأجهزة وإلغاء كل الجلسات',
+            'message' => 'تم حذف جميع الأجهزة وإلغاء كل الجلسات',
             'deleted_count' => $count,
         ]);
     }

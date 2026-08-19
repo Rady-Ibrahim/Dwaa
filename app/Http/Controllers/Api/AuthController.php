@@ -14,9 +14,9 @@ use Symfony\Component\HttpFoundation\Response;
 class AuthController extends Controller
 {
     /**
-     * الحد الأقصى لعدد الأجهزة المسجلة بشكل دائم لكل عميل.
+     * القيمة الافتراضية لعدد الأجهزة المسجلة لكل عميل.
      */
-    private const MAX_REGISTERED_DEVICES = 5;
+    private const DEFAULT_MAX_DEVICES = 5;
 
     /**
      * مدة بقاء كوكي client_token على المتصفح (بالدقائق) — 14 يوم.
@@ -49,9 +49,9 @@ class AuthController extends Controller
         ]);
 
         $data = $request->validate([
-            'phone'              => ['required', 'string'],
-            'password'           => ['required', 'string'],
-            'device_name'        => ['nullable', 'string', 'max:255'],
+            'phone' => ['required', 'string'],
+            'password' => ['required', 'string'],
+            'device_name' => ['nullable', 'string', 'max:255'],
             // UUID يُنشأ في المتصفح ويُحفظ في localStorage
             'device_fingerprint' => ['nullable', 'string', 'max:64'],
         ]);
@@ -84,7 +84,7 @@ class AuthController extends Controller
 
         // لو مفيش fingerprint (متصفح قديم / طلب مباشر) نستخدم User-Agent كـ fallback
         if ($fingerprint === '') {
-            $fingerprint = substr(md5($request->userAgent() . '_fallback'), 0, 32);
+            $fingerprint = substr(md5($request->userAgent().'_fallback'), 0, 32);
         }
 
         // هل الجهاز مسجّل مسبقاً لهذا المستخدم؟
@@ -95,38 +95,39 @@ class AuthController extends Controller
 
         if (! $existingDevice) {
             // جهاز جديد — هل وصلنا للحد الأقصى؟
+            $maxAllowed = $user->max_devices ?? self::DEFAULT_MAX_DEVICES;
             $registeredCount = UserDevice::query()->where('user_id', $user->id)->count();
 
-            if ($registeredCount >= self::MAX_REGISTERED_DEVICES) {
+            if ($registeredCount >= $maxAllowed) {
                 Log::warning('Login blocked — max registered devices reached', [
-                    'user_id'           => $user->id,
-                    'phone'             => $data['phone'],
+                    'user_id' => $user->id,
+                    'phone' => $data['phone'],
                     'registered_devices' => $registeredCount,
-                    'max_allowed'       => self::MAX_REGISTERED_DEVICES,
-                    'fingerprint'       => $fingerprint,
+                    'max_allowed' => $maxAllowed,
+                    'fingerprint' => $fingerprint,
                 ]);
 
                 throw ValidationException::withMessages([
                     'phone' => [
                         'تم الوصول للحد الأقصى للأجهزة المسجلة ('
-                        . self::MAX_REGISTERED_DEVICES
-                        . '). يرجى التواصل مع الإدارة لإدارة أجهزتك.',
+                        .$maxAllowed
+                        .'). يرجى التواصل مع الإدارة لإدارة أجهزتك.',
                     ],
                 ]);
             }
 
             // سجّل الجهاز الجديد
             $existingDevice = UserDevice::query()->create([
-                'user_id'            => $user->id,
+                'user_id' => $user->id,
                 'device_fingerprint' => $fingerprint,
-                'device_name'        => $data['device_name'] ?? $this->guessDeviceName($request),
-                'first_seen_at'      => now(),
-                'last_login_at'      => now(),
+                'device_name' => $data['device_name'] ?? $this->guessDeviceName($request),
+                'first_seen_at' => now(),
+                'last_login_at' => now(),
             ]);
 
             Log::info('New device registered', [
-                'user_id'    => $user->id,
-                'device_id'  => $existingDevice->id,
+                'user_id' => $user->id,
+                'device_id' => $existingDevice->id,
                 'fingerprint' => $fingerprint,
             ]);
         } else {
@@ -139,23 +140,23 @@ class AuthController extends Controller
         $token = $user->createToken($deviceName)->plainTextToken;
 
         Log::info('API login successful', [
-            'phone'           => $data['phone'],
-            'user_id'         => $user->id,
-            'device_id'       => $existingDevice->id,
-            'device_name'     => $deviceName,
-            'token_prefix'    => substr($token, 0, 20) . '...',
+            'phone' => $data['phone'],
+            'user_id' => $user->id,
+            'device_id' => $existingDevice->id,
+            'device_name' => $deviceName,
+            'token_prefix' => substr($token, 0, 20).'...',
         ]);
 
         $response = response()->json([
             'token' => $token,
-            'user'  => [
-                'id'                     => $user->id,
-                'name'                   => $user->name,
-                'phone'                  => $user->phone,
-                'role'                   => $user->role,
-                'is_active'              => $user->is_active,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'role' => $user->role,
+                'is_active' => $user->is_active,
                 'subscription_expires_at' => $user->subscription_expires_at,
-                'created_at'             => $user->created_at,
+                'created_at' => $user->created_at,
             ],
         ]);
 
@@ -200,9 +201,9 @@ class AuthController extends Controller
         $current?->delete();
 
         Log::info('API token refreshed', [
-            'user_id'   => $user->id,
-            'device'    => $name,
-            'new_token' => substr($newToken, 0, 20) . '...',
+            'user_id' => $user->id,
+            'device' => $name,
+            'new_token' => substr($newToken, 0, 20).'...',
         ]);
 
         return response()

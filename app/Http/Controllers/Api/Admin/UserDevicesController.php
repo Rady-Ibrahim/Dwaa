@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserDevice;
-use Illuminate\Http\Request;
 
 class UserDevicesController extends Controller
 {
@@ -22,12 +21,12 @@ class UserDevicesController extends Controller
 
         return response()->json([
             'user' => [
-                'id'   => $user->id,
+                'id' => $user->id,
                 'name' => $user->name,
             ],
-            'devices'       => $devices,
+            'devices' => $devices,
             'devices_count' => $devices->count(),
-            'max_devices'   => 5,
+            'max_devices' => $user->max_devices ?? 5,
         ]);
     }
 
@@ -56,7 +55,7 @@ class UserDevicesController extends Controller
         $count = UserDevice::query()->where('user_id', $user->id)->delete();
 
         return response()->json([
-            'message'       => 'تم حذف جميع الأجهزة',
+            'message' => 'تم حذف جميع الأجهزة',
             'deleted_count' => $count,
         ]);
     }

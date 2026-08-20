@@ -693,6 +693,7 @@ class ClientPlatformCompareController extends Controller
                     'products.name_en',
                     'products.code',
                     'products.normalized_name',
+                    'products.phonetic_key',
                     'offers.id as offer_id',
                     'offers.price as offer_price',
                     'offers.discount as offer_discount',
@@ -719,6 +720,7 @@ class ClientPlatformCompareController extends Controller
                         'name_en' => $row->name_en,
                         'code' => $row->code,
                         'normalized_name' => $row->normalized_name,
+                        'phonetic_key' => $row->phonetic_key,
                         'tokens' => $this->computeContentTokens($normName),
                         'numbers' => $this->computeContentNumbers($normName),
                         'ar_tokens' => $nameAr !== '' ? $this->computeContentTokens($this->normalizeCacheText($nameAr)) : [],
@@ -734,6 +736,9 @@ class ClientPlatformCompareController extends Controller
                     ];
                 }
             }
+
+            // ── توحيد أعلى خصم عبر المنتجات المتشابهة صوتياً ──
+            $this->propagateBestOfferByPhonetic($productsById);
 
             return array_values($productsById);
         });
@@ -771,6 +776,7 @@ class ClientPlatformCompareController extends Controller
                     'products.name_en',
                     'products.code',
                     'products.normalized_name',
+                    'products.phonetic_key',
                     'offers.id as offer_id',
                     'offers.price as offer_price',
                     'offers.discount as offer_discount',
@@ -797,6 +803,7 @@ class ClientPlatformCompareController extends Controller
                         'name_en' => $row->name_en,
                         'code' => $row->code,
                         'normalized_name' => $row->normalized_name,
+                        'phonetic_key' => $row->phonetic_key,
                         'tokens' => $this->computeContentTokens($normName),
                         'numbers' => $this->computeContentNumbers($normName),
                         'ar_tokens' => $nameAr !== '' ? $this->computeContentTokens($this->normalizeCacheText($nameAr)) : [],
@@ -812,6 +819,9 @@ class ClientPlatformCompareController extends Controller
                     ];
                 }
             }
+
+            // ── توحيد أعلى خصم عبر المنتجات المتشابهة صوتياً ──
+            $this->propagateBestOfferByPhonetic($productsById);
 
             return array_values($productsById);
         });
@@ -889,5 +899,91 @@ class ClientPlatformCompareController extends Controller
         $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
 
         return trim($normalized);
+    }
+
+    /**
+     * دمج أعلى خصم عبر جميع المنتجات المتشابهة صوتياً.
+     *
+     * أسماء مثل "ابيكوبرد" و"ابيكوبريد" و"ابيكوبرد20" تنتمي لمنتج واحد.
+     * هذه الدالة تضمن أن كل منتج في المجموعة يحصل على أعلى خصم متاح.
+     */
+    private function propagateBestOfferByPhonetic(array &$productsById): void
+    {
+        // خطوة 1: تجميع المنتجات حسب المفتاح الصوتي بعد حذف الأرقام
+        $phoneticGroups = [];
+
+        foreach ($productsById as $pid => $product) {
+            $rawKey = (string) ($product['phonetic_key'] ?? '');
+            $rawKeyNorm = (string) ($product['normalized_name'] ?? '');
+
+            // حاول من phonetic_key أولاً، ثم normalized_name
+            $keySource = $rawKey !== '' ? $rawKey : $rawKeyNorm;
+
+            $cleanKey = $this->cleanPhoneticKey($keySource);
+
+            if ($cleanKey === '') {
+                continue;
+            }
+
+            if (! isset($phoneticGroups[$cleanKey])) {
+                $phoneticGroups[$cleanKey] = [];
+            }
+
+            $phoneticGroups[$cleanKey][] = $pid;
+        }
+
+        // خطوة 2: لكل مجموعة، ابحث عن أعلى خصم
+        foreach ($phoneticGroups as $groupPids) {
+            if (count($groupPids) <= 1) {
+                continue;
+            }
+
+            $bestOffer = null;
+            $bestPid = null;
+
+            foreach ($groupPids as $pid) {
+                $offer = $productsById[$pid]['best_offer'] ?? null;
+
+                if ($offer === null) {
+                    continue;
+                }
+
+                if (
+                    $bestOffer === null
+                    || (float) $offer['discount'] > (float) $bestOffer['discount']
+                    || (
+                        (float) $offer['discount'] === (float) $bestOffer['discount']
+                        && (float) $offer['price'] < (float) $bestOffer['price']
+                    )
+                ) {
+                    $bestOffer = $offer;
+                    $bestPid = $pid;
+                }
+            }
+
+            if ($bestOffer === null || $bestPid === null) {
+                continue;
+            }
+
+            // خطوة 3: طبّق أعلى خصم على جميع أعضاء المجموعة
+            foreach ($groupPids as $pid) {
+                $productsById[$pid]['best_offer'] = $bestOffer;
+            }
+        }
+    }
+
+    /**
+     * تنظيف المفتاح الصوتي: حذف الأرقام وتوحيد case.
+     *
+     * "ابيكوبرد20" → "ابيكوبرد"
+     * "ABICO BRED" → "abico bred"
+     */
+    private function cleanPhoneticKey(string $key): string
+    {
+        $clean = mb_strtolower(trim($key));
+        $clean = preg_replace('/\d+/u', '', $clean) ?? $clean;
+        $clean = preg_replace('/\s+/u', ' ', $clean) ?? $clean;
+
+        return trim($clean);
     }
 }

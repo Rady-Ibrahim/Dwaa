@@ -902,44 +902,33 @@ class ClientPlatformCompareController extends Controller
     }
 
     /**
-     * دمج أعلى خصم عبر جميع المنتجات المتشابهة صوتياً.
+     * دمج أعلى خصم عبر جميع المنتجات المتشابهة في اسم الدواء + الجرعة.
      *
-     * أسماء مثل "ابيكوبرد" و"ابيكوبريد" و"ابيكوبرد20" تنتمي لمنتج واحد.
-     * هذه الدالة تضمن أن كل منتج في المجموعة يحصل على أعلى خصم متاح.
+     * مثال: "اسبوسيد 75مجم 30 ق/باكو10" و"اسبوسيد 75 عادة اقراص/سيد"
+     * كلاهما الدواء "اسبوسيد" بجرعة "75" → يُعطيان أعلى خصم متاح.
+     *
+     * المفتاح = أول كلمة (اسم الدواء) + أول رقم (الجرعة) إن وُجد.
      */
     private function propagateBestOfferByPhonetic(array &$productsById): void
     {
-        // خطوة 1: تجميع المنتجات حسب المفتاح الصوتي بعد حذف الأرقام
-        $phoneticGroups = [];
+        $groups = [];
 
         foreach ($productsById as $pid => $product) {
-            $rawKey = (string) ($product['phonetic_key'] ?? '');
-            $rawKeyNorm = (string) ($product['normalized_name'] ?? '');
+            $groupKey = $this->buildDrugGroupKey($product);
 
-            // حاول من phonetic_key أولاً، ثم normalized_name
-            $keySource = $rawKey !== '' ? $rawKey : $rawKeyNorm;
-
-            $cleanKey = $this->cleanPhoneticKey($keySource);
-
-            if ($cleanKey === '') {
+            if ($groupKey === '') {
                 continue;
             }
 
-            if (! isset($phoneticGroups[$cleanKey])) {
-                $phoneticGroups[$cleanKey] = [];
-            }
-
-            $phoneticGroups[$cleanKey][] = $pid;
+            $groups[$groupKey][] = $pid;
         }
 
-        // خطوة 2: لكل مجموعة، ابحث عن أعلى خصم
-        foreach ($phoneticGroups as $groupPids) {
+        foreach ($groups as $groupPids) {
             if (count($groupPids) <= 1) {
                 continue;
             }
 
             $bestOffer = null;
-            $bestPid = null;
 
             foreach ($groupPids as $pid) {
                 $offer = $productsById[$pid]['best_offer'] ?? null;
@@ -957,15 +946,13 @@ class ClientPlatformCompareController extends Controller
                     )
                 ) {
                     $bestOffer = $offer;
-                    $bestPid = $pid;
                 }
             }
 
-            if ($bestOffer === null || $bestPid === null) {
+            if ($bestOffer === null) {
                 continue;
             }
 
-            // خطوة 3: طبّق أعلى خصم على جميع أعضاء المجموعة
             foreach ($groupPids as $pid) {
                 $productsById[$pid]['best_offer'] = $bestOffer;
             }
@@ -973,17 +960,25 @@ class ClientPlatformCompareController extends Controller
     }
 
     /**
-     * تنظيف المفتاح الصوتي: حذف الأرقام وتوحيد case.
+     * بناء مفتاح تجميع: أول كلمة (اسم الدواء) + أول رقم (الجرعة).
      *
-     * "ابيكوبرد20" → "ابيكوبرد"
-     * "ABICO BRED" → "abico bred"
+     * "اسبوسيد 75مجم 30 ق/باكو10" → "اسبوسيد|75"
+     * "اسبوسيد اطفال"               → "اسبوسيد"
+     * "ابيكوبرد 150مجم"             → "ابيكوبرد|150"
+     * "ابيكوبرد20"                  → "ابيكوبرد|20"
      */
-    private function cleanPhoneticKey(string $key): string
+    private function buildDrugGroupKey(array $product): string
     {
-        $clean = mb_strtolower(trim($key));
-        $clean = preg_replace('/\d+/u', '', $clean) ?? $clean;
-        $clean = preg_replace('/\s+/u', ' ', $clean) ?? $clean;
+        $tokens = $product['tokens'] ?? [];
+        $numbers = $product['numbers'] ?? [];
+        $firstWord = $tokens[0] ?? '';
 
-        return trim($clean);
+        if ($firstWord === '') {
+            return '';
+        }
+
+        $firstNumber = $numbers[0] ?? '';
+
+        return $firstWord . ($firstNumber !== '' ? '|' . $firstNumber : '');
     }
 }

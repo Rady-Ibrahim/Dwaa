@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Offer;
+use App\Models\Product;
 use App\Models\Upload;
 use App\Services\ExcelSearchService;
 use App\Services\NormalizerService;
 use App\Services\PlatformCompareService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -383,6 +386,7 @@ class ClientPlatformCompareController extends Controller
         return Offer::query()
             ->where('upload_id', $uploadId)
             ->with('supplier:id,name,area,phone1,phone2')
+            ->orderBy('discount', 'desc')
             ->orderBy('price')
             ->get()
             ->groupBy('product_id')
@@ -695,6 +699,7 @@ class ClientPlatformCompareController extends Controller
                     'suppliers.name as supplier_name',
                 ])
                 ->orderBy('products.id')
+                ->orderBy('offers.discount', 'desc')
                 ->orderBy('offers.price')
                 ->get();
 
@@ -772,6 +777,7 @@ class ClientPlatformCompareController extends Controller
                     'suppliers.name as supplier_name',
                 ])
                 ->orderBy('products.id')
+                ->orderBy('offers.discount', 'desc')
                 ->orderBy('offers.price')
                 ->get();
 

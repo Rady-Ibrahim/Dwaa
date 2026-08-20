@@ -180,7 +180,7 @@
         }
 
         .compare-table tbody tr:hover {
-            background: rgba(239, 35, 60, 0.03);
+            background: rgba(59, 130, 246, 0.03);
         }
 
         .pill-price,
@@ -201,8 +201,8 @@
         }
 
         .pill-price {
-            background: rgba(239, 35, 60, 0.12);
-            color: var(--danger-soft);
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--accent-soft);
         }
 
         .pill-discount {
@@ -217,9 +217,9 @@
         }
 
         .pill-bad {
-            background: rgba(239, 35, 60, 0.14);
-            color: var(--danger-soft);
-            border: 1px solid rgba(239, 35, 60, 0.22);
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--accent-soft);
+            border: 1px solid rgba(59, 130, 246, 0.22);
         }
 
         .pill-neutral {
@@ -235,9 +235,9 @@
         }
 
         .pill-best-b {
-            background: rgba(239, 35, 60, 0.10);
+            background: rgba(59, 130, 246, 0.10);
             color: var(--accent-soft);
-            border: 1px solid rgba(239, 35, 60, 0.20);
+            border: 1px solid rgba(59, 130, 246, 0.20);
         }
 
         select option {

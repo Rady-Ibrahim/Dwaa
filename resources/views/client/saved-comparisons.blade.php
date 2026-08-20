@@ -106,7 +106,7 @@
                 <tr class="hover:bg-white/[0.02] transition-all duration-300 group">
                     <td class="p-5">
                         <div class="flex flex-col">
-                            <span class="text-white font-semibold text-base group-hover:text-[#ff7787] transition-colors">
+                            <span class="text-white font-semibold text-base group-hover:text-blue-300 transition-colors">
                                 ${item.title || 'مقارنة بدون عنوان'}
                             </span>
                             <span class="text-[10px] text-slate-500 uppercase mt-1 tracking-tighter tracking-widest">ID: #${item.id}</span>
@@ -119,7 +119,7 @@
                         </div>
                     </td>
                     <td class="p-5 text-center">
-                        <span class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-[#ef233c]/10 text-[#ff7b8b] border border-[#ef233c]/20 font-mono text-xs">
+                        <span class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 font-mono text-xs">
                             ${item.payload?.pairs?.length || 0}
                         </span>
                     </td>

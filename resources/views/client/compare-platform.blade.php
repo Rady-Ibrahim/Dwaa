@@ -287,7 +287,7 @@
 
         .mini-stat {
             background: rgba(18, 18, 18, 0.75);
-            border: 1px solid rgba(239, 35, 60, 0.22);
+            border: 1px solid rgba(59, 130, 246, 0.22);
             border-radius: 16px;
             padding: 1rem 1rem;
             min-height: 110px;
@@ -334,7 +334,7 @@
 
         .compare-results {
             background: rgba(18, 18, 18, 0.75);
-            border: 1px solid rgba(239, 35, 60, 0.22);
+            border: 1px solid rgba(59, 130, 246, 0.22);
             border-radius: 18px;
             overflow: hidden;
             margin-top: 0.3rem;
@@ -346,13 +346,13 @@
             justify-content: space-between;
             gap: 1rem;
             padding: 1rem 1.2rem;
-            border-bottom: 1px solid rgba(239, 35, 60, 0.15);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.15);
         }
 
         .results-header input {
             width: min(320px, 100%);
             height: 44px;
-            border: 1px solid rgba(239, 35, 60, 0.18);
+            border: 1px solid rgba(59, 130, 246, 0.18);
             background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             border-radius: 12px;
@@ -361,18 +361,18 @@
         }
 
         .results-header input:focus {
-            border-color: rgba(239, 35, 60, 0.42);
-            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
+            border-color: rgba(59, 130, 246, 0.42);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
         }
 
         .save-btn {
             padding: 0.75rem 1rem;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            background: linear-gradient(90deg, #7b0e23, #b91233, #7b0e23);
+            background: linear-gradient(90deg, #1d4ed8, #2563eb, #1d4ed8);
             color: #fff;
             font-weight: 700;
-            box-shadow: 0 12px 22px rgba(120, 16, 35, 0.24);
+            box-shadow: 0 12px 22px rgba(37, 99, 235, 0.25);
         }
 
         .save-btn[hidden] {
@@ -400,7 +400,7 @@
         }
 
         table.platform-table tbody tr:hover {
-            background: rgba(239, 35, 60, 0.02);
+            background: rgba(59, 130, 246, 0.03);
         }
 
         .status-up {

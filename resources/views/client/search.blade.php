@@ -6,11 +6,21 @@
     <style>
         body.search-scene {
             background:
-                radial-gradient(circle at top left, rgba(37, 99, 235, 0.15), transparent 20%),
-                radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.08), transparent 24%),
-                var(--client-bg);
+                radial-gradient(circle at 18% 18%, rgba(64, 145, 255, 0.26), transparent 26%),
+                radial-gradient(circle at 82% 72%, rgba(224, 34, 75, 0.32), transparent 28%),
+                linear-gradient(180deg, #0B1833 0%, #0B1833 100%);
             background-attachment: fixed;
             background-size: cover;
+        }
+
+        .search-scene main {
+            background: transparent;
+        }
+
+        .search-scene .client-page-shell {
+            width: 100%;
+            max-width: none;
+            padding: 0;
         }
 
         .search-shell {
@@ -21,6 +31,7 @@
             justify-content: center;
             transition: all 0.5s ease;
             padding: 1rem 0 2rem;
+            background: #0B1833;
         }
 
         .search-shell.has-results {
@@ -55,18 +66,18 @@
         }
 
         .brand-header .brand-name .brand-red {
-            color: var(--brand-red);
+            color: #ef2a3d;
         }
 
         .brand-header .brand-name .brand-blue {
-            color: var(--brand-blue);
+            color: #ffffff;
         }
 
         .brand-header .brand-line {
             margin: 0.9rem auto 0.7rem;
             width: 4rem;
             height: 2px;
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0.85), rgba(140, 18, 40, 0.95));
+            background: linear-gradient(90deg, rgba(96, 165, 250, 0.2), rgba(59, 130, 246, 0.95), rgba(96, 165, 250, 0.2));
             border-radius: 999px;
         }
 
@@ -82,42 +93,42 @@
             align-items: center;
             width: min(100%, 860px);
             margin: 0 auto;
-            padding: 0.8rem 1rem 0.8rem 1.15rem;
-            border-radius: 30px;
-            background: rgba(15, 15, 15, 0.8);
-            border: 2px solid rgba(37, 99, 235, 0.95);
-            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12), 0 0 22px rgba(37, 99, 235, 0.15);
+            padding: 0.7rem 1rem 0.7rem 1.1rem;
+            border-radius: 32px;
+            background: rgba(10, 15, 23, 0.82);
+            border: 2px solid rgba(59, 130, 246, 0.95);
+            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12), 0 0 26px rgba(16, 94, 255, 0.18);
             transition: all 0.2s ease;
         }
 
         .search-box-wrapper:focus-within {
-            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.22), 0 0 28px rgba(37, 99, 235, 0.20);
-            border-color: rgba(59, 130, 246, 0.95);
+            box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.22), 0 0 32px rgba(37, 99, 235, 0.22);
+            border-color: rgba(96, 165, 250, 0.95);
         }
 
         .search-input {
             flex: 1;
             border: none;
             background: transparent;
-            color: var(--text-main);
+            color: #f8fafc;
             font-size: 1.1rem;
-            padding: 0.95rem 1rem;
+            padding: 0.9rem 0.8rem;
             outline: none;
         }
 
         .search-input::placeholder {
-            color: rgba(var(--border-rgb), 0.9);
+            color: rgba(226, 232, 240, 0.8);
         }
 
         .search-icon-wrap {
-            width: 44px;
-            height: 44px;
+            width: 46px;
+            height: 46px;
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: rgba(37, 99, 235, 0.14);
-            color: var(--accent-soft);
-            border: 1px solid rgba(37, 99, 235, 0.28);
+            background: rgba(37, 99, 235, 0.12);
+            color: #6bb4ff;
+            border: 1px solid rgba(96, 165, 250, 0.4);
         }
 
         .feature-grid {
@@ -348,7 +359,7 @@
         <div class="search-container">
             <div class="brand-header">
                 <h1 class="brand-name">
-                    <span class="brand-blue">RANKO</span><span class="brand-red">Med</span>
+                    <span class="brand-red">RANKO</span><span class="brand-blue">Med</span>
                 </h1>
                 <div class="brand-line"></div>
                 <p class="brand-tagline">رتب صح .. ووفر أكتر</p>

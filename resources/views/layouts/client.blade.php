@@ -33,10 +33,10 @@
     <style>
         :root {
             color-scheme: dark;
-            --client-bg: #090909;
-            --client-bg-soft: #111111;
-            --client-panel: rgba(20, 20, 20, 0.74);
-            --client-panel-strong: rgba(12, 12, 12, 0.96);
+            --client-bg: #0B1833;
+            --client-bg-soft: #10223f;
+            --client-panel: rgba(14, 24, 41, 0.74);
+            --client-panel-strong: rgba(11, 24, 51, 0.96);
             --client-border: rgba(255, 255, 255, 0.08);
             --client-text: #f3f4f6;
             --client-text-soft: #d1d5db;
@@ -45,13 +45,13 @@
             --client-danger: #2563eb;
             --client-success: #22c55e;
             --client-warning: #f59e0b;
-            --client-topbar-bg: linear-gradient(90deg, rgba(0, 0, 0, 0.98), rgba(15, 23, 42, 0.97), rgba(0, 0, 0, 0.98));
+            --client-topbar-bg: linear-gradient(90deg, rgba(11, 24, 51, 0.98), rgba(16, 34, 63, 0.97), rgba(11, 24, 51, 0.98));
             --client-btn-bg: rgba(37, 99, 235, 0.16);
             --client-btn-border: rgba(96, 165, 250, 0.3);
             --client-btn-color: #f3f4f6;
-            --client-sidebar-bg: linear-gradient(180deg, rgba(10, 13, 20, 0.98), rgba(8, 10, 14, 0.98));
-            --client-sidebar-shadow: -18px 0 42px rgba(0, 0, 0, 0.55);
-            --surface-rgb: 14, 14, 14;
+            --client-sidebar-bg: linear-gradient(180deg, rgba(11, 24, 51, 0.98), rgba(8, 15, 27, 0.98));
+            --client-sidebar-shadow: -18px 0 42px rgba(0, 0, 0, 0.38);
+            --surface-rgb: 11, 24, 51;
             --border-rgb: 255, 255, 255;
             --overlay-rgb: 255, 255, 255;
             --text-main: #ffffff;
@@ -65,18 +65,18 @@
             --warn-soft: #fbbf24;
             --success-soft: #4ade80;
             --violet-soft: #93c5fd;
-            --option-bg: #111111;
+            --option-bg: #111d34;
             --option-color: #ffffff;
-            --brand-red: #2563eb;
-            --brand-blue: #60a5fa;
+            --brand-red: #ef2a3d;
+            --brand-blue: #ffffff;
         }
 
         html.theme-light {
             color-scheme: dark;
-            --client-bg: #090909;
-            --client-bg-soft: #111111;
-            --client-panel: rgba(20, 20, 20, 0.74);
-            --client-panel-strong: rgba(12, 12, 12, 0.96);
+            --client-bg: #0B1833;
+            --client-bg-soft: #10223f;
+            --client-panel: rgba(14, 24, 41, 0.74);
+            --client-panel-strong: rgba(11, 24, 51, 0.96);
             --client-border: rgba(255, 255, 255, 0.08);
             --client-text: #f3f4f6;
             --client-text-soft: #d1d5db;
@@ -85,13 +85,13 @@
             --client-danger: #2563eb;
             --client-success: #22c55e;
             --client-warning: #f59e0b;
-            --client-topbar-bg: linear-gradient(90deg, rgba(0, 0, 0, 0.98), rgba(15, 23, 42, 0.97), rgba(0, 0, 0, 0.98));
+            --client-topbar-bg: linear-gradient(90deg, rgba(11, 24, 51, 0.98), rgba(16, 34, 63, 0.97), rgba(11, 24, 51, 0.98));
             --client-btn-bg: rgba(37, 99, 235, 0.16);
             --client-btn-border: rgba(96, 165, 250, 0.3);
             --client-btn-color: #f3f4f6;
-            --client-sidebar-bg: linear-gradient(180deg, rgba(10, 13, 20, 0.98), rgba(8, 10, 14, 0.98));
-            --client-sidebar-shadow: -18px 0 42px rgba(0, 0, 0, 0.55);
-            --surface-rgb: 14, 14, 14;
+            --client-sidebar-bg: linear-gradient(180deg, rgba(11, 24, 51, 0.98), rgba(8, 15, 27, 0.98));
+            --client-sidebar-shadow: -18px 0 42px rgba(0, 0, 0, 0.38);
+            --surface-rgb: 11, 24, 51;
             --border-rgb: 255, 255, 255;
             --overlay-rgb: 255, 255, 255;
             --text-main: #ffffff;
@@ -105,10 +105,10 @@
             --warn-soft: #fbbf24;
             --success-soft: #4ade80;
             --violet-soft: #93c5fd;
-            --option-bg: #111111;
+            --option-bg: #111d34;
             --option-color: #ffffff;
-            --brand-red: #2563eb;
-            --brand-blue: #60a5fa;
+            --brand-red: #ef2a3d;
+            --brand-blue: #ffffff;
         }
 
         * {
@@ -122,9 +122,11 @@
         body.client-shell {
             min-height: 100vh;
             background:
-                radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 32%),
-                radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.12), transparent 26%),
-                var(--client-bg);
+                radial-gradient(circle at 18% 18%, rgba(64, 145, 255, 0.26), transparent 26%),
+                radial-gradient(circle at 82% 72%, rgba(224, 34, 75, 0.32), transparent 28%),
+                linear-gradient(180deg, #0B1833 0%, #0B1833 100%);
+            background-attachment: fixed;
+            background-size: cover;
             color: var(--client-text);
             font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
@@ -132,9 +134,11 @@
 
         html.theme-light body.client-shell {
             background:
-                radial-gradient(circle at top right, rgba(37, 99, 235, 0.14), transparent 30%),
-                radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.10), transparent 28%),
-                var(--client-bg);
+                radial-gradient(circle at 18% 18%, rgba(64, 145, 255, 0.26), transparent 26%),
+                radial-gradient(circle at 82% 72%, rgba(224, 34, 75, 0.32), transparent 28%),
+                linear-gradient(180deg, #0B1833 0%, #0B1833 100%);
+            background-attachment: fixed;
+            background-size: cover;
         }
 
         .client-topbar {
@@ -479,7 +483,7 @@
     <aside class="client-side" id="clientSidebar">
         <div class="sidebar-header">
             <div class="brand-logo-text">
-                <div class="brand-mini"><span class="brand-red">Med</span><span class="brand-blue">RANKO</span></div>
+                <div class="brand-mini"><span class="brand-blue">Med</span><span class="brand-red">RANKO</span></div>
             </div>
         </div>
 
@@ -540,7 +544,7 @@
                 </div>
 
                 <div class="topbar-brand">
-                    <div class="brand-name"><span class="brand-red">Med</span><span class="brand-blue">RANKO</span>
+                    <div class="brand-name"><span class="brand-blue">Med</span><span class="brand-red">RANKO</span>
                     </div>
                 </div>
 
@@ -622,9 +626,10 @@
         html.theme-light,
         html.theme-light body,
         body.client-shell {
-            color-scheme: dark;
-            background: #090909;
-            color: #f3f4f6;
+            min-height: 100vh;
+            background: #0B1833;
+            color: var(--client-text);
+            font-family: 'Inter', 'Noto Sans Arabic', sans-serif;
         }
     </style>
 </body>

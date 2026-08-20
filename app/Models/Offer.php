@@ -28,7 +28,7 @@ class Offer extends Model
     private static function invalidatePlatformCache(): void
     {
         try {
-            Cache::forget('platform_compare_products_cache_v2');
+            Cache::forget('platform_compare_products_cache_v3');
         } catch (\Throwable) {
             // Cache driver failure should never block Offer operations.
         }

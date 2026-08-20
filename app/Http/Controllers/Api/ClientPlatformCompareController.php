@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Offer;
-use App\Models\Product;
 use App\Models\Upload;
 use App\Services\ExcelSearchService;
 use App\Services\NormalizerService;
 use App\Services\PlatformCompareService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -94,30 +91,22 @@ class ClientPlatformCompareController extends Controller
             throw $e;
         }
 
-        $offerMap = [];
-        foreach ($cache->all() as $product) {
-            if (isset($product->best_offer)) {
-                $offerMap[$product->id] = $product->best_offer;
-            }
-        }
-
-        Log::info('PlatformCompare: cache + offers loaded', [
-            'products_loaded' => $cache->count(),
-            'offers_loaded' => count($offerMap),
+        Log::info('PlatformCompare: cache loaded', [
+            'products_loaded' => count($cache),
             'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
         ]);
 
         $buildStart = microtime(true);
 
         try {
-            $lines = $this->platformCompareService->buildLines($rows, $cache, null, $offerMap);
+            $lines = $this->platformCompareService->buildLines($rows, $cache);
         } catch (\Throwable $e) {
             Log::error('PlatformCompare: buildLines FAILED', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'rows_count' => count($rows),
-                'products_count' => $cache->count(),
+                'products_count' => count($cache),
             ]);
             throw $e;
         }
@@ -126,7 +115,7 @@ class ClientPlatformCompareController extends Controller
 
         Log::info('PlatformCompare: DONE', [
             'rows_count' => count($rows),
-            'products_count' => $cache->count(),
+            'products_count' => count($cache),
             'lines_count' => count($lines),
             'total_elapsed_ms' => round((microtime(true) - $startMs) * 1000),
             'build_elapsed_ms' => round((microtime(true) - $buildStart) * 1000),
@@ -191,17 +180,9 @@ class ClientPlatformCompareController extends Controller
 
         $cache = $this->loadUploadCache($uploadId);
 
-        $offerMap = [];
-        foreach ($cache->all() as $product) {
-            if (isset($product->best_offer)) {
-                $offerMap[$product->id] = $product->best_offer;
-            }
-        }
-
         Log::info('PlatformCompare: fileToUpload cache loaded', [
             'upload_id' => $uploadId,
-            'products_loaded' => $cache->count(),
-            'offers_loaded' => count($offerMap),
+            'products_loaded' => count($cache),
             'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
         ]);
 
@@ -679,21 +660,20 @@ class ClientPlatformCompareController extends Controller
     }
 
     /**
-     * تحميل جميع منتجات المنصة النشطة (ذات العروض النشطة) مع أفضل عرض لكل منتج.
+     * تحميل جميع منتجات المنصة النشطة مع أفضل عرض لكل منتج.
      *
-     * - استعلام واحد直达 من DB::table بدلاً من chunked Eloquent LIKE queries.
-     * - مُخزون مؤقت لمدة 12 ساعة لتخطي DB تماماً في الطلبات التالية.
-     * - لا ORM Hydration: نتائج DB مباشرة كـ stdClass.
+     * يُخزّن كـ plain associative arrays + precomputed tokens/numbers
+     * لتقليل حجم الكاش وتسريع البناء.
      *
-     * @return Collection<\stdClass>
+     * @return array<int, array{id:int, name_ar:string|null, name_en:string|null, code:string|null, normalized_name:string|null, tokens:array, numbers:array, ar_tokens:array, ar_numbers:array, en_tokens:array, en_numbers:array, best_offer: array{id:int, price:float, discount:float, supplier_name:string|null}|null}>
      */
-    private function loadAllPlatformCache(array $rows): Collection
+    private function loadAllPlatformCache(array $rows): array
     {
         $startMs = microtime(true);
 
-        $cacheKey = 'platform_compare_products_cache_v2';
+        $cacheKey = 'platform_compare_products_cache_v3';
 
-        $products = Cache::remember($cacheKey, 12 * 60 * 60, function (): Collection {
+        $products = Cache::remember($cacheKey, 12 * 60 * 60, function (): array {
             $rows = DB::table('products')
                 ->join('offers', function ($join) {
                     $join->on('offers.product_id', '=', 'products.id')
@@ -712,7 +692,6 @@ class ClientPlatformCompareController extends Controller
                     'offers.id as offer_id',
                     'offers.price as offer_price',
                     'offers.discount as offer_discount',
-                    'offers.supplier_id as offer_supplier_id',
                     'suppliers.name as supplier_name',
                 ])
                 ->orderBy('products.id')
@@ -725,30 +704,37 @@ class ClientPlatformCompareController extends Controller
                 $pid = (int) $row->id;
 
                 if (! isset($productsById[$pid])) {
-                    $p = new \stdClass;
-                    $p->id = $pid;
-                    $p->name_ar = $row->name_ar;
-                    $p->name_en = $row->name_en;
-                    $p->code = $row->code;
-                    $p->normalized_name = $row->normalized_name;
+                    $normName = (string) ($row->normalized_name ?? '');
+                    $nameAr = (string) ($row->name_ar ?? '');
+                    $nameEn = (string) ($row->name_en ?? '');
 
-                    $offer = new \stdClass;
-                    $offer->id = (int) $row->offer_id;
-                    $offer->product_id = $pid;
-                    $offer->price = $row->offer_price;
-                    $offer->discount = $row->offer_discount;
-                    $offer->supplier_name = $row->supplier_name;
-                    $p->best_offer = $offer;
-
-                    $productsById[$pid] = $p;
+                    $productsById[$pid] = [
+                        'id' => $pid,
+                        'name_ar' => $row->name_ar,
+                        'name_en' => $row->name_en,
+                        'code' => $row->code,
+                        'normalized_name' => $row->normalized_name,
+                        'tokens' => $this->computeContentTokens($normName),
+                        'numbers' => $this->computeContentNumbers($normName),
+                        'ar_tokens' => $nameAr !== '' ? $this->computeContentTokens($this->normalizeCacheText($nameAr)) : [],
+                        'ar_numbers' => $nameAr !== '' ? $this->computeContentNumbers($this->normalizeCacheText($nameAr)) : [],
+                        'en_tokens' => $nameEn !== '' ? $this->computeContentTokens($nameEn) : [],
+                        'en_numbers' => $nameEn !== '' ? $this->computeContentNumbers($nameEn) : [],
+                        'best_offer' => [
+                            'id' => (int) $row->offer_id,
+                            'price' => (float) $row->offer_price,
+                            'discount' => (float) $row->offer_discount,
+                            'supplier_name' => $row->supplier_name,
+                        ],
+                    ];
                 }
             }
 
-            return new Collection(array_values($productsById));
+            return array_values($productsById);
         });
 
         Log::info('PlatformCompare: loadAllPlatformCache done', [
-            'products_loaded' => $products->count(),
+            'products_loaded' => count($products),
             'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
             'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 1),
         ]);
@@ -757,70 +743,17 @@ class ClientPlatformCompareController extends Controller
     }
 
     /**
-     * جلب أفضل عرض (أقل سعر) لكل منتج من قاعدة البيانات مباشرة.
-     *
-     * - استعلام واحد مع correlated subquery بدلاً من تحميل كل العروض ثم groupBy في PHP.
-     * - لا ORM Hydration: نتائج DB مباشرة كـ stdClass.
-     *
-     * @param  array<int>  $productIds
-     * @return Collection<int, \stdClass> keyed by product_id — كل عنصر يحوي price, discount, supplier_name
-     */
-    private function loadBestOffersForProducts(array $productIds): Collection
-    {
-        if (empty($productIds)) {
-            return new Collection;
-        }
-
-        $rows = DB::table('offers')
-            ->join('suppliers', 'suppliers.id', '=', 'offers.supplier_id')
-            ->whereIn('offers.product_id', $productIds)
-            ->where(function ($q) {
-                $q->where('expires_at', '>', now())
-                    ->orWhereNull('expires_at');
-            })
-            ->whereColumn('offers.price', '=', DB::raw('(
-                SELECT MIN(o2.price) FROM offers o2
-                WHERE o2.product_id = offers.product_id
-                AND (o2.expires_at > NOW() OR o2.expires_at IS NULL)
-            )'))
-            ->select([
-                'offers.product_id',
-                'offers.id as offer_id',
-                'offers.price',
-                'offers.discount',
-                'suppliers.name as supplier_name',
-            ])
-            ->get();
-
-        $result = [];
-        foreach ($rows as $row) {
-            $offer = new \stdClass;
-            $offer->id = (int) $row->offer_id;
-            $offer->price = $row->price;
-            $offer->discount = $row->discount;
-            $offer->supplier_name = $row->supplier_name;
-            $result[(int) $row->product_id] = $offer;
-        }
-
-        return new Collection($result);
-    }
-
-    /**
      * تحميل منتجات ملف مرفوع مع أفضل عرض لكل منتج (وضع 2).
      *
-     * - استعلام واحد: products × offers × suppliers WHERE upload_id = X.
-     * - مخزون مؤقت لمدة 1 ساعة لكل upload_id.
-     * - لا ORM Hydration: stdObject مباشرة من DB.
-     *
-     * @return Collection<\stdClass>
+     * @return array<int, array{id:int, name_ar:string|null, name_en:string|null, code:string|null, normalized_name:string|null, tokens:array, numbers:array, ar_tokens:array, ar_numbers:array, en_tokens:array, en_numbers:array, best_offer: array{id:int, price:float, discount:float, supplier_name:string|null}|null}>
      */
-    private function loadUploadCache(int $uploadId): Collection
+    private function loadUploadCache(int $uploadId): array
     {
         $startMs = microtime(true);
 
-        $cacheKey = "upload_compare_cache_v2_{$uploadId}";
+        $cacheKey = "upload_compare_cache_v3_{$uploadId}";
 
-        $products = Cache::remember($cacheKey, 60 * 60, function () use ($uploadId): Collection {
+        $products = Cache::remember($cacheKey, 60 * 60, function () use ($uploadId): array {
             $rows = DB::table('products')
                 ->join('offers', function ($join) use ($uploadId) {
                     $join->on('offers.product_id', '=', 'products.id')
@@ -848,34 +781,107 @@ class ClientPlatformCompareController extends Controller
                 $pid = (int) $row->id;
 
                 if (! isset($productsById[$pid])) {
-                    $p = new \stdClass;
-                    $p->id = $pid;
-                    $p->name_ar = $row->name_ar;
-                    $p->name_en = $row->name_en;
-                    $p->code = $row->code;
-                    $p->normalized_name = $row->normalized_name;
+                    $normName = (string) ($row->normalized_name ?? '');
+                    $nameAr = (string) ($row->name_ar ?? '');
+                    $nameEn = (string) ($row->name_en ?? '');
 
-                    $offer = new \stdClass;
-                    $offer->id = (int) $row->offer_id;
-                    $offer->product_id = $pid;
-                    $offer->price = $row->offer_price;
-                    $offer->discount = $row->offer_discount;
-                    $offer->supplier_name = $row->supplier_name;
-                    $p->best_offer = $offer;
-
-                    $productsById[$pid] = $p;
+                    $productsById[$pid] = [
+                        'id' => $pid,
+                        'name_ar' => $row->name_ar,
+                        'name_en' => $row->name_en,
+                        'code' => $row->code,
+                        'normalized_name' => $row->normalized_name,
+                        'tokens' => $this->computeContentTokens($normName),
+                        'numbers' => $this->computeContentNumbers($normName),
+                        'ar_tokens' => $nameAr !== '' ? $this->computeContentTokens($this->normalizeCacheText($nameAr)) : [],
+                        'ar_numbers' => $nameAr !== '' ? $this->computeContentNumbers($this->normalizeCacheText($nameAr)) : [],
+                        'en_tokens' => $nameEn !== '' ? $this->computeContentTokens($nameEn) : [],
+                        'en_numbers' => $nameEn !== '' ? $this->computeContentNumbers($nameEn) : [],
+                        'best_offer' => [
+                            'id' => (int) $row->offer_id,
+                            'price' => (float) $row->offer_price,
+                            'discount' => (float) $row->offer_discount,
+                            'supplier_name' => $row->supplier_name,
+                        ],
+                    ];
                 }
             }
 
-            return new Collection(array_values($productsById));
+            return array_values($productsById);
         });
 
         Log::info('PlatformCompare: loadUploadCache done', [
             'upload_id' => $uploadId,
-            'products_loaded' => $products->count(),
+            'products_loaded' => count($products),
             'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
         ]);
 
         return $products;
+    }
+
+    /**
+     * استخراج Content Tokens من نص (مطابق لمنطق Service).
+     */
+    private function computeContentTokens(string $name): array
+    {
+        preg_match_all('/\p{L}+/u', $name, $matches);
+
+        $stopWords = array_flip([
+            'اقراص', 'قرص', 'كبسول', 'كبسوله', 'كبسولات', 'حبوب', 'شراب', 'حقن',
+            'قطرات', 'قطره', 'نقط', 'مرهم', 'كريم', 'جل', 'بخاخ', 'سبراي', 'محلول',
+            'معلق', 'لبوس', 'تحاميل', 'امبول', 'امبولات', 'شريط', 'شرايط', 'باكت',
+            'علبه', 'زجاجه', 'مسحوق', 'بودره', 'سيروم', 'لوشن', 'لوسيون', 'مجم',
+            'ملجم', 'مليجرام', 'جرام', 'ملى', 'مللى', 'مل', 'سم', 'لتر', 'كجم',
+            'فموي', 'وريدي', 'موضعي', 'مستمر', 'معجل', 'مؤخر', 'سعر', 'جنيه', 'جنية',
+            'مع', 'وزن', 'عبوه', 'محيط', 'العين', 'مطهر', 'غسول', 'جديد', 'احمر',
+            'اكسترا', 'ال', 'جيل', 'كبير', 'صغير', 'كبيره', 'صغيره', 'صن', 'بلوك',
+            'بديل', 'سيرم', 'شامبو', 'مضاد', 'حيوي', 'ادويه', 'علاج', 'دواء', 'مستحضر',
+            'كبسولات',
+        ]);
+
+        $out = [];
+        foreach ($matches[0] as $run) {
+            $lower = mb_strtolower($run);
+            $lower = str_replace(
+                ['أ', 'إ', 'آ', 'ٱ', 'ى', 'ئ', 'ة', 'ؤ', 'ء'],
+                ['ا', 'ا', 'ا', 'ا', 'ي', 'ي', 'ه', 'و', ''],
+                $lower,
+            );
+
+            if (mb_strlen($lower) < 2) {
+                continue;
+            }
+            if (isset($stopWords[$lower])) {
+                continue;
+            }
+
+            $out[] = $lower;
+        }
+
+        return $out;
+    }
+
+    private function computeContentNumbers(string $name): array
+    {
+        $text = str_replace(
+            ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'],
+            ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            $name,
+        );
+
+        preg_match_all('/\d+(?:\.\d+)?/u', $text, $matches);
+
+        return $matches[0];
+    }
+
+    private function normalizeCacheText(string $text): string
+    {
+        $normalized = mb_strtolower(trim($text));
+        $normalized = str_replace(['أ', 'إ', 'آ', 'ٱ'], 'ا', $normalized);
+        $normalized = str_replace(['ى', 'ئ', 'ة', 'ؤ', 'ء'], ['ي', 'ي', 'ه', 'و', ''], $normalized);
+        $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
     }
 }

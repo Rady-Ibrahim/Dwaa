@@ -2,19 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\Product;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
-
 /**
  * خدمة المطابقة المحسّنة بين ملفات Excel ومنتجات/عروض المنصة.
  *
- * الاستراتيجية:
- * 1. In-Memory Hash Map Indexing: فهرسة المنتجات by first-token + by token مع
- *    ProductData lazy computation → كل صف يقارن بمرشحين قليلين (10-50) بدل58K.
- * 2. Early Exit: خروج فوري عند تطابق 100%.
- * 3. فلتر تقارب السعر 2% قبل المطابقة النصية لتضييق المرشحين.
- * 4. Log مُحسّن: ملخص فقط (start/done) بدون debug logs داخل اللوب.
+ * الاستراتيجية (v3 — O(1) hash maps + plain arrays):
+ * 1. Cache payloads = plain associative arrays + precomputed tokens/numbers.
+ * 2. Hash Map Index: by_normalized O(1), by_code O(1), by_first O(1), by_first_sub O(1).
+ * 3. Fuzzy only for unmatched rows via token overlap scoring.
+ * 4. Offer map built internally — no redundant controller loops.
  */
 class PlatformCompareService
 {
@@ -41,18 +36,29 @@ class PlatformCompareService
 
     private static ?array $stopWordMap = null;
 
-    public function __construct(private NormalizerService $normalizer) {}
-
     /**
-     * الـ entry point الرئيسي: يبني سطور المقارنة لصفوف الملف مقابل المنتجات المحملة.
+     * الـ entry point: يبني سطور المقارنة لصفوف الملف مقابل المنتجات المحملة.
      *
-     * التدفق لكل صف:
-     *   Hash Map lookup (O(1)/token) → فلتر السعر2% → drugOverlapScore → early exit
+     * يعمل مع plain arrays (بـ precomputed tokens) أو Eloquent objects.
+     * يبني offerMap داخلياً من cachedProducts.
      */
-    public function buildLines(array $rows, Collection $cachedProducts, ?int $uploadId = null, array $offerMap = []): array
+    public function buildLines(array $rows, array $cachedProducts, ?int $uploadId = null): array
     {
         $this->nameCache = [];
         $this->productDataCache = [];
+
+        // بناء offerMap مرة واحدة من الكاش
+        $offerMap = [];
+        foreach ($cachedProducts as $product) {
+            $pid = is_array($product) ? ($product['id'] ?? null) : ($product->id ?? null);
+            if ($pid === null) {
+                continue;
+            }
+            $offer = is_array($product) ? ($product['best_offer'] ?? null) : ($product->best_offer ?? $product->offers?->first());
+            if ($offer) {
+                $offerMap[$pid] = $offer;
+            }
+        }
 
         $index = $this->buildHashMapIndex($cachedProducts);
         $lines = [];
@@ -71,29 +77,59 @@ class PlatformCompareService
                 continue;
             }
 
-            $normalizedQuery = $this->normalizer->normalize($rawQuery);
+            $normalizedQuery = $this->normalizeQuery($rawQuery);
             $firstWord = explode(' ', $normalizedQuery)[0] ?? '';
             $queryPrepared = $this->prepareName($normalizedQuery);
 
-            // ── الخطوة 1: جلب المرشحين من الـ Hash Map ──
-            $candidates = $this->findCandidates($normalizedQuery, $firstWord, $index);
+            // ── الخطوة 1a: Exact match O(1) عبر normalized_name ──
+            $exactProduct = $index['by_normalized'][$normalizedQuery] ?? null;
+            if ($exactProduct !== null) {
+                $pid = is_array($exactProduct) ? $exactProduct['id'] : $exactProduct->id;
+                $matchedProductIds[$pid] = true;
+                $lines[] = [
+                    'query' => $rawQuery, 'price' => $row['price'],
+                    'discount' => $row['discount'],
+                    'matched_product' => $this->productName($exactProduct),
+                    'similarity' => 100.0, '_product_id' => $pid,
+                    'platform_best' => null, 'status' => 'both',
+                ];
 
-            if ($candidates === [] && mb_strlen($firstWord) >= 3) {
-                $candidates = $this->fallbackCandidates($firstWord, $normalizedQuery, $cachedProducts);
+                continue;
             }
 
-            // ── الخطوة 2: فلتر تقارب السعر2% ──
+            // ── الخطوة 1b: Exact match O(1) عبر code ──
+            $queryCode = $this->extractCode($rawQuery);
+            if ($queryCode !== null && isset($index['by_code'][$queryCode])) {
+                $exactProduct = $index['by_code'][$queryCode];
+                $pid = is_array($exactProduct) ? $exactProduct['id'] : $exactProduct->id;
+                $matchedProductIds[$pid] = true;
+                $lines[] = [
+                    'query' => $rawQuery, 'price' => $row['price'],
+                    'discount' => $row['discount'],
+                    'matched_product' => $this->productName($exactProduct),
+                    'similarity' => 100.0, '_product_id' => $pid,
+                    'platform_best' => null, 'status' => 'both',
+                ];
+
+                continue;
+            }
+
+            // ── الخطوة 2: Fuzzy match عبر hash map tokens ──
+            $candidates = $this->findCandidates($normalizedQuery, $firstWord, $index);
+
+            // ── الخطوة 3: فلتر تقارب السعر 2% ──
             $rowPrice = (float) ($row['price'] ?? 0);
             if ($rowPrice > 0 && $candidates !== [] && $offerMap !== []) {
                 $candidates = $this->filterByPriceProximity($candidates, $rowPrice, $offerMap);
             }
 
-            // ── الخطوة 3: المطابقة النصية + Early Exit ──
+            // ── الخطوة 4: المطابقة النصية + Early Exit ──
             $bestScore = 0.0;
             $bestProduct = null;
 
             foreach ($candidates as $product) {
-                $pd = $this->getProductData($product->id, $product);
+                $pid = is_array($product) ? $product['id'] : $product->id;
+                $pd = $this->getProductData($pid, $product);
                 $nameScore = $this->computeNameScore($queryPrepared, $pd);
 
                 if ($nameScore <= 0.0) {
@@ -112,7 +148,7 @@ class PlatformCompareService
                 }
 
                 if ($bestScore >= 100.0) {
-                    break; // Early Exit: تطابق تام، لا حاجة لتقييم باقي المرشحين
+                    break;
                 }
             }
 
@@ -122,21 +158,19 @@ class PlatformCompareService
                 continue;
             }
 
-            $matchedProductIds[$bestProduct->id] = true;
-
+            $bestPid = is_array($bestProduct) ? $bestProduct['id'] : $bestProduct->id;
+            $matchedProductIds[$bestPid] = true;
             $lines[] = [
-                'query' => $rawQuery,
-                'price' => $row['price'],
+                'query' => $rawQuery, 'price' => $row['price'],
                 'discount' => $row['discount'],
-                'matched_product' => $bestProduct->name_ar ?: $bestProduct->name_en,
+                'matched_product' => $this->productName($bestProduct),
                 'similarity' => round($bestScore, 1),
-                '_product_id' => $bestProduct->id,
-                'platform_best' => null,
-                'status' => 'both',
+                '_product_id' => $bestPid,
+                'platform_best' => null, 'status' => 'both',
             ];
         }
 
-        $this->assignOffers($lines, $cachedProducts, $offerMap, $uploadId);
+        $this->assignOffers($lines, $offerMap);
 
         return $lines;
     }
@@ -171,56 +205,76 @@ class PlatformCompareService
     //  Hash Map Indexing
     // ════════════════════════════════════════════════════════════════
 
-    /**
-     * بناء فهرس hash map: by_first (أول كلمة) + by_token (كل كلمة ≥3 أحرف).
-     * كل قيمة = array<product_id => Product> → lookup O(1).
-     *
-     * @return array{by_first: array<string, array<int, Product>>, by_token: array<string, array<int, Product>>}
-     */
-    private function buildHashMapIndex(Collection $products): array
+    private function buildHashMapIndex(array $products): array
     {
+        $byNormalized = [];
+        $byCode = [];
         $byFirst = [];
-        $byToken = [];
+        $byFirstSub = [];
 
         foreach ($products as $product) {
-            $name = (string) ($product->normalized_name ?? '');
-            $tokens = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $normName = is_array($product) ? ($product['normalized_name'] ?? '') : ($product->normalized_name ?? '');
+            $code = is_array($product) ? ($product['code'] ?? null) : ($product->code ?? null);
 
-            $first = $tokens[0] ?? '';
-            if ($first !== '') {
-                $byFirst[$first][$product->id] = $product;
+            if ($normName !== '') {
+                $byNormalized[$normName] = $product;
             }
 
-            foreach ($tokens as $token) {
-                if (mb_strlen($token) >= 3) {
-                    $byToken[$token][$product->id] = $product;
+            if ($code !== null && $code !== '') {
+                $normalizedCode = mb_strtolower(trim((string) $code));
+                if (! isset($byCode[$normalizedCode])) {
+                    $byCode[$normalizedCode] = $product;
                 }
+            }
+
+            $tokens = is_array($product) ? ($product['tokens'] ?? []) : $this->contentTokens($normName);
+            $firstWord = $tokens[0] ?? '';
+
+            if ($firstWord !== '') {
+                $byFirst[$firstWord][] = $product;
+            }
+
+            if (mb_strlen($normName) >= 8) {
+                $sub = mb_substr($normName, 0, 8);
+                $byFirstSub[$sub][] = $product;
             }
         }
 
-        return ['by_first' => $byFirst, 'by_token' => $byToken];
+        return [
+            'by_normalized' => $byNormalized,
+            'by_code' => $byCode,
+            'by_first' => $byFirst,
+            'by_first_sub' => $byFirstSub,
+        ];
     }
 
-    /**
-     * جلب المرشحين من الـ hash map: lookup O(1) لكل token، ثم فلتر by matchesPlatformProductCandidate.
-     *
-     * @return list<Product>
-     */
     private function findCandidates(string $normalizedQuery, string $firstWord, array $index): array
     {
         $candidateMap = [];
 
         if ($firstWord !== '' && isset($index['by_first'][$firstWord])) {
-            foreach ($index['by_first'][$firstWord] as $id => $product) {
-                $candidateMap[$id] = $product;
+            foreach ($index['by_first'][$firstWord] as $product) {
+                $pid = is_array($product) ? $product['id'] : $product->id;
+                $candidateMap[$pid] = $product;
             }
         }
 
         $queryTokens = preg_split('/\s+/u', $normalizedQuery, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         foreach ($queryTokens as $token) {
-            if (mb_strlen($token) >= 3 && isset($index['by_token'][$token])) {
-                foreach ($index['by_token'][$token] as $id => $product) {
-                    $candidateMap[$id] = $product;
+            if (mb_strlen($token) >= 3 && isset($index['by_first'][$token])) {
+                foreach ($index['by_first'][$token] as $product) {
+                    $pid = is_array($product) ? $product['id'] : $product->id;
+                    $candidateMap[$pid] = $product;
+                }
+            }
+        }
+
+        if ($candidateMap === []) {
+            $prefix8 = mb_strlen($normalizedQuery) >= 8 ? mb_substr($normalizedQuery, 0, 8) : null;
+            if ($prefix8 !== null && isset($index['by_first_sub'][$prefix8])) {
+                foreach ($index['by_first_sub'][$prefix8] as $product) {
+                    $pid = is_array($product) ? $product['id'] : $product->id;
+                    $candidateMap[$pid] = $product;
                 }
             }
         }
@@ -239,9 +293,9 @@ class PlatformCompareService
         return $result;
     }
 
-    private function matchesProductCandidate(string $normalizedQuery, string $firstWord, array $queryTokens, object $product): bool
+    private function matchesProductCandidate(string $normalizedQuery, string $firstWord, array $queryTokens, array|object $product): bool
     {
-        $productName = (string) ($product->normalized_name ?? '');
+        $productName = is_array($product) ? ($product['normalized_name'] ?? '') : ($product->normalized_name ?? '');
         if ($productName === '') {
             return false;
         }
@@ -264,26 +318,6 @@ class PlatformCompareService
         return false;
     }
 
-    private function fallbackCandidates(string $firstWord, string $normalizedQuery, Collection $cachedProducts): array
-    {
-        $partialQuery = mb_strlen($normalizedQuery) >= 6 ? mb_substr($normalizedQuery, 0, 8) : null;
-        $result = [];
-
-        foreach ($cachedProducts as $product) {
-            $name = (string) ($product->normalized_name ?? '');
-            if ($name === '') {
-                continue;
-            }
-            if (str_contains($name, $firstWord) || str_contains($name, $normalizedQuery)) {
-                $result[] = $product;
-            } elseif ($partialQuery !== null && str_contains($name, $partialQuery)) {
-                $result[] = $product;
-            }
-        }
-
-        return $result;
-    }
-
     // ════════════════════════════════════════════════════════════════
     //  Price Proximity Filter
     // ════════════════════════════════════════════════════════════════
@@ -292,11 +326,12 @@ class PlatformCompareService
     {
         $result = [];
         foreach ($candidates as $product) {
-            $offer = $offerMap[$product->id] ?? null;
-            if (! $offer || (float) $offer->price <= 0) {
+            $pid = is_array($product) ? $product['id'] : $product->id;
+            $offer = $offerMap[$pid] ?? null;
+            $offerPrice = is_array($offer) ? ((float) ($offer['price'] ?? 0)) : ((float) ($offer->price ?? 0));
+            if (! $offer || $offerPrice <= 0) {
                 continue;
             }
-            $offerPrice = (float) $offer->price;
             if (abs($offerPrice - $rowPrice) / $rowPrice <= self::PRICE_PROXIMITY_RATIO) {
                 $result[] = $product;
             }
@@ -309,26 +344,33 @@ class PlatformCompareService
     //  Lazy Product Data + Name Scoring
     // ════════════════════════════════════════════════════════════════
 
-    /**
-     * تجهيز بيانات المنتج مرة واحدة فقط (lazy) ثم إعادة استخدامها في كل مقارنة.
-     */
-    private function getProductData(int $productId, object $product): array
+    private function getProductData(int $productId, array|object $product): array
     {
         return $this->productDataCache[$productId] ??= $this->buildProductData($product);
     }
 
-    private function buildProductData(object $product): array
+    private function buildProductData(array|object $product): array
     {
+        if (is_array($product)) {
+            return [
+                'norm_tokens' => $product['tokens'] ?? [],
+                'norm_numbers' => $product['numbers'] ?? [],
+                'ar_tokens' => $product['ar_tokens'] ?? [],
+                'ar_numbers' => $product['ar_numbers'] ?? [],
+                'en_tokens' => $product['en_tokens'] ?? [],
+                'en_numbers' => $product['en_numbers'] ?? [],
+            ];
+        }
+
         $normName = (string) ($product->normalized_name ?? '');
         $nameAr = (string) ($product->name_ar ?? '');
         $nameEn = (string) ($product->name_en ?? '');
 
         return [
-            'product' => $product,
             'norm_tokens' => $normName !== '' ? $this->prepareName($normName)['tokens'] : [],
             'norm_numbers' => $normName !== '' ? $this->prepareName($normName)['numbers'] : [],
-            'ar_tokens' => $nameAr !== '' ? $this->prepareName($this->normalizer->normalize($nameAr))['tokens'] : [],
-            'ar_numbers' => $nameAr !== '' ? $this->prepareName($this->normalizer->normalize($nameAr))['numbers'] : [],
+            'ar_tokens' => $nameAr !== '' ? $this->prepareName($this->normalizeQuery($nameAr))['tokens'] : [],
+            'ar_numbers' => $nameAr !== '' ? $this->prepareName($this->normalizeQuery($nameAr))['numbers'] : [],
             'en_tokens' => $nameEn !== '' ? $this->prepareName($nameEn)['tokens'] : [],
             'en_numbers' => $nameEn !== '' ? $this->prepareName($nameEn)['numbers'] : [],
         ];
@@ -361,8 +403,39 @@ class PlatformCompareService
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  Text Analysis Helpers (content tokens, numbers, overlap score)
+    //  Text Analysis Helpers
     // ════════════════════════════════════════════════════════════════
+
+    private function normalizeQuery(string $text): string
+    {
+        $normalized = mb_strtolower(trim($text));
+        $normalized = str_replace(['أ', 'إ', 'آ', 'ٱ'], 'ا', $normalized);
+        $normalized = str_replace(['ى', 'ئ', 'ة', 'ؤ', 'ء'], ['ي', 'ي', 'ه', 'و', ''], $normalized);
+        $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
+    }
+
+    private function extractCode(string $text): ?string
+    {
+        $normalized = preg_replace('/[^\p{N}]/u', '', $text);
+
+        if ($normalized !== '' && mb_strlen($normalized) >= 3) {
+            return $normalized;
+        }
+
+        return null;
+    }
+
+    private function productName(array|object $product): string
+    {
+        if (is_array($product)) {
+            return $product['name_ar'] ?? $product['name_en'] ?? '';
+        }
+
+        return $product->name_ar ?: $product->name_en;
+    }
 
     private function prepareName(string $name): array
     {
@@ -485,37 +558,39 @@ class PlatformCompareService
     //  Offer Assignment + Output Helpers
     // ════════════════════════════════════════════════════════════════
 
-    private function assignOffers(array &$lines, Collection $cachedProducts, array &$offerMap, ?int $uploadId): void
+    private function assignOffers(array &$lines, array $offerMap): void
     {
-        if ($uploadId !== null) {
-            $offerMap = [];
-            foreach ($cachedProducts as $product) {
-                $offer = $product->best_offer ?? $product->offers?->first();
-                if ($offer) {
-                    $offerMap[$product->id] = $offer;
-                }
-            }
-        }
-
         foreach ($lines as &$line) {
             if (($line['status'] ?? '') !== 'both' || empty($line['_product_id'])) {
                 continue;
             }
 
             $offer = $offerMap[$line['_product_id']] ?? null;
-            $platformPrice = $offer ? (float) $offer->price : null;
 
+            $platformPrice = null;
+            $discount = null;
             $supplierName = null;
-            if (isset($offer->supplier) && is_object($offer->supplier)) {
-                $supplierName = $offer->supplier->name;
-            } elseif (isset($offer->supplier_name)) {
-                $supplierName = $offer->supplier_name;
+
+            if ($offer) {
+                if (is_array($offer)) {
+                    $platformPrice = isset($offer['price']) ? (float) $offer['price'] : null;
+                    $discount = isset($offer['discount']) ? (float) $offer['discount'] : null;
+                    $supplierName = $offer['supplier_name'] ?? null;
+                } else {
+                    $platformPrice = (float) $offer->price;
+                    $discount = (float) $offer->discount;
+                    if (isset($offer->supplier) && is_object($offer->supplier)) {
+                        $supplierName = $offer->supplier->name;
+                    } elseif (isset($offer->supplier_name)) {
+                        $supplierName = $offer->supplier_name;
+                    }
+                }
             }
 
             $line['platform_best'] = $offer ? [
                 'supplier' => $supplierName,
                 'price' => $platformPrice,
-                'discount' => (float) $offer->discount,
+                'discount' => $discount,
             ] : null;
             unset($line['_product_id']);
         }

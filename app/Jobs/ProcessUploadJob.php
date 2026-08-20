@@ -122,7 +122,7 @@ class ProcessUploadJob implements ShouldQueue
         ]);
 
         try {
-            Cache::forget('platform_compare_products_cache_v2');
+            Cache::forget('platform_compare_products_cache_v3');
         } catch (Throwable) {
             // Cache driver failure should never block the upload process.
         }

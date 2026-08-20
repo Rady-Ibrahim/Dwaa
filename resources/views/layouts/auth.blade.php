@@ -26,7 +26,7 @@
         }
 
         ::selection {
-            background: rgba(225, 29, 72, 0.2);
+            background: rgba(59, 130, 246, 0.2);
         }
     </style>
 </head>
@@ -36,14 +36,14 @@
 
     <main class="relative z-10 my-auto w-full max-w-md">
         <div
-            class="rounded-3xl border border-slate-800/80 bg-[#0c101c]/80 p-8 shadow-2xl shadow-rose-950/30 backdrop-blur-xl sm:p-10">
+            class="rounded-3xl border border-slate-800/80 bg-[#0c101c]/80 p-8 shadow-2xl shadow-blue-950/30 backdrop-blur-xl sm:p-10">
             <div class="mb-8 text-center">
                 <div
-                    class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#8d0f2f]/40 bg-slate-900/90 text-[#a40c2a] shadow-lg shadow-[#4a0c17]/40">
+                    class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-blue-500/40 bg-slate-900/90 text-blue-500 shadow-lg shadow-blue-900/40">
                     <i class="fa-solid fa-user text-2xl"></i>
                 </div>
-                <h2 class="text-2xl font-bold tracking-wide text-[#f3d2d8]">@yield('auth_title', 'تسجيل الدخول')</h2>
-                <div class="mx-auto mt-2 h-1 w-10 rounded-full bg-[#a40c2a]"></div>
+                <h2 class="text-2xl font-bold tracking-wide text-blue-100">@yield('auth_title', 'تسجيل الدخول')</h2>
+                <div class="mx-auto mt-2 h-1 w-10 rounded-full bg-blue-500"></div>
             </div>
 
             @yield('auth_form')
@@ -56,7 +56,7 @@
                 </div>
 
                 <a href="{{ route('client.password') }}"
-                    class="inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-400 hover:underline">
+                    class="inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-blue-400 transition hover:text-blue-300 hover:underline">
                     <i class="fa-solid fa-lock text-sm"></i>
                     نسيت كلمة المرور؟
                 </a>

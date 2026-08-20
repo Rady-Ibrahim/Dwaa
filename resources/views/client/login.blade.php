@@ -12,7 +12,7 @@
             <div class="relative">
                 <input type="text" id="phone" autocomplete="username" dir="ltr"
                     placeholder="••••••••"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-3.5 pl-4 pr-10 text-right text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-600/20"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-3.5 pl-4 pr-10 text-right text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     required>
                 <i
                     class="fa-solid fa-phone pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
@@ -23,7 +23,7 @@
             <label for="password" class="mb-2 block text-xs font-semibold text-slate-300">كلمة المرور</label>
             <div class="relative">
                 <input type="password" id="password" autocomplete="current-password" placeholder="••••••••"
-                    class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-3.5 pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-rose-600 focus:ring-2 focus:ring-rose-600/20"
+                    class="w-full rounded-xl border border-slate-800 bg-slate-950/60 py-3.5 pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     required>
                 <i
                     class="fa-solid fa-lock pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
@@ -37,13 +37,13 @@
 
         <label class="flex cursor-pointer items-center gap-2 pt-1 text-xs font-medium text-slate-300">
             <input type="checkbox" id="rememberMe"
-                class="remember-check h-4 w-4 rounded border-slate-700 bg-slate-900 focus:ring-[#a40c2a]">
+                class="remember-check h-4 w-4 rounded border-slate-700 bg-slate-900 focus:ring-blue-500">
             تذكرني
         </label>
 
         <button type="button" id="loginBtn"
-            class="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#2b070d]/40 transition duration-200 hover:brightness-110 hover:shadow-[#5d0d1d]/40 active:scale-[0.99]"
-            style="background: linear-gradient(90deg, #1b070d, #4f0a19, #1b070d);">
+            class="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-950/40 transition duration-200 hover:brightness-110 hover:shadow-blue-900/40 active:scale-[0.99]"
+            style="background: linear-gradient(90deg, #0c1d3d, #1e3a6e, #0c1d3d);">
             <span>دخول</span>
             <i class="fa-solid fa-arrow-left text-xs"></i>
         </button>
@@ -54,7 +54,7 @@
 
 <style>
     .remember-check {
-        accent-color: #7a0c1d;
+        accent-color: #3b82f6;
     }
 </style>
 

@@ -11,6 +11,8 @@ class FileCompareService
 {
     use HasExcelHeaderAliases;
 
+    private const MAX_PRICE_DIFF = 2.0;
+
     private const DRUG_STOP_WORDS = [
         'اقراص', 'قرص', 'كبسول', 'كبسوله', 'كبسولات', 'حبوب', 'شراب', 'حقن', 'قطرات', 'قطره',
         'نقط', 'مرهم', 'كريم', 'جل', 'بخاخ', 'سبراي', 'محلول', 'معلق', 'لبوس', 'تحاميل',
@@ -111,8 +113,15 @@ class FileCompareService
             }
 
             if ($bestJ !== null) {
-                $usedB[$bestJ] = true;
                 $b = $rowsB[$bestJ];
+
+                if (! $this->hasAcceptablePriceDiff($a['price'], $b['price'])) {
+                    $unmatchedA[] = $this->stripRow($a);
+
+                    continue;
+                }
+
+                $usedB[$bestJ] = true;
                 $pairs[] = [
                     'file_a' => $this->stripRow($a),
                     'file_b' => $this->stripRow($b),
@@ -135,6 +144,18 @@ class FileCompareService
             'unmatched_a' => $unmatchedA,
             'unmatched_b' => $unmatchedB,
         ];
+    }
+
+    /**
+     * يقبل الزوج فقط إذا كان فرق السعر بين الملفين ≤ 2 (فرق مطلق).
+     */
+    private function hasAcceptablePriceDiff(float $priceA, float $priceB): bool
+    {
+        if ($priceA <= 0 || $priceB <= 0) {
+            return true;
+        }
+
+        return abs($priceA - $priceB) <= self::MAX_PRICE_DIFF;
     }
 
     /**

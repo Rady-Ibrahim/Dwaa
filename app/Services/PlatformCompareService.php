@@ -15,7 +15,7 @@ class PlatformCompareService
 {
     private const MIN_SIMILARITY = 45.0;
 
-    private const PRICE_PROXIMITY_RATIO = 0.02;
+    private const MAX_PRICE_DIFF = 2.0;
 
     private const DRUG_STOP_WORDS = [
         'اقراص', 'قرص', 'كبسول', 'كبسوله', 'كبسولات', 'حبوب', 'شراب', 'حقن',
@@ -81,26 +81,21 @@ class PlatformCompareService
             $firstWord = explode(' ', $normalizedQuery)[0] ?? '';
             $queryPrepared = $this->prepareName($normalizedQuery);
 
+            $rowPrice = (float) ($row['price'] ?? 0);
+
             // ── الخطوة 1a: Exact match O(1) عبر normalized_name ──
             $exactProduct = $index['by_normalized'][$normalizedQuery] ?? null;
-            if ($exactProduct !== null) {
-                $pid = is_array($exactProduct) ? $exactProduct['id'] : $exactProduct->id;
-                $matchedProductIds[$pid] = true;
-                $lines[] = [
-                    'query' => $rawQuery, 'price' => $row['price'],
-                    'discount' => $row['discount'],
-                    'matched_product' => $this->productName($exactProduct),
-                    'similarity' => 100.0, '_product_id' => $pid,
-                    'platform_best' => null, 'status' => 'both',
-                ];
-
-                continue;
-            }
 
             // ── الخطوة 1b: Exact match O(1) عبر code ──
-            $queryCode = $this->extractCode($rawQuery);
-            if ($queryCode !== null && isset($index['by_code'][$queryCode])) {
-                $exactProduct = $index['by_code'][$queryCode];
+            if ($exactProduct === null) {
+                $queryCode = $this->extractCode($rawQuery);
+                if ($queryCode !== null && isset($index['by_code'][$queryCode])) {
+                    $exactProduct = $index['by_code'][$queryCode];
+                }
+            }
+
+            // المطابقة الحرفية تُقبل فقط لو السعر متقارب (فرق ≤ 2)
+            if ($exactProduct !== null && $this->passesPriceProximity($exactProduct, $rowPrice, $offerMap)) {
                 $pid = is_array($exactProduct) ? $exactProduct['id'] : $exactProduct->id;
                 $matchedProductIds[$pid] = true;
                 $lines[] = [
@@ -117,8 +112,7 @@ class PlatformCompareService
             // ── الخطوة 2: Fuzzy match عبر hash map tokens ──
             $candidates = $this->findCandidates($normalizedQuery, $firstWord, $index);
 
-            // ── الخطوة 3: فلتر تقارب السعر 2% ──
-            $rowPrice = (float) ($row['price'] ?? 0);
+            // ── الخطوة 3: فلتر تقارب السعر (فرق ≤ 2) ──
             if ($rowPrice > 0 && $candidates !== [] && $offerMap !== []) {
                 $candidates = $this->filterByPriceProximity($candidates, $rowPrice, $offerMap);
             }
@@ -326,18 +320,35 @@ class PlatformCompareService
     {
         $result = [];
         foreach ($candidates as $product) {
-            $pid = is_array($product) ? $product['id'] : $product->id;
-            $offer = $offerMap[$pid] ?? null;
-            $offerPrice = is_array($offer) ? ((float) ($offer['price'] ?? 0)) : ((float) ($offer->price ?? 0));
-            if (! $offer || $offerPrice <= 0) {
-                continue;
-            }
-            if (abs($offerPrice - $rowPrice) / $rowPrice <= self::PRICE_PROXIMITY_RATIO) {
+            if ($this->passesPriceProximity($product, $rowPrice, $offerMap)) {
                 $result[] = $product;
             }
         }
 
         return $result;
+    }
+
+    /**
+     * يقبل المنتج فقط إذا كان فرق سعر العرض عن سعر الملف ≤ 2 (فرق مطلق).
+     */
+    private function passesPriceProximity(array|object $product, float $rowPrice, array $offerMap): bool
+    {
+        if ($rowPrice <= 0 || $offerMap === []) {
+            return true;
+        }
+
+        $pid = is_array($product) ? $product['id'] : $product->id;
+        $offer = $offerMap[$pid] ?? null;
+        if (! $offer) {
+            return false;
+        }
+
+        $offerPrice = is_array($offer) ? ((float) ($offer['price'] ?? 0)) : ((float) ($offer->price ?? 0));
+        if ($offerPrice <= 0) {
+            return false;
+        }
+
+        return abs($offerPrice - $rowPrice) <= self::MAX_PRICE_DIFF;
     }
 
     // ════════════════════════════════════════════════════════════════

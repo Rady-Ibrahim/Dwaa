@@ -23,11 +23,7 @@ class ClientPlatformCompareController extends Controller
 
     private const MIN_NAME_OVERLAP = 60.0;
 
-    private const PRICE_EQUAL_RATIO = 0.97;
-
-    private const PRICE_CLOSE_RATIO = 0.80;
-
-    private const PRICE_FAR_PENALTY = 0.3;
+    private const MAX_PRICE_DIFF = 2.0;
 
     private array $namePrepareCache = [];
 
@@ -240,13 +236,7 @@ class ClientPlatformCompareController extends Controller
             $priceA = $entryA['offer']->price;
             $priceB = $entriesB[$name]['offer']->price;
 
-            $priceScore = $this->applyPriceScore(
-                $priceA !== null ? (float) $priceA : null,
-                $priceB !== null ? (float) $priceB : null,
-                100.0,
-            );
-
-            if ($priceScore < 100.0) {
+            if (! $this->hasAcceptablePriceDiff($priceA, $priceB)) {
                 continue;
             }
 
@@ -295,17 +285,17 @@ class ClientPlatformCompareController extends Controller
                 $priceA = $entryA['offer']->price;
                 $priceB = $entryB['offer']->price;
 
+                if (! $this->hasAcceptablePriceDiff($priceA, $priceB)) {
+                    continue;
+                }
+
                 $prepB = $preparedB[$nameB];
 
-                $score = $this->applyPriceScore(
-                    $priceA !== null ? (float) $priceA : null,
-                    $priceB !== null ? (float) $priceB : null,
-                    $this->drugOverlapScorePrepared(
-                        $prepA['tokens'],
-                        $prepB['tokens'],
-                        $prepA['numbers'],
-                        $prepB['numbers'],
-                    ),
+                $score = $this->drugOverlapScorePrepared(
+                    $prepA['tokens'],
+                    $prepB['tokens'],
+                    $prepA['numbers'],
+                    $prepB['numbers'],
                 );
 
                 if ($score > $bestScore) {
@@ -580,27 +570,16 @@ class ClientPlatformCompareController extends Controller
         return round((count($shared) / max(count($tokensA), count($tokensB))) * 100, 1);
     }
 
-    private function applyPriceScore(?float $sheetPrice, ?float $productPrice, float $nameScore): float
+    /**
+     * يقبل الزوج فقط إذا كان فرق السعر ≤ 2 (فرق مطلق)، أو أحدهما غير معروف.
+     */
+    private function hasAcceptablePriceDiff($priceA, $priceB): bool
     {
-        if ($sheetPrice === null || $productPrice === null || $sheetPrice <= 0 || $productPrice <= 0) {
-            return $nameScore;
+        if ($priceA === null || $priceB === null || (float) $priceA <= 0 || (float) $priceB <= 0) {
+            return true;
         }
 
-        $ratio = min($sheetPrice, $productPrice) / max($sheetPrice, $productPrice);
-
-        if ($ratio >= self::PRICE_EQUAL_RATIO) {
-            return min(100.0, $nameScore + 10);
-        }
-
-        if ($ratio < self::PRICE_CLOSE_RATIO) {
-            return $nameScore * self::PRICE_FAR_PENALTY;
-        }
-
-        if ($nameScore < 100.0) {
-            return $nameScore * 0.6;
-        }
-
-        return $nameScore;
+        return abs((float) $priceA - (float) $priceB) <= self::MAX_PRICE_DIFF;
     }
 
     private function sortLinesMode3(array $lines): array

@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\SearchLog;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class SearchService
 {

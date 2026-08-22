@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\SearchService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class SearchController extends Controller
 {
@@ -23,15 +24,22 @@ class SearchController extends Controller
             'date_filter' => $data['date_filter'] ?? null,
         ];
 
-        $searchResult = $this->searchService->search($request->user(), $data['q'], 1000, [], $filters);
+        $hasFilters = ! empty($filters['price']) || ! empty($filters['date_filter']);
+
+        // ── Cache للبحث بدون فلاتر (أسرع بكتير) ─────────────────────────────
+        if (! $hasFilters) {
+            $cacheKey = 'search:' . md5(mb_strtolower($data['q']));
+            $searchResult = Cache::remember($cacheKey, 300, fn () => $this->searchService->search($request->user(), $data['q'], 200));
+        } else {
+            $searchResult = $this->searchService->search($request->user(), $data['q'], 200, [], $filters);
+        }
+        // ────────────────────────────────────────────────────────────────────
 
         // ── إحصائيات الموردين مجمعة حسب الخصم ─────────────────────────────
-        // نجمع كل العروض ونحسب عدد الموردين لكل قيمة خصم بدقة كاملة
         $discountStats = [];
         foreach ($searchResult['results'] as $product) {
             foreach ($product['offers'] as $offer) {
                 $discount = (float) $offer['discount'];
-                // نستخدم القيمة الفعلية كـ key — بدون تقريب يخلط القيم المختلفة
                 $key = (string) $discount;
                 if (! isset($discountStats[$key])) {
                     $discountStats[$key] = ['discount' => $discount, 'suppliers_count' => 0];
@@ -40,7 +48,6 @@ class SearchController extends Controller
             }
         }
 
-        // ترتيب تنازلي حسب قيمة الخصم
         usort($discountStats, fn($a, $b) => $b['discount'] <=> $a['discount']);
 
         $searchResult['discount_stats'] = array_values($discountStats);

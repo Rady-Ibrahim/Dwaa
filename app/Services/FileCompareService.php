@@ -30,6 +30,7 @@ class FileCompareService
     public function __construct(
         private NormalizerService $normalizer,
         private UploadService $uploadService,
+        private XlsxSanitizer $sanitizer,
     ) {}
 
     /**
@@ -297,9 +298,16 @@ class FileCompareService
      */
     private function extractRows(string $absolutePath, ?array $columnIndexes): array
     {
-        $reader = IOFactory::createReaderForFile($absolutePath);
-        $reader->setReadDataOnly(true);
-        $spreadsheet = $reader->load($absolutePath);
+        $readPath = $this->sanitizer->prepareForReading($absolutePath);
+
+        try {
+            $reader = IOFactory::createReaderForFile($readPath);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($readPath);
+        } finally {
+            $this->sanitizer->cleanup($readPath);
+        }
+
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
         $out = [];
         $detectedHeader = $columnIndexes !== null;

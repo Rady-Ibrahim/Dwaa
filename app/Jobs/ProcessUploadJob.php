@@ -9,6 +9,7 @@ use App\Models\Upload;
 use App\Services\NormalizerService;
 use App\Services\RankingService;
 use App\Services\SupplierOfferProductResolver;
+use App\Services\XlsxSanitizer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,6 +20,9 @@ use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Row as ExcelRow;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use RuntimeException;
 use Throwable;
 
@@ -31,25 +35,66 @@ class ProcessUploadJob implements ShouldQueue
 
     public int $timeout = 300;
 
+    private const HEADER_SCAN_ROW_LIMIT = 50;
+
     public function __construct(public Upload $upload) {}
 
-    public function handle(NormalizerService $normalizer, SupplierOfferProductResolver $resolver, RankingService $rankingService): void
+    public function handle(NormalizerService $normalizer, SupplierOfferProductResolver $resolver, RankingService $rankingService, XlsxSanitizer $sanitizer): void
     {
         $this->upload->update([
             'status' => 'processing',
             'started_at' => now(),
         ]);
 
-        // حذف العروض القديمة فقط، مع الاحتفاظ بالمنتجات
-        Offer::query()->where('supplier_id', $this->upload->supplier_id)->delete();
-
         $columnMap = is_array($this->upload->column_map) ? $this->upload->column_map : [];
         $manualMap = $this->hasManualColumnMap($columnMap) ? $columnMap : null;
-        $detectedColumnMap = $manualMap;
         $totalRows = 0;
         $matched = 0;
 
-        $path = Storage::disk('local')->path($this->upload->file_path);
+        $sourcePath = Storage::disk('local')->path($this->upload->file_path);
+        // بعض الملفات تُنتج بتواريخ عربية في بياناتها الداخلية وتعطّل قراءة Excel.
+        $path = $sanitizer->prepareForReading($sourcePath);
+
+        try {
+            $this->processFile($path, $manualMap, $normalizer, $resolver, $totalRows, $matched);
+
+            $this->upload->update([
+                'status' => 'done',
+                'total_rows' => $totalRows,
+                'matched_count' => $matched,
+                'unmatched_count' => 0,
+                'finished_at' => now(),
+            ]);
+        } finally {
+            $sanitizer->cleanup($path);
+        }
+
+        try {
+            Cache::forget('platform_compare_products_cache_v3');
+        } catch (Throwable) {
+            // Cache driver failure should never block the upload process.
+        }
+
+        $rankingService->recalculateForSupplier($this->upload->supplier_id);
+    }
+
+    private function processFile(string $path, ?array $manualMap, NormalizerService $normalizer, SupplierOfferProductResolver $resolver, int &$totalRows, int &$matched): void
+    {
+        // اكتشاف الأعمدة قبل أي حذف، حتى لا تفقد عروض المورد القديمة عند فشل الملف.
+        $detection = $manualMap !== null
+            ? ['map' => $manualMap, 'header_row' => null]
+            : $this->detectColumnMapFromFile($path);
+
+        if ($detection === null) {
+            throw new RuntimeException('تعذر اكتشاف أعمدة الاسم والسعر من هيدر الملف.');
+        }
+
+        $detectedColumnMap = $detection['map'];
+        $headerRowIndex = $detection['header_row'];
+
+        // حذف العروض القديمة فقط بعد التأكد من صلاحية الملف، مع الاحتفاظ بالمنتجات.
+        Offer::query()->where('supplier_id', $this->upload->supplier_id)->delete();
+
         $uploadId = $this->upload->id;
         $supplierId = $this->upload->supplier_id;
 
@@ -58,18 +103,12 @@ class ProcessUploadJob implements ShouldQueue
             $normalizer,
             $uploadId,
             $supplierId,
+            $detectedColumnMap,
+            $headerRowIndex,
             &$totalRows,
-            &$matched,
-            &$detectedColumnMap
+            &$matched
         ) {
-            if ($detectedColumnMap === null) {
-                $detectedColumnMap = $this->detectColumnMapFromHeader($row);
-
-                if ($detectedColumnMap === null) {
-                    return;
-                }
-
-                // Skip the detected header row itself.
+            if ($headerRowIndex !== null && $row->getDelegate()->getRowIndex() === $headerRowIndex) {
                 return;
             }
 
@@ -108,26 +147,6 @@ class ProcessUploadJob implements ShouldQueue
             );
             $matched++;
         }), $path);
-
-        if ($detectedColumnMap === null) {
-            throw new RuntimeException('تعذر اكتشاف أعمدة الاسم والسعر من هيدر الملف.');
-        }
-
-        $this->upload->update([
-            'status' => 'done',
-            'total_rows' => $totalRows,
-            'matched_count' => $matched,
-            'unmatched_count' => 0,
-            'finished_at' => now(),
-        ]);
-
-        try {
-            Cache::forget('platform_compare_products_cache_v3');
-        } catch (Throwable) {
-            // Cache driver failure should never block the upload process.
-        }
-
-        $rankingService->recalculateForSupplier($this->upload->supplier_id);
     }
 
     /**
@@ -140,10 +159,57 @@ class ProcessUploadJob implements ShouldQueue
             && is_numeric($columnMap['price']);
     }
 
-    private function detectColumnMapFromHeader(ExcelRow $row): ?array
+    /**
+     * @return array{map: array<string, int>, header_row: int|null}|null
+     */
+    private function detectColumnMapFromFile(string $path): ?array
     {
-        $sheetRow = $row->getDelegate();
-        $maxColumn = Coordinate::columnIndexFromString($sheetRow->getWorksheet()->getHighestDataColumn($sheetRow->getRowIndex()));
+        $reader = IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+
+        if (method_exists($reader, 'listWorksheetInfo')) {
+            $sheets = $reader->listWorksheetInfo($path);
+            $firstSheet = $sheets[0]['worksheetName'] ?? null;
+
+            if ($firstSheet !== null && method_exists($reader, 'setLoadSheetsOnly')) {
+                // Excel::import يعالج أول شيت فقط، لذا يجب أن يكون الفحص على نفس الشيت.
+                $reader->setLoadSheetsOnly([$firstSheet]);
+            }
+        }
+
+        $scanLimit = self::HEADER_SCAN_ROW_LIMIT;
+        $reader->setReadFilter(new class($scanLimit) implements IReadFilter {
+            public function __construct(private int $maxRows) {}
+
+            public function readCell($columnAddress, $row, $worksheetName = ''): bool
+            {
+                return $row <= $this->maxRows;
+            }
+        });
+
+        $spreadsheet = $reader->load($path);
+        $worksheet = $spreadsheet->getSheet(0);
+
+        try {
+            $highestRow = min($scanLimit, (int) $worksheet->getHighestDataRow());
+
+            for ($rowIndex = 1; $rowIndex <= $highestRow; $rowIndex++) {
+                $map = $this->detectColumnMapOnRow($worksheet, $rowIndex);
+
+                if ($map !== null) {
+                    return ['map' => $map, 'header_row' => $rowIndex];
+                }
+            }
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+        }
+
+        return null;
+    }
+
+    private function detectColumnMapOnRow(Worksheet $worksheet, int $rowIndex): ?array
+    {
+        $maxColumn = Coordinate::columnIndexFromString($worksheet->getHighestDataColumn($rowIndex));
         $aliases = [
             'name' => self::NAME_HEADER_ALIASES,
             'price' => self::PRICE_HEADER_ALIASES,
@@ -153,7 +219,7 @@ class ProcessUploadJob implements ShouldQueue
         $map = [];
 
         for ($column = 1; $column <= $maxColumn; $column++) {
-            $header = (string) $sheetRow->getWorksheet()->getCellByColumnAndRow($column, $sheetRow->getRowIndex())->getValue();
+            $header = (string) $worksheet->getCellByColumnAndRow($column, $rowIndex)->getValue();
             $header = $this->normalizeHeader($header);
             if ($header === '') {
                 continue;
@@ -221,6 +287,8 @@ class ProcessUploadJob implements ShouldQueue
     {
         $normalized = mb_strtolower(trim($value));
         $normalized = str_replace(['أ', 'إ', 'آ'], 'ا', $normalized);
+        $normalized = str_replace(['ى', 'ي'], 'ي', $normalized);
+        $normalized = str_replace(['ة', 'ه'], 'ه', $normalized);
         $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $normalized) ?? $normalized;
         $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
 
@@ -244,10 +312,23 @@ class ProcessUploadJob implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        $this->upload->update([
-            'status' => 'failed',
-            'error_msg' => $exception?->getMessage(),
-            'finished_at' => now(),
-        ]);
+        // رسائل الأخطاء قد تحوي بايتات UTF-8 غير صالحة (من أسماء/بيانات الملفات) ترفضها قاعدة البيانات.
+        $message = $exception?->getMessage() ?? 'خطأ غير معروف أثناء معالجة الملف.';
+        $message = trim(mb_convert_encoding($message, 'UTF-8', 'UTF-8'));
+        $message = mb_substr($message !== '' ? $message : 'خطأ غير معروف أثناء معالجة الملف.', 0, 1000);
+
+        try {
+            $this->upload->update([
+                'status' => 'failed',
+                'error_msg' => $message,
+                'finished_at' => now(),
+            ]);
+        } catch (Throwable) {
+            $this->upload->forceFill([
+                'status' => 'failed',
+                'error_msg' => null,
+                'finished_at' => now(),
+            ])->save();
+        }
     }
 }

@@ -392,7 +392,7 @@
                             <label class="block text-sm font-medium text-slate-300 mb-2">تصفية حسب السعر</label>
                             <input type="number" id="priceFilter" placeholder="سعر المنتج"
                                 class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:border-sky-500 focus:outline-none text-right"
-                                dir="rtl">
+                                dir="rtl" oninput="debouncedApplyFilters()">
                         </div>
 
                         <style>
@@ -409,7 +409,7 @@
 
                         <div class="relative group">
                             <label class="block text-sm font-medium text-slate-300 mb-2">تصفية حسب التاريخ</label>
-                            <select id="dateFilter"
+                            <select id="dateFilter" onchange="applyFilters()"
                                 class="filter-slim w-full rounded-xl bg-slate-900/60 border border-white/5 text-sm text-white focus:outline-none focus:border-sky-500/50 appearance-none cursor-pointer transition-all"
                                 dir="rtl">
                                 <option value="" class="bg-slate-950">الكل</option>
@@ -550,6 +550,12 @@
             if (query.length >= 3) {
                 search(query);
             }
+        }
+
+        let filterDebounceTimer;
+        function debouncedApplyFilters() {
+            clearTimeout(filterDebounceTimer);
+            filterDebounceTimer = setTimeout(applyFilters, 300);
         }
 
         function resetFilters() {

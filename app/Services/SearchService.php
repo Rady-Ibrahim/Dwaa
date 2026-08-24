@@ -28,7 +28,7 @@ class SearchService
      */
     public function search(User $user, string $query, int $limit = 20, array $logOptions = [], array $filters = []): array
     {
-        $products = $this->fetchProducts($query, $limit);
+        $products = $this->fetchProducts($query, $limit, $filters);
         $hadOffers = $products->contains(fn(Product $p) => $p->offers->isNotEmpty());
 
         $log = array_merge([
@@ -257,17 +257,25 @@ class SearchService
     }
 
     /**
+     * @param  array{
+     *     price?: ?float,
+     *     date_filter?: ?int
+     * }  $filters
      * @return Collection<int, Product>
      */
-    public function fetchProducts(string $query, int $limit = 20): Collection
+    public function fetchProducts(string $query, int $limit = 20, array $filters = []): Collection
     {
         $trim = trim($query);
         if ($trim === '') {
             return collect();
         }
 
+        $hasOfferFilters = isset($filters['price']) || ! empty($filters['date_filter']);
         $queryFold = $this->normalizer->phoneticConsonantKey($trim);
 
+        // عند تفعيل فلاتر السعر/التاريخ نقيّد المنتجات المرشحة لتشمل فقط
+        // المنتجات التي لديها عرض نشط مطابق للفلتر — حتى تظهر النتائج
+        // من أول 3 أحرف مثل البحث العادي بدل الحاجة لاسم المنتج كاملاً.
         $with = [
             'supplier:id,name,area,phone1,phone2',
             'offers' => function ($q) {
@@ -277,9 +285,18 @@ class SearchService
             },
         ];
 
+        $offerFilterScope = function ($q) use ($hasOfferFilters, $filters) {
+            if (! $hasOfferFilters) {
+                return;
+            }
+
+            $q->whereHas('offers', fn ($o) => $this->applyOfferFilters($o, $filters));
+        };
+
         // 1) Prefix (keyword starts with query terms) => يعطي أولوية للبحث العادي عند أول 3 أحرف
         $prefix = Product::query()
             ->tap(fn($q) => $this->normalizer->applyPrefixProductSearch($q, $trim))
+            ->tap($offerFilterScope)
             ->with($with)
             ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
             ->orderBy('id')
@@ -297,6 +314,7 @@ class SearchService
             $seen = array_flip($primary->modelKeys());
             $extraSubstring = Product::query()
                 ->tap(fn($q) => $this->normalizer->applyFlexibleProductSearch($q, $trim))
+                ->tap($offerFilterScope)
                 ->whereNotIn('id', array_keys($seen))
                 ->with($with)
                 ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
@@ -320,6 +338,7 @@ class SearchService
 
         $candidates = Product::query()
             ->where('phonetic_key', 'LIKE', $queryFold . '%')
+            ->tap($offerFilterScope)
             ->whereNotIn('id', array_keys($seen))
             ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
             ->limit($needed * 5)  // Fetch 5x to ensure enough results after PHP filtering
@@ -368,6 +387,29 @@ class SearchService
             ->get();
 
         return $primary->concat($extra)->values();
+    }
+
+    /**
+     * شروط الفلترة على مستوى العروض (نفس منطق formatProduct) لاستخدامها
+     * في whereHas أثناء جلب المنتجات المرشحة.
+     *
+     * @param  array{
+     *     price?: ?float,
+     *     date_filter?: ?int
+     * }  $filters
+     */
+    private function applyOfferFilters($query, array $filters): void
+    {
+        $query->active();
+
+        if (isset($filters['price'])) {
+            $query->where('price', (float) $filters['price']);
+        }
+
+        if (! empty($filters['date_filter'])) {
+            $cutoffDate = now()->subHours((int) $filters['date_filter']);
+            $query->whereHas('upload', fn ($u) => $u->where('finished_at', '>=', $cutoffDate));
+        }
     }
 
     public function formatProduct(Product $product, array $filters = []): array

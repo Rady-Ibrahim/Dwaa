@@ -120,7 +120,7 @@
                     </td>
                     <td class="p-5 text-center">
                         <span class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 font-mono text-xs">
-                            ${item.payload?.pairs?.length || 0}
+                            ${item.payload?.pairs?.length || item.payload?.lines?.length || 0}
                         </span>
                     </td>
                     <td class="p-5">

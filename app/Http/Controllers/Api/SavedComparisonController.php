@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\SavedComparisonExport;
 use App\Http\Controllers\Controller;
 use App\Models\SavedComparison;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class SavedComparisonController extends Controller
 {
@@ -56,5 +58,40 @@ class SavedComparisonController extends Controller
         $savedComparison->delete();
 
         return response()->json(['message' => 'تم الحذف']);
+    }
+
+    public function export(Request $request, SavedComparison $savedComparison)
+    {
+        if ($savedComparison->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        try {
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(600);
+            }
+
+            $payload = $savedComparison->payload ?? [];
+            $type    = $payload['type'] ?? 'file_compare';
+            $data    = $type === 'platform_compare' ? ($payload['lines'] ?? []) : ($payload['pairs'] ?? []);
+
+            $export = new SavedComparisonExport($type, $data, $savedComparison->title ?? 'Med RANKO');
+            $spreadsheet = $export->build();
+
+            $safeTitle  = preg_replace('/[^\w\-]/u', '_', $savedComparison->title ?? 'export');
+            $filename   = "Med_RANKO_{$safeTitle}_" . now()->format('Y-m-d_His') . '.xlsx';
+            $tempPath   = storage_path('app/' . $filename);
+            $writer     = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($tempPath);
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
+
+            return response()->download($tempPath, $filename, [
+                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ])->deleteFileAfterSend(true);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'فشل التصدير: ' . $e->getMessage()], 500);
+        }
     }
 }

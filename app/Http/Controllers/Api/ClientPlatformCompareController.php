@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\PlatformCompareExport;
 use App\Http\Controllers\Controller;
 use App\Models\Offer;
 use App\Models\Product;
@@ -16,9 +17,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ClientPlatformCompareController extends Controller
 {
+    private const JSON_FLAGS = JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE;
+
     private const MAX_ROWS = 1000;
 
     private const MIN_NAME_OVERLAP = 60.0;
@@ -35,6 +39,34 @@ class ClientPlatformCompareController extends Controller
         private PlatformCompareService $platformCompareService,
     ) {}
 
+    private function errorJson(\Throwable $e, int $statusCode = 500): \Symfony\Component\HttpFoundation\JsonResponse
+    {
+        $raw = $e->getMessage();
+
+        try {
+            $clean = mb_convert_encoding((string) $raw, 'UTF-8', 'UTF-8');
+        } catch (\Throwable $t) {
+            $clean = (string) $raw;
+        }
+
+        $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $clean) ?? '';
+        $clean = trim($clean);
+        $clean = $clean !== '' ? $clean : 'An unexpected server error occurred.';
+
+        Log::error('API Exception', [
+            'message' => $clean,
+            'class'   => get_class($e),
+            'file'    => $e->getFile(),
+            'line'    => $e->getLine(),
+        ]);
+
+        return response()->json([
+            'status'    => 'error',
+            'message'   => $clean,
+            'exception' => get_class($e),
+        ], $statusCode, [], self::JSON_FLAGS);
+    }
+
     /**
      * الوضع 1: مقارنة ملف يرفعه العميل مع المنصة ككل (المسارات النشطة).
      */
@@ -42,88 +74,62 @@ class ClientPlatformCompareController extends Controller
     {
         $startMs = microtime(true);
 
-        if (function_exists('set_time_limit')) {
-            @set_time_limit(600);
-        }
-
-        Log::info('PlatformCompare: START', [
-            'user_id' => $request->user()?->id,
-            'file_size' => $request->file('file')?->getSize(),
-            'file_mime' => $request->file('file')?->getMimeType(),
-            'file_name' => $request->file('file')?->getClientOriginalName(),
-        ]);
-
         try {
-            $rows = $this->readRows($request);
-        } catch (\Throwable $e) {
-            Log::error('PlatformCompare: readRows FAILED', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(600);
+            }
+
+            Log::info('PlatformCompare: START', [
+                'user_id' => $request->user()?->id,
+                'file_size' => $request->file('file')?->getSize(),
+                'file_mime' => $request->file('file')?->getMimeType(),
+                'file_name' => $request->file('file')?->getClientOriginalName(),
             ]);
-            throw $e;
-        }
 
-        Log::info('PlatformCompare: readRows done', [
-            'rows_count' => count($rows),
-            'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
-        ]);
+            $rows = $this->readRows($request);
 
-        if (empty($rows)) {
-            Log::warning('PlatformCompare: empty rows, aborting', [
+            Log::info('PlatformCompare: readRows done', [
+                'rows_count' => count($rows),
                 'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
             ]);
-            throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
-        }
 
-        $cacheStart = microtime(true);
+            if (empty($rows)) {
+                Log::warning('PlatformCompare: empty rows, aborting', [
+                    'elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+                ]);
+                throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
+            }
 
-        try {
+            $cacheStart = microtime(true);
+
             $cache = $this->loadAllPlatformCache($rows);
-        } catch (\Throwable $e) {
-            Log::error('PlatformCompare: loadAllPlatformCache FAILED', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'rows_count' => count($rows),
+
+            Log::info('PlatformCompare: cache loaded', [
+                'products_loaded' => count($cache),
+                'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
             ]);
-            throw $e;
-        }
 
-        Log::info('PlatformCompare: cache loaded', [
-            'products_loaded' => count($cache),
-            'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
-        ]);
+            $buildStart = microtime(true);
 
-        $buildStart = microtime(true);
-
-        try {
             $lines = $this->platformCompareService->buildLines($rows, $cache);
-        } catch (\Throwable $e) {
-            Log::error('PlatformCompare: buildLines FAILED', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+
+            $lines = $this->platformCompareService->sortLines($lines);
+
+            Log::info('PlatformCompare: DONE', [
                 'rows_count' => count($rows),
                 'products_count' => count($cache),
+                'lines_count' => count($lines),
+                'total_elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+                'build_elapsed_ms' => round((microtime(true) - $buildStart) * 1000),
             ]);
-            throw $e;
+
+            return response()->json([
+                'rows_read' => count($rows),
+                'lines' => $lines,
+            ], 200, [], self::JSON_FLAGS);
+        } catch (\Throwable $e) {
+            return $this->errorJson($e);
         }
-
-        $lines = $this->platformCompareService->sortLines($lines);
-
-        Log::info('PlatformCompare: DONE', [
-            'rows_count' => count($rows),
-            'products_count' => count($cache),
-            'lines_count' => count($lines),
-            'total_elapsed_ms' => round((microtime(true) - $startMs) * 1000),
-            'build_elapsed_ms' => round((microtime(true) - $buildStart) * 1000),
-        ]);
-
-        return response()->json([
-            'rows_read' => count($rows),
-            'lines' => $lines,
-        ]);
     }
 
     /**
@@ -131,24 +137,28 @@ class ClientPlatformCompareController extends Controller
      */
     public function uploads(Request $request)
     {
-        $uploads = Upload::query()
-            ->with('supplier:id,name')
-            ->whereHas('offers')
-            ->orderByDesc('created_at')
-            ->get(['id', 'supplier_id', 'file_path', 'status', 'matched_count', 'created_at']);
+        try {
+            $uploads = Upload::query()
+                ->with('supplier:id,name')
+                ->whereHas('offers')
+                ->orderByDesc('created_at')
+                ->get(['id', 'supplier_id', 'file_path', 'status', 'matched_count', 'created_at']);
 
-        return response()->json([
-            'uploads' => $uploads->map(function (Upload $upload) {
-                return [
-                    'id' => $upload->id,
-                    'file_name' => $upload->original_name,
-                    'supplier' => $upload->supplier?->name,
-                    'status' => $upload->status,
-                    'matched_count' => $upload->matched_count,
-                    'created_at' => $upload->created_at?->toDateTimeString(),
-                ];
-            })->values(),
-        ]);
+            return response()->json([
+                'uploads' => $uploads->map(function (Upload $upload) {
+                    return [
+                        'id' => $upload->id,
+                        'file_name' => $upload->original_name,
+                        'supplier' => $upload->supplier?->name,
+                        'status' => $upload->status,
+                        'matched_count' => $upload->matched_count,
+                        'created_at' => $upload->created_at?->toDateTimeString(),
+                    ];
+                })->values(),
+            ], 200, [], self::JSON_FLAGS);
+        } catch (\Throwable $e) {
+            return $this->errorJson($e);
+        }
     }
 
     /**
@@ -158,12 +168,266 @@ class ClientPlatformCompareController extends Controller
     {
         $startMs = microtime(true);
 
-        if (function_exists('set_time_limit')) {
-            @set_time_limit(600);
+        try {
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(600);
+            }
+
+            $data = $request->validate([
+                'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+                'upload_id' => ['required', 'exists:uploads,id'],
+            ]);
+
+            $rows = $this->readRows($request);
+
+            if (empty($rows)) {
+                throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
+            }
+
+            $uploadId = (int) $data['upload_id'];
+
+            $cacheStart = microtime(true);
+
+            $cache = $this->loadUploadCache($uploadId);
+
+            Log::info('PlatformCompare: fileToUpload cache loaded', [
+                'upload_id' => $uploadId,
+                'products_loaded' => count($cache),
+                'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
+            ]);
+
+            $buildStart = microtime(true);
+
+            $lines = $this->platformCompareService->sortLines(
+                $this->platformCompareService->buildLines($rows, $cache, $uploadId),
+            );
+
+            Log::info('PlatformCompare: fileToUpload DONE', [
+                'upload_id' => $uploadId,
+                'rows_count' => count($rows),
+                'lines_count' => count($lines),
+                'total_elapsed_ms' => round((microtime(true) - $startMs) * 1000),
+                'build_elapsed_ms' => round((microtime(true) - $buildStart) * 1000),
+            ]);
+
+            return response()->json([
+                'rows_read' => count($rows),
+                'lines' => $lines,
+            ], 200, [], self::JSON_FLAGS);
+        } catch (\Throwable $e) {
+            return $this->errorJson($e);
+        }
+    }
+
+    /**
+     * الوضع 3: مقارنة ملفين من الملفات المرفوعة من الأدمن مع بعضهما.
+     */
+    public function uploadsCompare(Request $request)
+    {
+        try {
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(600);
+            }
+
+            $data = $request->validate([
+                'upload_id_a' => ['required', 'exists:uploads,id'],
+                'upload_id_b' => ['required', 'exists:uploads,id', 'different:upload_id_a'],
+            ]);
+
+            $socketB = Upload::with('supplier:id,name')->findOrFail($data['upload_id_b']);
+
+            $entriesA = $this->buildUploadsIndex((int) $data['upload_id_a']);
+            $entriesB = $this->buildUploadsIndex((int) $data['upload_id_b']);
+
+            $lines = [];
+            $usedB = [];
+            $usedA = [];
+
+            foreach ($entriesA as $name => $entryA) {
+                if (! isset($entriesB[$name])) {
+                    continue;
+                }
+
+                $priceA = $entryA['offer']->price;
+                $priceB = $entriesB[$name]['offer']->price;
+
+                if (! $this->hasAcceptablePriceDiff($priceA, $priceB)) {
+                    continue;
+                }
+
+                $usedA[$name] = true;
+                $usedB[$name] = true;
+
+                $lines[] = $this->buildPairLine($entryA, $entriesB[$name], $socketB, 100.0);
+            }
+
+            $preparedA = [];
+            foreach ($entriesA as $nameA => $entryA) {
+                $preparedA[$nameA] = $this->prepareName((string) $nameA);
+            }
+
+            $preparedB = [];
+            $bByFirstToken = [];
+            foreach ($entriesB as $nameB => $entryB) {
+                $preparedB[$nameB] = $this->prepareName((string) $nameB);
+
+                $firstToken = $preparedB[$nameB]['tokens'][0] ?? '';
+                if ($firstToken !== '') {
+                    $bByFirstToken[$firstToken][] = $nameB;
+                }
+            }
+
+            foreach ($entriesA as $nameA => $entryA) {
+                if (isset($usedA[$nameA])) {
+                    continue;
+                }
+
+                $bestKey = null;
+                $bestScore = 0.0;
+
+                $prepA = $preparedA[$nameA];
+                $candidateNames = isset($prepA['tokens'][0])
+                    ? ($bByFirstToken[$prepA['tokens'][0]] ?? [])
+                    : [];
+
+                foreach ($candidateNames as $nameB) {
+                    if (isset($usedB[$nameB])) {
+                        continue;
+                    }
+
+                    $entryB = $entriesB[$nameB];
+
+                    $priceA = $entryA['offer']->price;
+                    $priceB = $entryB['offer']->price;
+
+                    if (! $this->hasAcceptablePriceDiff($priceA, $priceB)) {
+                        continue;
+                    }
+
+                    $prepB = $preparedB[$nameB];
+
+                    $score = $this->drugOverlapScorePrepared(
+                        $prepA['tokens'],
+                        $prepB['tokens'],
+                        $prepA['numbers'],
+                        $prepB['numbers'],
+                    );
+
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $bestKey = $nameB;
+                    }
+                }
+
+                if ($bestKey === null || $bestScore < self::MIN_NAME_OVERLAP) {
+                    $lines[] = $this->buildOnlyALine($entryA);
+
+                    continue;
+                }
+
+                $usedB[$bestKey] = true;
+                $lines[] = $this->buildPairLine($entryA, $entriesB[$bestKey], $socketB, round($bestScore, 1));
+            }
+
+            foreach ($entriesB as $nameB => $entryB) {
+                if (isset($usedB[$nameB])) {
+                    continue;
+                }
+
+                $lines[] = $this->buildOnlyBLine($entryB, $socketB);
+            }
+
+            $lines = $this->sortLinesMode3($lines);
+
+            return response()->json([
+                'rows_read' => count($entriesA) + count($entriesB),
+                'lines' => $lines,
+            ], 200, [], self::JSON_FLAGS);
+        } catch (\Throwable $e) {
+            return $this->errorJson($e);
+        }
+    }
+
+    /**
+     * تصدير نتائج المقارنة إلى ملف Excel مُنسّق.
+     *
+     * يستقبل نفس مُعامِلات المقارنة ويُعيد تشغيل المقارنة داخلياً.
+     * لا يُغيّر أي منطق مقارنة أو كاش أو استجابة API قائمة.
+     *
+     * POST /compare-platform-export
+     */
+    public function exportExcel(Request $request)
+    {
+        try {
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(600);
+            }
+
+            $mode = $request->input('mode');
+
+            $lines = match ($mode) {
+                'vs_platform' => $this->exportBuildMode1($request),
+                'vs_upload'   => $this->exportBuildMode2($request),
+                'uploads'     => $this->exportBuildMode3($request),
+                default       => throw ValidationException::withMessages([
+                    'mode' => 'وضع غير صالح. القيم المسموحة: vs_platform, vs_upload, uploads',
+                ]),
+            };
+
+            $modeLabels = [
+                'vs_platform' => 'vs_platform',
+                'vs_upload'   => 'vs_upload',
+                'uploads'     => 'uploads',
+            ];
+
+            $filename = 'Med_RANKO_Compare_' . ($modeLabels[$mode] ?? 'export') . '_' . now()->format('Y-m-d_His') . '.xlsx';
+
+            $export = new PlatformCompareExport($lines);
+            $spreadsheet = $export->build();
+
+            $tempPath = storage_path('app/' . $filename);
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($tempPath);
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet);
+
+            return response()->download($tempPath, $filename, [
+                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ])->deleteFileAfterSend(true);
+        } catch (\Throwable $e) {
+            return $this->errorJson($e);
+        }
+    }
+
+    /**
+     * بناء نتائج المقارنة للوضع 1 (ملف العميل ↔ المنصة).
+     */
+    private function exportBuildMode1(Request $request): array
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        $rows = $this->readRows($request);
+
+        if (empty($rows)) {
+            throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
         }
 
-        $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        $cache = $this->loadAllPlatformCache($rows);
+        $lines = $this->platformCompareService->buildLines($rows, $cache);
+
+        return $this->platformCompareService->sortLines($lines);
+    }
+
+    /**
+     * بناء نتائج المقارنة للوضع 2 (ملف العميل ↔ ملف مرفوع).
+     */
+    private function exportBuildMode2(Request $request): array
+    {
+        $request->validate([
+            'file'      => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
             'upload_id' => ['required', 'exists:uploads,id'],
         ]);
 
@@ -173,60 +437,30 @@ class ClientPlatformCompareController extends Controller
             throw ValidationException::withMessages(['file' => 'تعذّر قراءة الملف أو لم يُكتشف هيدر صالح.']);
         }
 
-        $uploadId = (int) $data['upload_id'];
+        $uploadId = (int) $request->input('upload_id');
+        $cache    = $this->loadUploadCache($uploadId);
+        $lines    = $this->platformCompareService->buildLines($rows, $cache, $uploadId);
 
-        $cacheStart = microtime(true);
-
-        $cache = $this->loadUploadCache($uploadId);
-
-        Log::info('PlatformCompare: fileToUpload cache loaded', [
-            'upload_id' => $uploadId,
-            'products_loaded' => count($cache),
-            'elapsed_ms' => round((microtime(true) - $cacheStart) * 1000),
-        ]);
-
-        $buildStart = microtime(true);
-
-        $lines = $this->platformCompareService->sortLines(
-            $this->platformCompareService->buildLines($rows, $cache, $uploadId),
-        );
-
-        Log::info('PlatformCompare: fileToUpload DONE', [
-            'upload_id' => $uploadId,
-            'rows_count' => count($rows),
-            'lines_count' => count($lines),
-            'total_elapsed_ms' => round((microtime(true) - $startMs) * 1000),
-            'build_elapsed_ms' => round((microtime(true) - $buildStart) * 1000),
-        ]);
-
-        return response()->json([
-            'rows_read' => count($rows),
-            'lines' => $lines,
-        ]);
+        return $this->platformCompareService->sortLines($lines);
     }
 
     /**
-     * الوضع 3: مقارنة ملفين من الملفات المرفوعة من الأدمن مع بعضهما.
+     * بناء نتائج المقارنة للوضع 3 (ملفان من المنصة).
      */
-    public function uploadsCompare(Request $request)
+    private function exportBuildMode3(Request $request): array
     {
-        if (function_exists('set_time_limit')) {
-            @set_time_limit(600);
-        }
-
-        $data = $request->validate([
+        $request->validate([
             'upload_id_a' => ['required', 'exists:uploads,id'],
             'upload_id_b' => ['required', 'exists:uploads,id', 'different:upload_id_a'],
         ]);
 
-        $socketB = Upload::with('supplier:id,name')->findOrFail($data['upload_id_b']);
+        $socketB   = Upload::with('supplier:id,name')->findOrFail($request->input('upload_id_b'));
+        $entriesA  = $this->buildUploadsIndex((int) $request->input('upload_id_a'));
+        $entriesB  = $this->buildUploadsIndex((int) $request->input('upload_id_b'));
 
-        $entriesA = $this->buildUploadsIndex((int) $data['upload_id_a']);
-        $entriesB = $this->buildUploadsIndex((int) $data['upload_id_b']);
-
-        $lines = [];
-        $usedB = [];
-        $usedA = [];
+        $lines  = [];
+        $usedB  = [];
+        $usedA  = [];
 
         foreach ($entriesA as $name => $entryA) {
             if (! isset($entriesB[$name])) {
@@ -251,7 +485,7 @@ class ClientPlatformCompareController extends Controller
             $preparedA[$nameA] = $this->prepareName((string) $nameA);
         }
 
-        $preparedB = [];
+        $preparedB     = [];
         $bByFirstToken = [];
         foreach ($entriesB as $nameB => $entryB) {
             $preparedB[$nameB] = $this->prepareName((string) $nameB);
@@ -267,10 +501,10 @@ class ClientPlatformCompareController extends Controller
                 continue;
             }
 
-            $bestKey = null;
+            $bestKey   = null;
             $bestScore = 0.0;
+            $prepA     = $preparedA[$nameA];
 
-            $prepA = $preparedA[$nameA];
             $candidateNames = isset($prepA['tokens'][0])
                 ? ($bByFirstToken[$prepA['tokens'][0]] ?? [])
                 : [];
@@ -281,7 +515,6 @@ class ClientPlatformCompareController extends Controller
                 }
 
                 $entryB = $entriesB[$nameB];
-
                 $priceA = $entryA['offer']->price;
                 $priceB = $entryB['offer']->price;
 
@@ -300,13 +533,12 @@ class ClientPlatformCompareController extends Controller
 
                 if ($score > $bestScore) {
                     $bestScore = $score;
-                    $bestKey = $nameB;
+                    $bestKey   = $nameB;
                 }
             }
 
             if ($bestKey === null || $bestScore < self::MIN_NAME_OVERLAP) {
                 $lines[] = $this->buildOnlyALine($entryA);
-
                 continue;
             }
 
@@ -322,12 +554,7 @@ class ClientPlatformCompareController extends Controller
             $lines[] = $this->buildOnlyBLine($entryB, $socketB);
         }
 
-        $lines = $this->sortLinesMode3($lines);
-
-        return response()->json([
-            'rows_read' => count($entriesA) + count($entriesB),
-            'lines' => $lines,
-        ]);
+        return $this->sortLinesMode3($lines);
     }
 
     // ════════════════════════════════════════════════════════════════

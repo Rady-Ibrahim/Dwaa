@@ -97,10 +97,19 @@ class ExcelSearchService
             'readable' => is_readable($absolutePath),
         ]);
 
-        $reader = IOFactory::createReaderForFile($absolutePath);
+        $sanitizedPath = $this->sanitizeXlsxDates($absolutePath);
+
+        $reader = IOFactory::createReaderForFile($sanitizedPath);
         $reader->setReadDataOnly(true);
-        $spreadsheet = $reader->load($absolutePath);
+        $spreadsheet = $reader->load($sanitizedPath);
         $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
+
+        if ($sanitizedPath !== $absolutePath && file_exists($sanitizedPath)) {
+            @unlink($sanitizedPath);
+        }
 
         Log::info('ExcelSearchService: spreadsheet loaded', [
             'total_rows' => count($rows),
@@ -344,5 +353,52 @@ class ExcelSearchService
         $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
 
         return trim($normalized);
+    }
+
+    /**
+     * Some XLSX files saved under Arabic locales store document property
+     * dates with Arabic-Indic numerals (٠-٩) instead of ASCII digits (0-9).
+     * PhpSpreadsheet's DateTime parser chokes on these. This method opens the
+     * XLSX zip, replaces Arabic-Indic digits in docProps XML, and writes a
+     * fixed copy to a temp path.
+     *
+     * Arabic-Indic: ٠ ١ ٢ ٣ ٤ ٥ ٦ ٧ ٨ ٩
+     * Extended-Arabic: ۰ ۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹
+     */
+    private function sanitizeXlsxDates(string $absolutePath): string
+    {
+        $arabicIndic = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+        $extended    = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        $ascii       = ['0','1','2','3','4','5','6','7','8','9'];
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
+        copy($absolutePath, $tempPath);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($tempPath) !== true) {
+            @unlink($tempPath);
+            return $absolutePath;
+        }
+
+        $fixed = false;
+        foreach (['docProps/core.xml', 'docProps/app.xml'] as $entry) {
+            if ($zip->locateName($entry) === false) {
+                continue;
+            }
+
+            $xml = $zip->getFromName($entry);
+            $clean = str_replace($arabicIndic, $ascii, $xml);
+            $clean = str_replace($extended, $ascii, $clean);
+
+            if ($clean !== $xml) {
+                $zip->deleteName($entry);
+                $zip->addFromString($entry, $clean);
+                $fixed = true;
+            }
+        }
+
+        $zip->close();
+
+        return $fixed ? $tempPath : $absolutePath;
     }
 }

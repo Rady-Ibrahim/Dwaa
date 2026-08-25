@@ -26,15 +26,27 @@
                         </p>
                     </div>
 
-                    <a href="/client/saved-comparisons"
-                        class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all group">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                            class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        رجوع للمحفوظات
-                    </a>
+                    <div class="flex items-center gap-3">
+                        <button id="exportSavedComparisonBtn" onclick="exportSavedComparison()"
+                            class="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all group">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:translate-y-[-2px] transition-transform"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            تصدير Excel
+                        </button>
+
+                        <a href="/client/saved-comparisons"
+                            class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all group">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            رجوع للمحفوظات
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -123,6 +135,7 @@
                     <th class="p-5 font-semibold text-xs uppercase tracking-wider text-center">سعر الملف</th>
                     <th class="p-5 font-semibold text-xs uppercase tracking-wider text-center">خصم الملف</th>
                     <th class="p-5 font-semibold text-xs uppercase tracking-wider">الصنف المطابق</th>
+                    <th class="p-5 font-semibold text-xs uppercase tracking-wider text-center">التشابه</th>
                     <th class="p-5 font-semibold text-xs uppercase tracking-wider">أفضل مورد</th>
                     <th class="p-5 font-semibold text-xs uppercase tracking-wider text-center">سعر المنصة</th>
                     <th class="p-5 font-semibold text-xs uppercase tracking-wider text-center">خصم المنصة</th>
@@ -246,6 +259,7 @@
                             <td class="p-4 text-center">${formatNum(sheetPrice)}</td>
                             <td class="p-4 text-center">${formatNum(sheetDiscount)}</td>
                             <td class="p-4">${escapeHtml(line.matched_product ?? '-')}</td>
+                            <td class="p-4 text-center">${Number(line.similarity ?? 0).toFixed(1)}%</td>
                             <td class="p-4">${escapeHtml(best.supplier ?? '-')}</td>
                             <td class="p-4 text-center">${formatNum(platformPrice)}</td>
                             <td class="p-4 text-center">${formatNum(platformDiscount)}</td>
@@ -303,7 +317,7 @@
                     `تاريخ الحفظ: ${new Date(item.created_at).toLocaleString('ar-EG')} - عدد المنتجات: ${allPairs.length}`;
 
                 if (!allPairs.length) {
-                    const colspan = comparisonType === 'platform_compare' ? '9' : '6';
+                const colspan = comparisonType === 'platform_compare' ? '10' : '6';
                     savedComparisonTable.innerHTML =
                         `<tr><td colspan="${colspan}" class="p-6 text-center text-slate-500">لا توجد منتجات محفوظة داخل هذه المقارنة.</td></tr>`;
                     savedComparisonPagination.innerHTML = '';
@@ -328,7 +342,7 @@
                 }
             } catch (error) {
                 savedComparisonTable.innerHTML =
-                    '<tr><td colspan="9" class="p-6 text-center text-rose-400">تعذر تحميل المقارنة المحفوظة.</td></tr>';
+                    '<tr><td colspan="10" class="p-6 text-center text-rose-400">تعذر تحميل المقارنة المحفوظة.</td></tr>';
             }
         }
 
@@ -342,6 +356,54 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function exportSavedComparison() {
+            const btn = document.getElementById('exportSavedComparisonBtn');
+            btn.disabled = true;
+            btn.innerHTML = `
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                جاري التصدير...
+            `;
+
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const filename = `Med_RANKO_Compare_${ts}.xlsx`;
+
+            axios.get(`/saved-comparisons/${savedComparisonId}/export`, { responseType: 'blob' })
+                .then((res) => {
+                    const blob = new Blob([res.data], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    btn.disabled = false;
+                    btn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        تصدير Excel
+                    `;
+                })
+                .catch((error) => {
+                    const msg = error.response?.data?.message || 'فشل التصدير.';
+                    alert(msg);
+                    btn.disabled = false;
+                    btn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        تصدير Excel
+                    `;
+                });
         }
 
         document.addEventListener('DOMContentLoaded', loadSavedComparison);

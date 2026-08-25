@@ -379,6 +379,10 @@
             display: none;
         }
 
+        .export-btn {
+            background: linear-gradient(90deg, #059669, #10b981, #059669) !important;
+        }
+
         table.platform-table {
             width: 100%;
             border-collapse: collapse;
@@ -563,7 +567,10 @@
         <div class="compare-results">
             <div class="results-header">
                 <input id="platformCompareSearch" type="text" placeholder="بحث داخل النتائج..." />
-                <button type="button" id="savePlatformComparisonBtn" class="save-btn" hidden>💾 حفظ المقارنة</button>
+                <div style="display:flex;gap:0.6rem;">
+                    <button type="button" id="exportPlatformCompareBtn" class="save-btn export-btn" hidden>📥 تصدير Excel</button>
+                    <button type="button" id="savePlatformComparisonBtn" class="save-btn" hidden>💾 حفظ المقارنة</button>
+                </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -654,6 +661,7 @@
         const pager = document.getElementById('platformComparePager');
         const searchInput = document.getElementById('platformCompareSearch');
         const saveBtn = document.getElementById('savePlatformComparisonBtn');
+        const exportBtn = document.getElementById('exportPlatformCompareBtn');
 
         const panelAFileWrap = document.getElementById('panelAFileWrap');
         const panelAUploadWrap = document.getElementById('panelAUploadWrap');
@@ -692,6 +700,7 @@
         });
         searchInput.addEventListener('input', () => applyFilter(1));
         saveBtn.addEventListener('click', savePlatformComparison);
+        exportBtn.addEventListener('click', exportPlatformCompare);
         runBtn.addEventListener('click', runCompare);
 
         uploadSelectA.addEventListener('change', (e) => {
@@ -779,7 +788,8 @@
             filtered = [];
             latestComparisonData = null;
             applyFilter(1);
-            saveBtn.classList.add('hidden');
+            saveBtn.setAttribute('hidden', '');
+            exportBtn.setAttribute('hidden', '');
             saveBtn.disabled = false;
             saveBtn.textContent = '💾 حفظ المقارنة';
         }
@@ -871,14 +881,16 @@
                     timestamp: new Date().toISOString(),
                 };
                 applyFilter(1);
-                saveBtn.classList.remove('hidden');
+                saveBtn.removeAttribute('hidden');
+                exportBtn.removeAttribute('hidden');
                 clientNotify('تمت المقارنة بنجاح', 'success');
             } catch (error) {
                 const msg = error.response?.data?.message || 'فشل تنفيذ المقارنة.';
                 table.innerHTML =
                     `<tr><td colspan="9" class="p-8 text-center text-rose-400">${escapeHtml(msg)}</td></tr>`;
                 clientNotify(msg, 'error');
-                saveBtn.classList.add('hidden');
+                saveBtn.setAttribute('hidden', '');
+                exportBtn.setAttribute('hidden', '');
             } finally {
                 runBtn.disabled = false;
             }
@@ -914,6 +926,69 @@
                 const msg = error.response?.data?.message || 'فشل حفظ المقارنة';
                 clientNotify(msg, 'error');
             }
+        }
+
+        function exportPlatformCompare() {
+            const fd = new FormData();
+            fd.append('mode', currentMode);
+
+            if (currentMode === MODE.PLATFORM) {
+                const file = fileInput.files?.[0];
+                if (!file) {
+                    clientNotify('اختر ملف أولاً', 'warning');
+                    return;
+                }
+                fd.append('file', file);
+            } else if (currentMode === MODE.UPLOAD) {
+                const file = fileInput.files?.[0];
+                if (!file) {
+                    clientNotify('اختر ملف أولاً', 'warning');
+                    return;
+                }
+                if (!selectedUploadB) {
+                    clientNotify('اختر ملفاً من المنصة للمقارنة معه', 'warning');
+                    return;
+                }
+                fd.append('file', file);
+                fd.append('upload_id', selectedUploadB);
+            } else {
+                if (!selectedUploadA || !selectedUploadB) {
+                    clientNotify('اختر ملفين من المنصة أولاً', 'warning');
+                    return;
+                }
+                fd.append('upload_id_a', selectedUploadA);
+                fd.append('upload_id_b', selectedUploadB);
+            }
+
+            const modeLabels = {
+                [MODE.PLATFORM]: 'vs_platform',
+                [MODE.UPLOAD]: 'vs_upload',
+                [MODE.UPLOADS]: 'uploads',
+            };
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const filename = `Med_RANKO_Compare_${modeLabels[currentMode]}_${ts}.xlsx`;
+
+            clientNotify('جاري تصدير الملف...', 'info');
+
+            axios.post('/compare-platform-export', fd, { responseType: 'blob' })
+                .then((res) => {
+                    const blob = new Blob([res.data], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    clientNotify('تم التصدير بنجاح', 'success');
+                })
+                .catch((error) => {
+                    const msg = error.response?.data?.message || 'فشل تصدير الملف.';
+                    clientNotify(msg, 'error');
+                });
         }
 
         function applyFilter(nextPage) {

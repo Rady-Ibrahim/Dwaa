@@ -49,9 +49,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/compare-platform-uploads', [ClientPlatformCompareController::class, 'uploads']);
         Route::post('/compare-file-to-upload', [ClientPlatformCompareController::class, 'fileToUpload']);
         Route::post('/compare-uploads', [ClientPlatformCompareController::class, 'uploadsCompare']);
+        Route::post('/compare-platform-export', [ClientPlatformCompareController::class, 'exportExcel']);
         Route::get('/saved-comparisons', [SavedComparisonController::class, 'index']);
         Route::post('/saved-comparisons', [SavedComparisonController::class, 'store']);
         Route::get('/saved-comparisons/{saved_comparison}', [SavedComparisonController::class, 'show']);
+        Route::get('/saved-comparisons/{saved_comparison}/export', [SavedComparisonController::class, 'export']);
         Route::delete('/saved-comparisons/{saved_comparison}', [SavedComparisonController::class, 'destroy']);
 
         Route::get('/products', [ClientProductsController::class, 'index']);

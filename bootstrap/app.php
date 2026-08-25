@@ -31,6 +31,34 @@ return Application::configure(basePath: dirname(__DIR__))
             return $request->is('api/*') || $request->expectsJson();
         });
 
+        // Sanitize exception messages before json_encode to prevent
+        // Malformed UTF-8 characters from crashing the JSON response layer.
+        $exceptions->renderable(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+
+            $rawMessage = $e->getMessage();
+
+            try {
+                $cleanMessage = mb_convert_encoding((string) $rawMessage, 'UTF-8', 'UTF-8');
+            } catch (\Throwable $t) {
+                $cleanMessage = (string) $rawMessage;
+            }
+
+            $cleanMessage = @iconv('UTF-8', 'UTF-8//IGNORE', $cleanMessage) ?? '';
+            $cleanMessage = trim($cleanMessage);
+            $cleanMessage = $cleanMessage !== '' ? $cleanMessage : 'An unexpected server error occurred.';
+
+            $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+
+            return response()->json([
+                'status'     => 'error',
+                'message'    => $cleanMessage,
+                'exception'  => get_class($e),
+            ], $statusCode, [], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        });
+
         $exceptions->renderable(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
             if ($request->is('api/*')) {
                 return response()->json(['message' => 'غير مصرح'], 401);
@@ -42,10 +70,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->reportable(function (\Throwable $e) {
             Log::error('Unhandled Exception', [
                 'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'code' => $e->getCode(),
-                'trace' => $e->getTraceAsString(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'code'    => $e->getCode(),
+                'trace'   => $e->getTraceAsString(),
             ]);
         });
     })

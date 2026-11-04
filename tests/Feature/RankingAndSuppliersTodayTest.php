@@ -115,8 +115,8 @@ class RankingAndSuppliersTodayTest extends TestCase
 
         $matched = $lines->firstWhere('status', 'both');
         $this->assertSame('دواء مشترك', $matched['query']);
-        $this->assertSame(100.0, (float) $matched['sheet']['price']);
-        $this->assertSame(25.0, (float) $matched['sheet']['discount']);
+        $this->assertSame(100.0, (float) $matched['price']);
+        $this->assertSame(25.0, (float) $matched['discount']);
         $this->assertSame(30.0, (float) $matched['platform_best']['discount']);
         $this->assertSame('مورد ب', $matched['platform_best']['supplier']);
     }
@@ -272,8 +272,8 @@ class RankingAndSuppliersTodayTest extends TestCase
             ->get('/client/ranking')
             ->assertOk()
             ->assertSee('ترتيب الموردين')
-            ->assertSee('themeToggle')
-            ->assertSee('clientLightThemeOverrides');
+            ->assertSee('clientDarkModeLock')
+            ->assertSee('Dark mode is forced');
 
         $this->withCookie('client_token', $token)
             ->get('/client/suppliers-today')

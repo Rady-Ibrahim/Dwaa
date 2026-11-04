@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserDevice;
+use App\Support\PersonalAccessTokenSchema;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardUserDevicesController extends Controller
 {
@@ -51,20 +53,48 @@ class DashboardUserDevicesController extends Controller
             return response()->json(['message' => 'الجهاز لا ينتمي لهذا المستخدم'], 403);
         }
 
-        $user->tokens()->delete();
+        $revokedTokens = 0;
+
+        if (PersonalAccessTokenSchema::hasDeviceLink()) {
+            $revokedTokens = $user->tokens()
+                ->where('user_device_id', $device->id)
+                ->delete();
+
+            // Tokens issued before the device-link migration cannot be
+            // matched to a device, so revoke those legacy sessions too.
+            $revokedTokens += $user->tokens()
+                ->whereNull('user_device_id')
+                ->delete();
+        } else {
+            // Without the device link we cannot identify this device's token,
+            // so revoke all user tokens rather than leave a live session.
+            $revokedTokens = $user->tokens()->delete();
+        }
+
         $device->delete();
 
-        \Log::info('Device deleted successfully', ['device_id' => $device->id]);
+        \Log::info('Device deleted successfully', [
+            'device_id' => $device->id,
+            'revoked_tokens' => $revokedTokens,
+        ]);
 
-        return response()->json(['message' => 'تم حذف الجهاز وإلغاء جلسته']);
+        return response()->json([
+            'message' => $revokedTokens > 0
+                ? 'تم حذف الجهاز وإلغاء جلسته'
+                : 'تم حذف الجهاز',
+            'revoked_tokens' => $revokedTokens,
+        ]);
     }
 
     public function destroyAll(User $user)
     {
         \Log::info('Device destroyAll called', ['user_id' => $user->id]);
 
-        $user->tokens()->delete();
-        $count = UserDevice::query()->where('user_id', $user->id)->delete();
+        $count = DB::transaction(function () use ($user) {
+            $user->tokens()->delete();
+
+            return UserDevice::query()->where('user_id', $user->id)->delete();
+        });
 
         \Log::info('All devices deleted', ['count' => $count]);
 

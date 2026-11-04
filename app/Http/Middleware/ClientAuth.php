@@ -3,11 +3,12 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\TokenUsage;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpFoundation\Response;
 use Laravel\Sanctum\PersonalAccessToken;
+use Symfony\Component\HttpFoundation\Response;
 
 class ClientAuth
 {
@@ -37,10 +38,14 @@ class ClientAuth
             $token = $this->extractTokenFromCookieHeader($rawCookieHeader);
         }
 
+        $tokenId = $token !== null && str_contains($token, '|')
+            ? explode('|', $token, 2)[0]
+            : null;
+
         Log::info('ClientAuth middleware check', [
             'path' => $request->path(),
             'has_token' => $token ? true : false,
-            'token' => $token ? substr($token, 0, 20) . '...' : null,
+            'token_id' => $tokenId,
             'has_cookie_header' => (bool) $rawCookieHeader,
         ]);
 
@@ -48,6 +53,7 @@ class ClientAuth
             Log::info('ClientAuth redirecting to login because token missing', [
                 'path' => $request->path(),
             ]);
+
             return redirect()->route('client.login');
         }
 
@@ -61,6 +67,8 @@ class ClientAuth
 
             return redirect()->route('client.login')->withCookie(cookie()->forget('client_token'));
         }
+
+        TokenUsage::touch($accessToken);
 
         return $next($request);
     }

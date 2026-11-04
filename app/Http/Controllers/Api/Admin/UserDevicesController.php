@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserDevice;
+use App\Support\PersonalAccessTokenSchema;
+use Illuminate\Support\Facades\DB;
 
 class UserDevicesController extends Controller
 {
@@ -41,9 +43,32 @@ class UserDevicesController extends Controller
             return response()->json(['message' => 'الجهاز لا ينتمي لهذا المستخدم'], 403);
         }
 
+        $revokedTokens = 0;
+
+        if (PersonalAccessTokenSchema::hasDeviceLink()) {
+            $revokedTokens = $user->tokens()
+                ->where('user_device_id', $device->id)
+                ->delete();
+
+            // Tokens issued before the device-link migration cannot be
+            // matched to a device, so revoke those legacy sessions too.
+            $revokedTokens += $user->tokens()
+                ->whereNull('user_device_id')
+                ->delete();
+        } else {
+            // Without the device link we cannot identify this device's token,
+            // so revoke all user tokens rather than leave a live session.
+            $revokedTokens = $user->tokens()->delete();
+        }
+
         $device->delete();
 
-        return response()->json(['message' => 'تم حذف الجهاز بنجاح']);
+        return response()->json([
+            'message' => $revokedTokens > 0
+                ? 'تم حذف الجهاز وإلغاء جلسته'
+                : 'تم حذف الجهاز بنجاح',
+            'revoked_tokens' => $revokedTokens,
+        ]);
     }
 
     /**
@@ -52,10 +77,14 @@ class UserDevicesController extends Controller
      */
     public function destroyAll(User $user)
     {
-        $count = UserDevice::query()->where('user_id', $user->id)->delete();
+        $count = DB::transaction(function () use ($user) {
+            $user->tokens()->delete();
+
+            return UserDevice::query()->where('user_id', $user->id)->delete();
+        });
 
         return response()->json([
-            'message' => 'تم حذف جميع الأجهزة',
+            'message' => 'تم حذف جميع الأجهزة وإلغاء كل الجلسات',
             'deleted_count' => $count,
         ]);
     }

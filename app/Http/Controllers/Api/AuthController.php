@@ -5,10 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserDevice;
+use App\Support\PersonalAccessTokenSchema;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
@@ -87,64 +93,93 @@ class AuthController extends Controller
             $fingerprint = substr(md5($request->userAgent().'_fallback'), 0, 32);
         }
 
-        // هل الجهاز مسجّل مسبقاً لهذا المستخدم؟
-        $existingDevice = UserDevice::query()
-            ->where('user_id', $user->id)
-            ->where('device_fingerprint', $fingerprint)
-            ->first();
+        $deviceName = $data['device_name'] ?? 'api';
+        $deviceLabel = $data['device_name'] ?? $this->guessDeviceName($request);
 
-        if (! $existingDevice) {
-            // جهاز جديد — هل وصلنا للحد الأقصى؟
-            $maxAllowed = $user->max_devices ?? self::DEFAULT_MAX_DEVICES;
-            $registeredCount = UserDevice::query()->where('user_id', $user->id)->count();
+        [$existingDevice, $newAccessToken, $isNewDevice] = DB::transaction(function () use ($user, $fingerprint, $data, $deviceName, $deviceLabel) {
+            // Serialize device registration per user so concurrent logins
+            // cannot both pass the max-device check.
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
 
-            if ($registeredCount >= $maxAllowed) {
-                Log::warning('Login blocked — max registered devices reached', [
-                    'user_id' => $user->id,
-                    'phone' => $data['phone'],
-                    'registered_devices' => $registeredCount,
-                    'max_allowed' => $maxAllowed,
-                    'fingerprint' => $fingerprint,
-                ]);
-
+            if (! $lockedUser) {
                 throw ValidationException::withMessages([
-                    'phone' => [
-                        'تم الوصول للحد الأقصى للأجهزة المسجلة ('
-                        .$maxAllowed
-                        .'). يرجى التواصل مع الإدارة لإدارة أجهزتك.',
-                    ],
+                    'phone' => ['تعذر العثور على الحساب، حاول مرة أخرى.'],
                 ]);
             }
 
-            // سجّل الجهاز الجديد
-            $existingDevice = UserDevice::query()->create([
-                'user_id' => $user->id,
-                'device_fingerprint' => $fingerprint,
-                'device_name' => $data['device_name'] ?? $this->guessDeviceName($request),
-                'first_seen_at' => now(),
-                'last_login_at' => now(),
-            ]);
+            $existingDevice = UserDevice::query()
+                ->where('user_id', $lockedUser->id)
+                ->where('device_fingerprint', $fingerprint)
+                ->first();
 
+            $isNewDevice = false;
+
+            if ($existingDevice) {
+                // جهاز معروف — نحدّث آخر دخول فقط
+                $existingDevice->update(['last_login_at' => now()]);
+            } else {
+                // جهاز جديد — هل وصلنا للحد الأقصى؟
+                $maxAllowed = $lockedUser->max_devices ?? self::DEFAULT_MAX_DEVICES;
+                $registeredCount = UserDevice::query()->where('user_id', $lockedUser->id)->count();
+
+                if ($registeredCount >= $maxAllowed) {
+                    Log::warning('Login blocked — max registered devices reached', [
+                        'user_id' => $lockedUser->id,
+                        'phone' => $data['phone'],
+                        'registered_devices' => $registeredCount,
+                        'max_allowed' => $maxAllowed,
+                        'fingerprint' => $fingerprint,
+                    ]);
+
+                    throw ValidationException::withMessages([
+                        'phone' => [
+                            'تم الوصول للحد الأقصى للأجهزة المسجلة ('
+                            .$maxAllowed
+                            .'). يرجى التواصل مع الإدارة لإدارة أجهزتك.',
+                        ],
+                    ]);
+                }
+
+                // سجّل الجهاز الجديد
+                $existingDevice = UserDevice::query()->create([
+                    'user_id' => $lockedUser->id,
+                    'device_fingerprint' => $fingerprint,
+                    'device_name' => $deviceLabel,
+                    'first_seen_at' => now(),
+                    'last_login_at' => now(),
+                ]);
+
+                $isNewDevice = true;
+            }
+
+            $newAccessToken = $user->createToken($deviceName);
+
+            if (PersonalAccessTokenSchema::hasDeviceLink()) {
+                $newAccessToken->accessToken->forceFill([
+                    'user_device_id' => $existingDevice->id,
+                ])->save();
+            }
+
+            return [$existingDevice, $newAccessToken, $isNewDevice];
+        });
+
+        if ($isNewDevice) {
             Log::info('New device registered', [
                 'user_id' => $user->id,
                 'device_id' => $existingDevice->id,
                 'fingerprint' => $fingerprint,
             ]);
-        } else {
-            // جهاز معروف — نحدّث آخر دخول فقط
-            $existingDevice->update(['last_login_at' => now()]);
         }
         // ─────────────────────────────────────────────────────────────────────
 
-        $deviceName = $data['device_name'] ?? 'api';
-        $token = $user->createToken($deviceName)->plainTextToken;
+        $token = $newAccessToken->plainTextToken;
 
         Log::info('API login successful', [
             'phone' => $data['phone'],
             'user_id' => $user->id,
             'device_id' => $existingDevice->id,
             'device_name' => $deviceName,
-            'token_prefix' => substr($token, 0, 20).'...',
+            'token_id' => $newAccessToken->accessToken->id,
         ]);
 
         $response = response()->json([
@@ -160,24 +195,20 @@ class AuthController extends Controller
             ],
         ]);
 
-        return $response->cookie(
-            'client_token',
-            $token,
-            self::TOKEN_COOKIE_MINUTES,
-            '/',
-            null,
-            app()->environment('production'),
-            false,
-            false,
-            'lax'
-        );
+        return $response->cookie($this->tokenCookie($token));
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
 
-        return response()->json(['message' => 'تم تسجيل الخروج']);
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+
+        return response()
+            ->json(['message' => 'تم تسجيل الخروج'])
+            ->withCookie(cookie()->forget('client_token'));
     }
 
     /**
@@ -193,32 +224,95 @@ class AuthController extends Controller
         }
 
         $current = $user->currentAccessToken();
-        $name = $current?->name ?: 'web';
 
-        $newToken = $user->createToken($name)->plainTextToken;
+        if (! $current instanceof PersonalAccessToken || ! $current->exists) {
+            return response()->json(['message' => 'غير مصرح'], Response::HTTP_UNAUTHORIZED);
+        }
 
-        // إبطال التوكن القديم حتى لا يتراكم في جدول personal_access_tokens
-        $current?->delete();
+        $name = $current->name ?: 'web';
+        $abilities = $current->abilities ?? ['*'];
+        $cacheKey = 'sanctum.refresh.'.$current->id;
+
+        $refreshed = DB::transaction(function () use ($current, $user, $name, $abilities, $cacheKey) {
+            // Serialize concurrent refreshes of the same token across tabs.
+            $locked = PersonalAccessToken::query()
+                ->whereKey($current->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return null;
+            }
+
+            // A concurrent tab may have already rotated this token. Return
+            // the same replacement instead of issuing another one.
+            $cached = Cache::get($cacheKey);
+
+            if (is_array($cached) && isset($cached['token']) && is_string($cached['token'])) {
+                try {
+                    return [
+                        'token' => Crypt::decryptString($cached['token']),
+                        'id' => $cached['id'] ?? $locked->id,
+                    ];
+                } catch (\Throwable) {
+                    Cache::forget($cacheKey);
+                }
+            }
+
+            $newAccessToken = $user->createToken($name, $abilities);
+
+            if (PersonalAccessTokenSchema::hasDeviceLink()) {
+                $newAccessToken->accessToken->forceFill([
+                    'user_device_id' => $locked->user_device_id,
+                ])->save();
+            }
+
+            // Keep the previous token valid briefly so in-flight requests
+            // using it are not rejected mid-rotation.
+            $locked->forceFill(['expires_at' => now()->addMinutes(2)])->save();
+
+            $result = [
+                'token' => $newAccessToken->plainTextToken,
+                'id' => $newAccessToken->accessToken->id,
+            ];
+
+            Cache::put($cacheKey, [
+                'token' => Crypt::encryptString($result['token']),
+                'id' => $result['id'],
+            ], now()->addMinutes(2));
+
+            return $result;
+        });
+
+        if (! is_array($refreshed) || ! isset($refreshed['token'])) {
+            return response()->json(['message' => 'غير مصرح'], Response::HTTP_UNAUTHORIZED);
+        }
 
         Log::info('API token refreshed', [
             'user_id' => $user->id,
             'device' => $name,
-            'new_token' => substr($newToken, 0, 20).'...',
+            'token_id' => $refreshed['id'],
+            'previous_token_id' => $current->id,
         ]);
 
         return response()
-            ->json(['token' => $newToken])
-            ->cookie(
-                'client_token',
-                $newToken,
-                self::TOKEN_COOKIE_MINUTES,
-                '/',
-                null,
-                app()->environment('production'),
-                false,
-                false,
-                'lax'
-            );
+            ->json(['token' => $refreshed['token']])
+            ->cookie($this->tokenCookie($refreshed['token']));
+    }
+
+    private function tokenCookie(string $token): Cookie
+    {
+        return cookie(
+            'client_token',
+            $token,
+            self::TOKEN_COOKIE_MINUTES,
+            '/',
+            null,
+            app()->environment('production'),
+            false,
+            false,
+            'lax'
+        );
     }
 
     /**

@@ -88,13 +88,14 @@
         const eyeOpenIcon = document.getElementById('eyeOpenIcon');
         const eyeClosedIcon = document.getElementById('eyeClosedIcon');
         const rememberedPhone = localStorage.getItem('client_login_phone') || '';
-        const rememberedPassword = localStorage.getItem('client_login_password') || '';
         const rememberEnabled = localStorage.getItem('client_remember_login') === '1';
+
+        // Remove passwords stored by older versions of this page.
+        localStorage.removeItem('client_login_password');
 
         if (rememberEnabled) {
             rememberInput.checked = true;
             phoneInput.value = rememberedPhone;
-            passwordInput.value = rememberedPassword;
         }
 
         togglePasswordBtn?.addEventListener('click', function() {
@@ -158,12 +159,11 @@
                     if (remember) {
                         localStorage.setItem('client_remember_login', '1');
                         localStorage.setItem('client_login_phone', phone);
-                        localStorage.setItem('client_login_password', password);
                     } else {
                         localStorage.removeItem('client_remember_login');
                         localStorage.removeItem('client_login_phone');
-                        localStorage.removeItem('client_login_password');
                     }
+                    localStorage.removeItem('client_login_password');
                     setTimeout(() => {
                         window.location.replace(clientSearchUrl);
                     }, 50);

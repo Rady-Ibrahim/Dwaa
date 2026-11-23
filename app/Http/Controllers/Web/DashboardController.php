@@ -105,6 +105,17 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function uploadsStatus()
+    {
+        $uploads = Upload::query()->with('supplier')->orderByDesc('id')->paginate(15);
+
+        return response(
+            view('dashboard.uploads-rows', ['uploads' => $uploads])->render(),
+            200,
+            ['Content-Type' => 'text/html; charset=utf-8', 'Cache-Control' => 'no-store']
+        );
+    }
+
     public function products(NormalizerService $normalizer)
     {
         $search = trim((string) request('q', ''));

@@ -144,8 +144,8 @@ class SearchService
         return Product::query()
             ->where(function ($q) use ($word) {
                 $q->where('normalized_name', 'LIKE', $word . '%')
-                    ->orWhere('name_ar', 'LIKE', '%' . $word . '%')
-                    ->orWhere('name_en', 'LIKE', '%' . $word . '%');
+                    ->orWhere('name_ar', 'LIKE', $word . '%')
+                    ->orWhere('name_en', 'LIKE', $word . '%');
             })
             ->with($with)
             ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
@@ -271,6 +271,12 @@ class SearchService
         }
 
         $hasOfferFilters = isset($filters['price']) || ! empty($filters['date_filter']);
+        $normalizedTrim = $this->normalizer->normalize($trim);
+
+        if ($normalizedTrim === '') {
+            return collect();
+        }
+
         $queryFold = $this->normalizer->phoneticConsonantKey($trim);
 
         // عند تفعيل فلاتر السعر/التاريخ نقيّد المنتجات المرشحة لتشمل فقط
@@ -293,9 +299,9 @@ class SearchService
             $q->whereHas('offers', fn ($o) => $this->applyOfferFilters($o, $filters));
         };
 
-        // 1) Prefix (keyword starts with query terms) => يعطي أولوية للبحث العادي عند أول 3 أحرف
+        // 1) Prefix: only the indexed normalized_name column is used.
         $prefix = Product::query()
-            ->tap(fn($q) => $this->normalizer->applyPrefixProductSearch($q, $trim))
+            ->where('normalized_name', 'LIKE', $normalizedTrim.'%')
             ->tap($offerFilterScope)
             ->with($with)
             ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
@@ -307,22 +313,39 @@ class SearchService
             return $prefix;
         }
 
-        // 2) Flexible contains (رمز باقي النتائج بعد الـ prefix)
+        // 2) Full-text multi-word match; SQLite tests use the legacy fallback.
         $primary = $prefix;
         $needed = $limit - $primary->count();
         if ($needed > 0) {
-            $seen = array_flip($primary->modelKeys());
-            $extraSubstring = Product::query()
-                ->tap(fn($q) => $this->normalizer->applyFlexibleProductSearch($q, $trim))
-                ->tap($offerFilterScope)
-                ->whereNotIn('id', array_keys($seen))
-                ->with($with)
-                ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
-                ->orderBy('id')
-                ->limit($needed)
-                ->get();
+            $seen = $primary->modelKeys();
+            $boolean = $this->fullTextBoolean($normalizedTrim);
 
-            $primary = $primary->concat($extraSubstring)->values();
+            $extraQuery = Product::query();
+
+            if ($this->supportsFullText() && $boolean !== '') {
+                $extraQuery->whereFullText(
+                    ['normalized_name', 'name_ar', 'name_en'],
+                    $boolean,
+                    ['mode' => 'boolean']
+                );
+            } elseif (! $this->supportsFullText()) {
+                $this->normalizer->applyFlexibleProductSearch($extraQuery, $trim);
+            }
+
+            if ($this->supportsFullText() && $boolean === '') {
+                $extra = collect();
+            } else {
+                $extra = $extraQuery
+                    ->tap($offerFilterScope)
+                    ->when($seen !== [], fn ($q) => $q->whereNotIn('id', $seen))
+                    ->with($with)
+                    ->select(['id', 'supplier_id', 'name_ar', 'name_en', 'code', 'normalized_name'])
+                    ->orderBy('id')
+                    ->limit($needed)
+                    ->get();
+            }
+
+            $primary = $primary->concat($extra)->values();
         }
 
         if ($primary->count() >= $limit || strlen($queryFold) < 3) {
@@ -387,6 +410,19 @@ class SearchService
             ->get();
 
         return $primary->concat($extra)->values();
+    }
+
+    private function supportsFullText(): bool
+    {
+        return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
+    }
+
+    private function fullTextBoolean(string $normalized): string
+    {
+        return collect(preg_split('/\s+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY))
+            ->filter(fn (string $word) => mb_strlen($word) >= 3)
+            ->map(fn (string $word) => '+'.$word.'*')
+            ->implode(' ');
     }
 
     /**

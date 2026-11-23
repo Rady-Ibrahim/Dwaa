@@ -60,26 +60,47 @@
                     <th class="px-4 py-3">التاريخ</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-zinc-800">
-                @forelse ($uploads as $up)
-                    <tr class="hover:bg-zinc-900/40">
-                        <td class="px-4 py-3 text-zinc-500">{{ $up->id }}</td>
-                        <td class="px-4 py-3 text-white">{{ $up->supplier->name ?? '—' }}</td>
-                        <td class="px-4 py-3">
-                            <span class="rounded-full bg-zinc-800 px-2 py-0.5 text-xs">{{ $up->status }}</span>
-                        </td>
-                        <td class="px-4 py-3 text-zinc-400">{{ $up->total_rows }}</td>
-                        <td class="px-4 py-3 text-emerald-400">{{ $up->matched_count }}</td>
-                        <td class="px-4 py-3 text-amber-400">{{ $up->unmatched_count }}</td>
-                        <td class="px-4 py-3 text-xs text-zinc-500">{{ $up->created_at?->format('Y-m-d H:i') }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-zinc-500">لا توجد رفوعات بعد.</td>
-                    </tr>
-                @endforelse
+            <tbody class="divide-y divide-zinc-800" id="uploads-table-body">
+                @include('dashboard.uploads-rows', ['uploads' => $uploads])
             </tbody>
         </table>
     </div>
     <div class="mt-4">{{ $uploads->links() }}</div>
 @endsection
+
+@push('scripts')
+    <script>
+        (function () {
+            const tableBody = document.getElementById('uploads-table-body');
+            const statusUrl = '{{ route('dashboard.uploads.status') }}';
+            let timer = null;
+
+            function hasActiveRows() {
+                return !!tableBody.querySelector('[data-upload-status="pending"], [data-upload-status="processing"]');
+            }
+
+            async function refreshRows() {
+                try {
+                    const res = await fetch(statusUrl, {
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!res.ok || res.redirected) return;
+                    tableBody.innerHTML = await res.text();
+                } catch (err) {
+                    console.error('[uploads] status refresh failed', err);
+                }
+            }
+
+            function schedule() {
+                timer = setTimeout(async () => {
+                    if (!document.hidden) await refreshRows();
+                    schedule();
+                }, hasActiveRows() ? 2500 : 15000);
+            }
+
+            schedule();
+        })();
+    </script>
+@endpush

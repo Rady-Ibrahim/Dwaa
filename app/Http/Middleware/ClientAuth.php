@@ -59,8 +59,9 @@ class ClientAuth
 
         $accessToken = PersonalAccessToken::findToken($token);
         $tokenable = $accessToken?->tokenable;
+        $expired = $accessToken?->expires_at?->isPast() ?? false;
 
-        if (! $accessToken || ! $tokenable instanceof User || ! $tokenable->isClient()) {
+        if (! $accessToken || $expired || ! $tokenable instanceof User || ! $tokenable->isClient()) {
             Log::info('ClientAuth redirecting to login because token invalid', [
                 'path' => $request->path(),
             ]);

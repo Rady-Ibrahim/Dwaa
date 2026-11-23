@@ -6,6 +6,7 @@ use App\Exports\SavedComparisonExport;
 use App\Http\Controllers\Controller;
 use App\Models\SavedComparison;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class SavedComparisonController extends Controller
@@ -91,7 +92,13 @@ class SavedComparisonController extends Controller
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             ])->deleteFileAfterSend(true);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'فشل التصدير: ' . $e->getMessage()], 500);
+            Log::error('Saved comparison export failed', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            throw $e;
         }
     }
 }

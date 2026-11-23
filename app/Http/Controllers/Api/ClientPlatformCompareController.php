@@ -10,9 +10,9 @@ use App\Models\Upload;
 use App\Services\ExcelSearchService;
 use App\Services\NormalizerService;
 use App\Services\PlatformCompareService;
+use App\Support\SafeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -39,32 +39,16 @@ class ClientPlatformCompareController extends Controller
         private PlatformCompareService $platformCompareService,
     ) {}
 
-    private function errorJson(\Throwable $e, int $statusCode = 500): \Symfony\Component\HttpFoundation\JsonResponse
+    private function errorJson(\Throwable $e): never
     {
-        $raw = $e->getMessage();
-
-        try {
-            $clean = mb_convert_encoding((string) $raw, 'UTF-8', 'UTF-8');
-        } catch (\Throwable $t) {
-            $clean = (string) $raw;
-        }
-
-        $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $clean) ?? '';
-        $clean = trim($clean);
-        $clean = $clean !== '' ? $clean : 'An unexpected server error occurred.';
-
         Log::error('API Exception', [
-            'message' => $clean,
-            'class'   => get_class($e),
-            'file'    => $e->getFile(),
-            'line'    => $e->getLine(),
+            'message' => $e->getMessage(),
+            'class' => get_class($e),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
         ]);
 
-        return response()->json([
-            'status'    => 'error',
-            'message'   => $clean,
-            'exception' => get_class($e),
-        ], $statusCode, [], self::JSON_FLAGS);
+        throw $e;
     }
 
     /**
@@ -883,13 +867,14 @@ class ClientPlatformCompareController extends Controller
 
         $cacheKey = 'platform_compare_products_cache_v3';
 
-        $products = Cache::remember($cacheKey, 12 * 60 * 60, function (): array {
+        $products = SafeCache::remember($cacheKey, 12 * 60 * 60, function (): array {
             $rows = DB::table('products')
                 ->join('offers', function ($join) {
                     $join->on('offers.product_id', '=', 'products.id')
+                        ->where('offers.is_active', true)
                         ->where(function ($q) {
-                            $q->where('expires_at', '>', now())
-                                ->orWhereNull('expires_at');
+                            $q->where('offers.expires_at', '>', now())
+                                ->orWhereNull('offers.expires_at');
                         });
                 })
                 ->leftJoin('suppliers', 'suppliers.id', '=', 'offers.supplier_id')
@@ -969,7 +954,7 @@ class ClientPlatformCompareController extends Controller
 
         $cacheKey = "upload_compare_cache_v3_{$uploadId}";
 
-        $products = Cache::remember($cacheKey, 60 * 60, function () use ($uploadId): array {
+        $products = SafeCache::remember($cacheKey, 60 * 60, function () use ($uploadId): array {
             $rows = DB::table('products')
                 ->join('offers', function ($join) use ($uploadId) {
                     $join->on('offers.product_id', '=', 'products.id')

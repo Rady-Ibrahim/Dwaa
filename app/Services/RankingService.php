@@ -91,6 +91,7 @@ class RankingService
         $bestPerName = DB::table('offers as o')
             ->join('products as p', 'p.id', '=', 'o.product_id')
             ->selectRaw('p.normalized_name AS name, MAX(o.discount) AS max_discount')
+            ->where('o.is_active', true)
             ->where(fn ($q) => $q->where('o.expires_at', '>', now())->orWhereNull('o.expires_at'))
             ->groupBy('p.normalized_name');
 
@@ -107,6 +108,7 @@ class RankingService
                  ) AS best_items'
             )
             ->joinSub($bestPerName, 'bn', 'bn.name', '=', 'p.normalized_name')
+            ->where('o.is_active', true)
             ->where(fn ($q) => $q->where('o.expires_at', '>', now())->orWhereNull('o.expires_at'))
             ->groupBy('o.supplier_id');
     }
@@ -141,6 +143,7 @@ class RankingService
         $bestPerName = DB::table('offers as o')
             ->join('products as p', 'p.id', '=', 'o.product_id')
             ->selectRaw('p.normalized_name AS name, MAX(o.discount) AS max_discount')
+            ->where('o.is_active', true)
             ->where(fn ($q) => $q->where('o.expires_at', '>', now())->orWhereNull('o.expires_at'))
             ->groupBy('p.normalized_name');
 

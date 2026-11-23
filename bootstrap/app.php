@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -44,80 +45,141 @@ return Application::configure(basePath: dirname(__DIR__))
             return $request->is('api/*') || $request->expectsJson();
         });
 
-        // Capture the exact DB account/host and failing SQL whenever MySQL
-        // denies table access (1142), which is otherwise hard to trace across
-        // multiple app servers and MySQL host variants.
-        $exceptions->reportable(function (QueryException $e) {
-            if ((int) ($e->errorInfo[1] ?? 0) !== 1142) {
-                return;
+        $mysqlPrivilegeCodes = [1142, 1143, 1044, 1045];
+
+        $requestContext = function (): array {
+            $request = request();
+
+            return [
+                'app_host' => gethostname(),
+                'client_ip' => $request?->ip(),
+                'request_method' => $request?->method(),
+                'request_path' => $request?->path(),
+                'route_name' => $request?->route()?->getName(),
+                'route_action' => $request?->route()?->getActionName(),
+            ];
+        };
+
+        $utf8 = function (string $value): string {
+            try {
+                $value = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+            } catch (Throwable) {
             }
 
+            return trim(@iconv('UTF-8', 'UTF-8//IGNORE', $value) ?: '');
+        };
+
+        $safeStatus = function (Throwable $e): int {
+            if ($e instanceof AuthenticationException) {
+                return 401;
+            }
+            if ($e instanceof ValidationException) {
+                return (int) ($e->status ?: 422);
+            }
+            if ($e instanceof HttpException) {
+                return $e->getStatusCode();
+            }
+
+            return 500;
+        };
+
+        $safeMessage = function (int $status): string {
+            return match (true) {
+                $status === 401 => 'غير مصرح',
+                $status === 403 => 'غير مسموح بهذا الإجراء.',
+                $status === 404 => 'الصفحة أو المورد غير موجود.',
+                $status === 429 => 'محاولات كثيرة، يرجى المحاولة لاحقاً.',
+                $status >= 500 => 'حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.',
+                default => 'تعذر إكمال الطلب.',
+            };
+        };
+
+        $reportPrivilegeError = function (QueryException $e, int $code) use ($requestContext) {
             $connection = $e->getConnectionName();
 
-            $context = [
-                'app_host' => gethostname(),
+            $context = array_merge([
+                'mysql_error_code' => $code,
                 'connection' => $connection,
                 'connection_details' => $e->getConnectionDetails(),
                 'configured_user' => config("database.connections.{$connection}.username"),
                 'read_write_type' => $e->readWriteType,
                 'sql' => $e->getSql(),
                 'bindings' => $e->getBindings(),
-            ];
+            ], $requestContext());
 
             try {
-                $context['db_session'] = (array) DB::connection($connection)->selectOne(
+                $session = (array) DB::connection($connection)->selectOne(
                     'SELECT CURRENT_USER() AS current_user_account, USER() AS login_user, DATABASE() AS current_db, @@hostname AS server_hostname, @@server_id AS server_id, CONNECTION_ID() AS connection_id'
                 );
+                $context['db_session'] = $session;
+                $context['client_host'] = $session['login_user'] ?? null;
             } catch (Throwable $dbException) {
                 $context['db_session_error'] = $dbException->getMessage();
             }
 
-            Log::critical('mysql_1142_permission_denied', $context);
+            Log::critical($code === 1142 ? 'mysql_1142_permission_denied' : 'mysql_privilege_error', $context);
+        };
+
+        $exceptions->reportable(function (QueryException $e) use ($reportPrivilegeError, $mysqlPrivilegeCodes) {
+            $code = (int) ($e->errorInfo[1] ?? 0);
+
+            if (! in_array($code, $mysqlPrivilegeCodes, true)) {
+                return;
+            }
+
+            try {
+                $reportPrivilegeError($e, $code);
+            } catch (Throwable) {
+            }
+
+            return false;
         });
 
-        // Sanitize exception messages before json_encode to prevent
-        // Malformed UTF-8 characters from crashing the JSON response layer.
-        $exceptions->renderable(function (Throwable $e, Request $request) {
+        $exceptions->reportable(function (PDOException $e) use ($mysqlPrivilegeCodes, $requestContext) {
+            if ($e instanceof QueryException) {
+                return;
+            }
+
+            $code = (int) ($e->errorInfo[1] ?? 0);
+
+            if (! in_array($code, $mysqlPrivilegeCodes, true)) {
+                return;
+            }
+
+            try {
+                Log::critical('mysql_privilege_error', array_merge([
+                    'mysql_error_code' => $code,
+                    'message' => $e->getMessage(),
+                ], $requestContext()));
+            } catch (Throwable) {
+            }
+
+            return false;
+        });
+
+        $exceptions->renderable(function (Throwable $e, Request $request) use ($safeStatus, $safeMessage, $utf8) {
             if (! ($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
-            $rawMessage = $e->getMessage();
-
-            try {
-                $cleanMessage = mb_convert_encoding((string) $rawMessage, 'UTF-8', 'UTF-8');
-            } catch (Throwable $t) {
-                $cleanMessage = (string) $rawMessage;
+            if ($e instanceof AuthenticationException) {
+                return response()->json(['message' => 'غير مصرح'], 401);
             }
 
-            $cleanMessage = @iconv('UTF-8', 'UTF-8//IGNORE', $cleanMessage) ?? '';
-            $cleanMessage = trim($cleanMessage);
-            $cleanMessage = $cleanMessage !== '' ? $cleanMessage : 'An unexpected server error occurred.';
-
-            $statusCode = 500;
+            $status = $safeStatus($e);
 
             if ($e instanceof ValidationException) {
-                $statusCode = $e->status;
-            } elseif (method_exists($e, 'getStatusCode')) {
-                $statusCode = $e->getStatusCode();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $utf8($e->getMessage()),
+                    'errors' => $e->errors(),
+                ], $status, [], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             }
 
-            $payload = [
+            return response()->json([
                 'status' => 'error',
-                'message' => $cleanMessage,
-                'exception' => get_class($e),
-            ];
-
-            if ($e instanceof ValidationException) {
-                $payload['errors'] = $e->errors();
-            }
-
-            return response()->json(
-                $payload,
-                $statusCode,
-                [],
-                JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE
-            );
+                'message' => $safeMessage($status),
+            ], $status, [], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         });
 
         $exceptions->renderable(function (AuthenticationException $e, Request $request) {
@@ -126,6 +188,20 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return redirect()->route('admin.login');
+        });
+
+        $exceptions->renderable(function (Throwable $e, Request $request) use ($safeStatus, $safeMessage) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            $status = $safeStatus($e);
+
+            if ($status < 500) {
+                return null;
+            }
+
+            return response()->view('errors.safe', ['message' => $safeMessage($status)], $status);
         });
 
         $exceptions->reportable(function (Throwable $e) {
@@ -139,7 +215,9 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->command('offers:prune-expired')->daily();
+        $schedule->command('offers:prune-expired --chunk=1000 --sleep=100 --days=1')
+            ->dailyAt('03:00')
+            ->withoutOverlapping();
         $schedule->command('sanctum:prune-tokens')->dailyAt('03:15')->withoutOverlapping();
     })
     ->create();

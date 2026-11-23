@@ -33,6 +33,38 @@ class TokenLifecycleTest extends TestCase
         $this->assertSame(2, $user->tokens()->count());
     }
 
+    public function test_api_rejects_expired_tokens(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_CLIENT,
+            'is_active' => true,
+            'subscription_expires_at' => now()->addYear(),
+        ]);
+
+        $token = $user->createToken('expired-api-device');
+        $token->accessToken->forceFill(['expires_at' => now()->subMinute()])->save();
+
+        $this->withToken($token->plainTextToken)
+            ->getJson('/api/me')
+            ->assertUnauthorized();
+    }
+
+    public function test_client_cookie_auth_rejects_expired_tokens(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_CLIENT,
+            'is_active' => true,
+            'subscription_expires_at' => now()->addYear(),
+        ]);
+
+        $token = $user->createToken('expired-device');
+        $token->accessToken->forceFill(['expires_at' => now()->subMinute()])->save();
+
+        $this->withCookie('client_token', $token->plainTextToken)
+            ->get('/client/search')
+            ->assertRedirect(route('client.login'));
+    }
+
     public function test_login_links_token_to_device_and_enforces_the_device_limit(): void
     {
         $user = User::factory()->create([

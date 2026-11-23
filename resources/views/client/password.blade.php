@@ -12,11 +12,11 @@
         }
 
         .settings-card {
-            background: rgba(15, 9, 11, 0.96);
+            background: rgba(18, 18, 18, 0.9);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(59, 130, 246, 0.7);
+            border: 1px solid rgba(239, 35, 60, 0.42);
             border-radius: 22px;
-            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.18);
         }
 
         .info-row {
@@ -24,15 +24,15 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.85rem 1rem;
-            background: rgba(22, 12, 14, 0.88);
+            background: rgba(255, 255, 255, 0.02);
             border-radius: 14px;
-            border: 1px solid rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(239, 35, 60, 0.12);
             transition: all 0.3s ease;
         }
 
         .info-row:hover {
-            background: rgba(30, 64, 175, 0.18);
-            border-color: rgba(96, 165, 250, 0.35);
+            background: rgba(239, 35, 60, 0.03);
+            border-color: rgba(239, 35, 60, 0.2);
         }
 
         .en-numbers {
@@ -47,19 +47,18 @@
 
         .form-input {
             width: 100%;
-            background: rgba(17, 15, 16, 0.96);
-            border: 1px solid rgba(59, 130, 246, 0.7);
+            background: rgba(12, 12, 12, 0.9);
+            border: 1px solid rgba(239, 35, 60, 0.25);
             border-radius: 14px;
             padding: 0.85rem 3rem 0.85rem 1rem;
             color: white;
             transition: all 0.3s;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
         }
 
         .form-input:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+            border-color: #ff4d63;
+            box-shadow: 0 0 0 4px rgba(239, 35, 60, 0.08);
         }
 
         .eye-toggle {
@@ -69,8 +68,7 @@
             transform: translateY(-50%);
             cursor: pointer;
             font-size: 1.2rem;
-            opacity: 0.7;
-            color: #93c5fd;
+            opacity: 0.6;
             transition: opacity 0.2s, color 0.2s;
             z-index: 10;
             user-select: none;
@@ -78,7 +76,7 @@
 
         .eye-toggle:hover {
             opacity: 1;
-            color: #bfdbfe;
+            color: #ff7585;
         }
 
         @media (max-width: 980px) {
@@ -91,7 +89,7 @@
     <div class="settings-shell">
         <div class="settings-card p-7">
             <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 rounded-2xl bg-blue-500/15 flex items-center justify-center text-2xl">👤</div>
+                <div class="w-12 h-12 rounded-2xl bg-[#ef233c]/15 flex items-center justify-center text-2xl">👤</div>
                 <div>
                     <h3 class="text-xl font-bold text-white">بيانات الحساب</h3>
                     <p class="text-slate-400 text-xs">معلومات العضوية في نظام MedRANKO</p>
@@ -122,16 +120,16 @@
                     <span id="profileLastLogin" class="text-white font-medium text-xs en-numbers">-</span>
                 </div>
 
-                <div class="info-row border-t border-blue-500/20 mt-4 pt-4 bg-blue-500/5">
-                    <span class="text-blue-200 text-sm font-bold">صلاحية التفعيل حتى</span>
-                    <span id="profileActivatedUntil" class="text-blue-200 font-black text-sm en-numbers">-</span>
+                <div class="info-row border-t border-[#ef233c]/20 mt-4 pt-4 bg-[#ef233c]/5">
+                    <span class="text-[#ff7585] text-sm font-bold">صلاحية التفعيل حتى</span>
+                    <span id="profileActivatedUntil" class="text-[#ff7585] font-black text-sm en-numbers">-</span>
                 </div>
             </div>
         </div>
 
         <div class="settings-card p-7">
             <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 rounded-2xl bg-blue-500/15 flex items-center justify-center text-2xl">🔐</div>
+                <div class="w-12 h-12 rounded-2xl bg-[#ef233c]/15 flex items-center justify-center text-2xl">🔐</div>
                 <div>
                     <h3 class="text-xl font-bold text-white">تعديل كلمة المرور</h3>
                     <p class="text-slate-400 text-xs">تحديث بيانات الأمان الخاصة بك</p>
@@ -166,8 +164,7 @@
 
                 <div class="pt-4">
                     <button type="submit" id="submitBtn"
-                        class="w-full text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-blue-900/40 border border-white/10 hover:brightness-110"
-                        style="background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);">
+                        class="w-full bg-gradient-to-r from-[#5c0919] via-[#8a0f2b] to-[#5c0919] text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-[#5c0919]/25 border border-[#f5b8c2]/15">
                         <span>حفظ التعديلات الأمنية</span>
                     </button>
                 </div>

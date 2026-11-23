@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SupplierRanking;
 use App\Services\RankingService;
+use App\Support\SafeCache;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class RankingController extends Controller
 {
@@ -52,7 +52,7 @@ class RankingController extends Controller
      */
     public function refresh(Request $request)
     {
-        $lastRefresh = Cache::get('ranking:last_refresh');
+        $lastRefresh = SafeCache::get('ranking:last_refresh');
         $elapsed = $lastRefresh ? now()->diffInSeconds($lastRefresh) : PHP_INT_MAX;
 
         if ($elapsed < self::REFRESH_MIN_INTERVAL_SECONDS) {
@@ -61,9 +61,9 @@ class RankingController extends Controller
             ], 429);
         }
 
-        $lock = Cache::lock('ranking:refresh_lock', self::REFRESH_LOCK_SECONDS);
+        $lock = SafeCache::lock('ranking:refresh_lock', self::REFRESH_LOCK_SECONDS);
 
-        if (! $lock->get()) {
+        if ($lock !== null && ! $lock->get()) {
             return response()->json([
                 'message' => 'جاري التحديث الآن، حاول بعد قليل.',
             ], 429);
@@ -71,7 +71,7 @@ class RankingController extends Controller
 
         try {
             $count = $this->rankingService->recalculateAll();
-            Cache::put('ranking:last_refresh', now());
+            SafeCache::forever('ranking:last_refresh', now());
 
             return response()->json([
                 'message' => "تم تحديث الترتيب بنجاح ($count مورد).",
@@ -79,7 +79,7 @@ class RankingController extends Controller
                 'count' => $count,
             ]);
         } finally {
-            $lock->release();
+            SafeCache::release($lock, 'ranking:refresh_lock');
         }
     }
 }

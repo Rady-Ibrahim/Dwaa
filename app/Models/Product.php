@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Support\SafeCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Cache;
 
 class Product extends Model
 {
@@ -29,11 +29,7 @@ class Product extends Model
 
     private static function invalidatePlatformCache(): void
     {
-        try {
-            Cache::forget('platform_compare_products_cache_v3');
-        } catch (\Throwable) {
-            // Cache driver failure should never block Product operations.
-        }
+        SafeCache::forget('platform_compare_products_cache_v3');
     }
 
     public function supplier(): BelongsTo

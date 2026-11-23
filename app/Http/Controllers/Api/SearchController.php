@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\SearchLog;
 use App\Services\SearchService;
+use App\Support\SafeCache;
+use App\Support\SearchCache;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class SearchController extends Controller
 {
@@ -26,14 +28,40 @@ class SearchController extends Controller
 
         $hasFilters = ! empty($filters['price']) || ! empty($filters['date_filter']);
 
-        // ── Cache للبحث بدون فلاتر (أسرع بكتير) ─────────────────────────────
-        if (! $hasFilters) {
-            $cacheKey = 'search:' . md5(mb_strtolower($data['q']));
-            $searchResult = Cache::remember($cacheKey, 300, fn () => $this->searchService->search($request->user(), $data['q'], 200));
-        } else {
-            $searchResult = $this->searchService->search($request->user(), $data['q'], 200, [], $filters);
-        }
-        // ────────────────────────────────────────────────────────────────────
+        $cacheKey = 'search:v'.SearchCache::version().':'.sha1(json_encode([
+            'q' => mb_strtolower(trim($data['q'])),
+            'price' => $filters['price'],
+            'date_filter' => $filters['date_filter'],
+        ]));
+        $ttl = $hasFilters ? now()->addMinutes(2) : now()->addMinutes(10);
+
+        $searchResult = SafeCache::remember(
+            $cacheKey,
+            $ttl,
+            fn () => $this->searchService->search(
+                $request->user(),
+                $data['q'],
+                200,
+                ['log' => false],
+                $filters
+            )
+        );
+
+        $results = $searchResult['results'];
+        $firstProductId = $results[0]['id'] ?? null;
+
+        SearchLog::query()->create([
+            'user_id' => $request->user()->id,
+            'source' => SearchLog::SOURCE_TEXT,
+            'bulk_session_id' => null,
+            'query' => $data['q'],
+            'product_id' => $firstProductId,
+            'results_count' => count($results),
+            'had_offers' => collect($results)->contains(
+                fn (array $product) => ! empty($product['offers'])
+            ),
+            'meta' => null,
+        ]);
 
         // ── إحصائيات الموردين مجمعة حسب الخصم ─────────────────────────────
         $discountStats = [];

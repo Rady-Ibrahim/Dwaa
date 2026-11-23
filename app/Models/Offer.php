@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\SafeCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Cache;
 
 class Offer extends Model
 {
@@ -17,6 +17,7 @@ class Offer extends Model
         'discount',
         'bonus',
         'expires_at',
+        'is_active',
     ];
 
     protected static function booted(): void
@@ -27,11 +28,7 @@ class Offer extends Model
 
     private static function invalidatePlatformCache(): void
     {
-        try {
-            Cache::forget('platform_compare_products_cache_v3');
-        } catch (\Throwable) {
-            // Cache driver failure should never block Offer operations.
-        }
+        SafeCache::forget('platform_compare_products_cache_v3');
     }
 
     protected function casts(): array
@@ -40,6 +37,7 @@ class Offer extends Model
             'price' => 'decimal:2',
             'discount' => 'decimal:2',
             'expires_at' => 'datetime',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -60,9 +58,10 @@ class Offer extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where(function (Builder $query) {
-            $query->where('expires_at', '>', now())
-                ->orWhereNull('expires_at');
-        });
+        return $query->where('is_active', true)
+            ->where(function (Builder $query) {
+                $query->where('expires_at', '>', now())
+                    ->orWhereNull('expires_at');
+            });
     }
 }

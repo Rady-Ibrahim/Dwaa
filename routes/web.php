@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/activation-codes/{activationCode}', [DashboardActivationCodesController::class, 'update'])->name('dashboard.activation-codes.update');
 
         Route::get('/uploads', [DashboardController::class, 'uploads'])->name('dashboard.uploads');
+        Route::get('/uploads/status', [DashboardController::class, 'uploadsStatus'])->name('dashboard.uploads.status');
         Route::post('/uploads', [DashboardUploadsController::class, 'store'])->name('dashboard.uploads.store');
 
         Route::get('/analytics', DashboardAnalyticsController::class)->name('dashboard.analytics');

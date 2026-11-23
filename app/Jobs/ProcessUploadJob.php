@@ -10,12 +10,14 @@ use App\Services\NormalizerService;
 use App\Services\RankingService;
 use App\Services\SupplierOfferProductResolver;
 use App\Services\XlsxSanitizer;
+use App\Support\SafeCache;
+use App\Support\SearchCache;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Row as ExcelRow;
@@ -36,6 +38,10 @@ class ProcessUploadJob implements ShouldQueue
     public int $timeout = 300;
 
     private const HEADER_SCAN_ROW_LIMIT = 50;
+
+    private const OFFER_UPSERT_CHUNK = 500;
+
+    private const STALE_OFFER_CHUNK = 500;
 
     public function __construct(public Upload $upload) {}
 
@@ -69,11 +75,9 @@ class ProcessUploadJob implements ShouldQueue
             $sanitizer->cleanup($path);
         }
 
-        try {
-            Cache::forget('platform_compare_products_cache_v3');
-        } catch (Throwable) {
-            // Cache driver failure should never block the upload process.
-        }
+        SafeCache::forget('platform_compare_products_cache_v3');
+        SafeCache::forget("upload_compare_cache_v3_{$this->upload->id}");
+        SearchCache::invalidate();
 
         $rankingService->recalculateForSupplier($this->upload->supplier_id);
     }
@@ -92,11 +96,9 @@ class ProcessUploadJob implements ShouldQueue
         $detectedColumnMap = $detection['map'];
         $headerRowIndex = $detection['header_row'];
 
-        // حذف العروض القديمة فقط بعد التأكد من صلاحية الملف، مع الاحتفاظ بالمنتجات.
-        Offer::query()->where('supplier_id', $this->upload->supplier_id)->delete();
-
         $uploadId = $this->upload->id;
         $supplierId = $this->upload->supplier_id;
+        $offerBuffer = [];
 
         Excel::import(new SupplierOfferImport(function ($row) use (
             $resolver,
@@ -106,7 +108,8 @@ class ProcessUploadJob implements ShouldQueue
             $detectedColumnMap,
             $headerRowIndex,
             &$totalRows,
-            &$matched
+            &$matched,
+            &$offerBuffer
         ) {
             if ($headerRowIndex !== null && $row->getDelegate()->getRowIndex() === $headerRowIndex) {
                 return;
@@ -132,21 +135,64 @@ class ProcessUploadJob implements ShouldQueue
             $normalized = $normalizer->normalize($rawName);
             $product = $resolver->resolve($normalized, $rawName, $supplierId);
 
-            Offer::query()->updateOrCreate(
-                [
-                    'supplier_id' => $supplierId,
-                    'product_id' => $product->id,
-                ],
-                [
-                    'upload_id' => $uploadId,
-                    'price' => $price,
-                    'discount' => $discount,
-                    'bonus' => $bonus !== '' ? $bonus : null,
-                    'expires_at' => now()->addDays(7),
-                ]
-            );
+            $now = now();
+
+            $offerBuffer[] = [
+                'supplier_id' => $supplierId,
+                'product_id' => $product->id,
+                'upload_id' => $uploadId,
+                'price' => $price,
+                'discount' => $discount,
+                'bonus' => $bonus !== '' ? $bonus : null,
+                'expires_at' => $now->copy()->addDays(7),
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
             $matched++;
+
+            if (count($offerBuffer) >= self::OFFER_UPSERT_CHUNK) {
+                $this->flushOffers($offerBuffer);
+            }
         }), $path);
+
+        $this->flushOffers($offerBuffer);
+        $this->deactivateStaleOffers($supplierId, $uploadId);
+    }
+
+    private function flushOffers(array &$buffer): void
+    {
+        if ($buffer === []) {
+            return;
+        }
+
+        Offer::query()->upsert(
+            $buffer,
+            ['supplier_id', 'product_id'],
+            ['upload_id', 'price', 'discount', 'bonus', 'expires_at', 'is_active', 'updated_at']
+        );
+
+        $buffer = [];
+    }
+
+    private function deactivateStaleOffers(int $supplierId, int $uploadId): void
+    {
+        Offer::query()
+            ->where('supplier_id', $supplierId)
+            ->where('is_active', true)
+            ->where(function ($query) use ($uploadId) {
+                $query->whereNull('upload_id')
+                    ->orWhere('upload_id', '!=', $uploadId);
+            })
+            ->chunkById(self::STALE_OFFER_CHUNK, function ($offers) {
+                Offer::query()
+                    ->whereKey($offers->modelKeys())
+                    ->update([
+                        'is_active' => false,
+                        'updated_at' => now(),
+                    ]);
+            });
     }
 
     /**
@@ -314,8 +360,16 @@ class ProcessUploadJob implements ShouldQueue
     {
         // رسائل الأخطاء قد تحوي بايتات UTF-8 غير صالحة (من أسماء/بيانات الملفات) ترفضها قاعدة البيانات.
         $message = $exception?->getMessage() ?? 'خطأ غير معروف أثناء معالجة الملف.';
+
+        if ($exception instanceof QueryException) {
+            report($exception);
+            $message = 'حدث خطأ في قاعدة البيانات أثناء معالجة الملف. راجع سجلات النظام.';
+        }
+
         $message = trim(mb_convert_encoding($message, 'UTF-8', 'UTF-8'));
         $message = mb_substr($message !== '' ? $message : 'خطأ غير معروف أثناء معالجة الملف.', 0, 1000);
+
+        SafeCache::forget("upload_compare_cache_v3_{$this->upload->id}");
 
         try {
             $this->upload->update([

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserDevice;
 use App\Support\PersonalAccessTokenSchema;
+use App\Support\SafeCache;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -154,11 +154,7 @@ class AuthController extends Controller
 
             $newAccessToken = $user->createToken($deviceName);
 
-            if (PersonalAccessTokenSchema::hasDeviceLink()) {
-                $newAccessToken->accessToken->forceFill([
-                    'user_device_id' => $existingDevice->id,
-                ])->save();
-            }
+            PersonalAccessTokenSchema::linkToken($newAccessToken->accessToken, (int) $existingDevice->id);
 
             return [$existingDevice, $newAccessToken, $isNewDevice];
         });
@@ -246,7 +242,7 @@ class AuthController extends Controller
 
             // A concurrent tab may have already rotated this token. Return
             // the same replacement instead of issuing another one.
-            $cached = Cache::get($cacheKey);
+            $cached = SafeCache::get($cacheKey);
 
             if (is_array($cached) && isset($cached['token']) && is_string($cached['token'])) {
                 try {
@@ -255,17 +251,16 @@ class AuthController extends Controller
                         'id' => $cached['id'] ?? $locked->id,
                     ];
                 } catch (\Throwable) {
-                    Cache::forget($cacheKey);
+                    SafeCache::forget($cacheKey);
                 }
             }
 
             $newAccessToken = $user->createToken($name, $abilities);
 
-            if (PersonalAccessTokenSchema::hasDeviceLink()) {
-                $newAccessToken->accessToken->forceFill([
-                    'user_device_id' => $locked->user_device_id,
-                ])->save();
-            }
+            PersonalAccessTokenSchema::linkToken(
+                $newAccessToken->accessToken,
+                $locked->user_device_id === null ? null : (int) $locked->user_device_id
+            );
 
             // Keep the previous token valid briefly so in-flight requests
             // using it are not rejected mid-rotation.
@@ -276,7 +271,7 @@ class AuthController extends Controller
                 'id' => $newAccessToken->accessToken->id,
             ];
 
-            Cache::put($cacheKey, [
+            SafeCache::put($cacheKey, [
                 'token' => Crypt::encryptString($result['token']),
                 'id' => $result['id'],
             ], now()->addMinutes(2));

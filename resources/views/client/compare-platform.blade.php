@@ -21,7 +21,7 @@
             gap: 1rem;
             padding: 0.65rem 0.9rem 0.8rem;
             border-radius: 14px;
-            background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);
+            background: linear-gradient(90deg, #7b0e23, #b91233, #7b0e23);
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
         }
@@ -41,8 +41,8 @@
             border-radius: 10px;
             display: grid;
             place-items: center;
-            background: rgba(37, 99, 235, 0.08);
-            border: 1px solid rgba(59, 130, 246, 0.26);
+            background: rgba(239, 35, 60, 0.08);
+            border: 1px solid rgba(239, 35, 60, 0.26);
             color: var(--accent-soft);
         }
 
@@ -57,7 +57,7 @@
         .platform-topbar .meta .pill {
             padding: 0.5rem 0.9rem;
             border-radius: 999px;
-            border: 1px solid rgba(59, 130, 246, 0.30);
+            border: 1px solid rgba(239, 35, 60, 0.30);
             background: rgba(22, 22, 22, 0.8);
         }
 
@@ -73,7 +73,7 @@
             gap: 0.5rem;
             padding: 0.7rem 1.1rem;
             border-radius: 12px;
-            border: 1px solid rgba(59, 130, 246, 0.28);
+            border: 1px solid rgba(239, 35, 60, 0.28);
             background: rgba(18, 18, 18, 0.7);
             color: var(--text-soft);
             font-weight: 700;
@@ -83,12 +83,12 @@
         }
 
         .mode-btn:hover {
-            border-color: rgba(96, 165, 250, 0.6);
+            border-color: rgba(255, 105, 120, 0.6);
         }
 
         .mode-btn.active {
-            background: linear-gradient(135deg, rgba(30, 64, 175, 0.9), rgba(37, 99, 235, 0.8));
-            border-color: rgba(96, 165, 250, 0.9);
+            background: linear-gradient(135deg, rgba(239, 35, 60, 0.24), rgba(239, 35, 60, 0.08));
+            border-color: rgba(239, 35, 60, 0.7);
             color: #fff;
         }
 
@@ -101,7 +101,7 @@
         .compare-panel {
             position: relative;
             background: linear-gradient(180deg, rgba(18, 18, 18, 0.78), rgba(12, 12, 12, 0.72));
-            border: 1px solid rgba(59, 130, 246, 0.34);
+            border: 1px solid rgba(239, 35, 60, 0.34);
             border-radius: 20px;
             min-height: 270px;
             padding: 1.5rem 1.4rem;
@@ -120,8 +120,8 @@
             width: 52px;
             height: 52px;
             border-radius: 16px;
-            background: rgba(37, 99, 235, 0.08);
-            border: 1px solid rgba(59, 130, 246, 0.25);
+            background: rgba(239, 35, 60, 0.08);
+            border: 1px solid rgba(239, 35, 60, 0.25);
             display: grid;
             place-items: center;
             font-size: 1.7rem;
@@ -159,8 +159,8 @@
             min-width: 150px;
             padding: 0.8rem 1.1rem;
             border-radius: 14px;
-            border: 1px solid rgba(59, 130, 246, 0.28);
-            background: rgba(37, 99, 235, 0.06);
+            border: 1px solid rgba(239, 35, 60, 0.28);
+            background: rgba(239, 35, 60, 0.06);
             color: var(--text-soft2);
             font-weight: 700;
             cursor: pointer;
@@ -168,8 +168,8 @@
         }
 
         .compare-panel .file-input-label:hover {
-            border-color: rgba(96, 165, 250, 0.6);
-            background: rgba(37, 99, 235, 0.10);
+            border-color: rgba(255, 105, 120, 0.6);
+            background: rgba(239, 35, 60, 0.10);
         }
 
         .compare-panel .file-name {
@@ -184,7 +184,7 @@
             max-width: 260px;
             padding: 0.75rem 1rem;
             border-radius: 12px;
-            border: 1px solid rgba(59, 130, 246, 0.18);
+            border: 1px solid rgba(239, 35, 60, 0.18);
             background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             font-weight: 600;
@@ -195,8 +195,8 @@
         }
 
         .platform-select:focus {
-            border-color: rgba(59, 130, 246, 0.42);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+            border-color: rgba(239, 35, 60, 0.42);
+            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
         }
 
         .platform-select option {
@@ -211,7 +211,7 @@
             margin-bottom: 0.5rem;
             padding: 0 0.85rem;
             border-radius: 10px;
-            border: 1px solid rgba(59, 130, 246, 0.18);
+            border: 1px solid rgba(239, 35, 60, 0.18);
             background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             font-size: 0.82rem;
@@ -220,8 +220,8 @@
         }
 
         .platform-file-search:focus {
-            border-color: rgba(59, 130, 246, 0.42);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+            border-color: rgba(239, 35, 60, 0.42);
+            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
         }
 
         .platform-file-search::placeholder {
@@ -241,12 +241,12 @@
             border-radius: 999px;
             display: grid;
             place-items: center;
-            background: linear-gradient(135deg, rgba(30, 64, 175, 0.92), rgba(59, 130, 246, 0.8));
-            border: 2px solid rgba(96, 165, 250, 0.75);
-            color: #fff;
+            background: linear-gradient(135deg, rgba(239, 35, 60, 0.20), rgba(239, 35, 60, 0.08));
+            border: 2px solid rgba(239, 35, 60, 0.45);
+            color: var(--text-soft2);
             font-size: 2.4rem;
             font-weight: 900;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 0 20px rgba(239, 35, 60, 0.15);
         }
 
         .main-action {
@@ -260,11 +260,11 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 1rem 1.3rem;
             border-radius: 14px;
-            background: linear-gradient(90deg, #0f172a, #1d4ed8, #0f172a);
+            background: linear-gradient(90deg, #7b0e23, #b91233, #7b0e23);
             color: #fff;
             font-weight: 800;
             font-size: 1rem;
-            box-shadow: 0 16px 24px rgba(37, 99, 235, 0.35);
+            box-shadow: 0 16px 24px rgba(120, 16, 35, 0.28);
             transition: transform 0.2s ease, filter 0.2s ease;
         }
 
@@ -287,7 +287,7 @@
 
         .mini-stat {
             background: rgba(18, 18, 18, 0.75);
-            border: 1px solid rgba(59, 130, 246, 0.22);
+            border: 1px solid rgba(239, 35, 60, 0.22);
             border-radius: 16px;
             padding: 1rem 1rem;
             min-height: 110px;
@@ -334,7 +334,7 @@
 
         .compare-results {
             background: rgba(18, 18, 18, 0.75);
-            border: 1px solid rgba(59, 130, 246, 0.22);
+            border: 1px solid rgba(239, 35, 60, 0.22);
             border-radius: 18px;
             overflow: hidden;
             margin-top: 0.3rem;
@@ -346,13 +346,13 @@
             justify-content: space-between;
             gap: 1rem;
             padding: 1rem 1.2rem;
-            border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+            border-bottom: 1px solid rgba(239, 35, 60, 0.15);
         }
 
         .results-header input {
             width: min(320px, 100%);
             height: 44px;
-            border: 1px solid rgba(59, 130, 246, 0.18);
+            border: 1px solid rgba(239, 35, 60, 0.18);
             background: rgba(15, 15, 15, 0.82);
             color: var(--text-soft2);
             border-radius: 12px;
@@ -361,26 +361,22 @@
         }
 
         .results-header input:focus {
-            border-color: rgba(59, 130, 246, 0.42);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+            border-color: rgba(239, 35, 60, 0.42);
+            box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.08);
         }
 
         .save-btn {
             padding: 0.75rem 1rem;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            background: linear-gradient(90deg, #1d4ed8, #2563eb, #1d4ed8);
+            background: linear-gradient(90deg, #7b0e23, #b91233, #7b0e23);
             color: #fff;
             font-weight: 700;
-            box-shadow: 0 12px 22px rgba(37, 99, 235, 0.25);
+            box-shadow: 0 12px 22px rgba(120, 16, 35, 0.24);
         }
 
         .save-btn[hidden] {
             display: none;
-        }
-
-        .export-btn {
-            background: linear-gradient(90deg, #059669, #10b981, #059669) !important;
         }
 
         table.platform-table {
@@ -404,7 +400,7 @@
         }
 
         table.platform-table tbody tr:hover {
-            background: rgba(59, 130, 246, 0.03);
+            background: rgba(239, 35, 60, 0.02);
         }
 
         .status-up {
@@ -567,10 +563,7 @@
         <div class="compare-results">
             <div class="results-header">
                 <input id="platformCompareSearch" type="text" placeholder="بحث داخل النتائج..." />
-                <div style="display:flex;gap:0.6rem;">
-                    <button type="button" id="exportPlatformCompareBtn" class="save-btn export-btn" hidden>📥 تصدير Excel</button>
-                    <button type="button" id="savePlatformComparisonBtn" class="save-btn" hidden>💾 حفظ المقارنة</button>
-                </div>
+                <button type="button" id="savePlatformComparisonBtn" class="save-btn" hidden>💾 حفظ المقارنة</button>
             </div>
 
             <div class="overflow-x-auto">
@@ -661,7 +654,6 @@
         const pager = document.getElementById('platformComparePager');
         const searchInput = document.getElementById('platformCompareSearch');
         const saveBtn = document.getElementById('savePlatformComparisonBtn');
-        const exportBtn = document.getElementById('exportPlatformCompareBtn');
 
         const panelAFileWrap = document.getElementById('panelAFileWrap');
         const panelAUploadWrap = document.getElementById('panelAUploadWrap');
@@ -700,7 +692,6 @@
         });
         searchInput.addEventListener('input', () => applyFilter(1));
         saveBtn.addEventListener('click', savePlatformComparison);
-        exportBtn.addEventListener('click', exportPlatformCompare);
         runBtn.addEventListener('click', runCompare);
 
         uploadSelectA.addEventListener('change', (e) => {
@@ -712,26 +703,25 @@
             uploadSelectB.nextElementSibling.textContent = selectedUploadB ? getUploadLabel(selectedUploadB) : '';
         });
 
+        function renderUploadOptions(select, inputId) {
+            const input = document.getElementById(inputId);
+            const q = (input?.value || '').trim().toLowerCase();
+            const prevValue = select.value;
+            const list = q ?
+                platformUploads.filter((u) => uploadLabel(u).toLowerCase().includes(q)) :
+                platformUploads;
+            select.innerHTML = '<option value="">اختر ملف...</option>' + list.map((u) =>
+                `<option value="${u.id}">${escapeHtml(uploadLabel(u))}</option>`
+            ).join('');
+            const nextValue = prevValue && list.some((u) => String(u.id) === String(prevValue)) ? prevValue : '';
+            select.value = nextValue;
+            if (nextValue !== prevValue) select.dispatchEvent(new Event('change'));
+        }
+
         function bindUploadSearch(inputId, select) {
             const input = document.getElementById(inputId);
             if (!input) return;
-            input.addEventListener('input', () => {
-                if (!platformUploads.length) return;
-                const q = input.value.trim().toLowerCase();
-                const prevValue = select.value;
-                const filtered = q ?
-                    platformUploads.filter((u) => uploadLabel(u).toLowerCase().includes(q)) :
-                    platformUploads;
-                select.innerHTML = '<option value="">اختر ملف...</option>' + filtered.map((u) =>
-                    `<option value="${u.id}">${escapeHtml(uploadLabel(u))}</option>`
-                ).join('');
-                if (prevValue && filtered.some((u) => String(u.id) === String(prevValue))) {
-                    select.value = prevValue;
-                } else {
-                    select.value = '';
-                    select.dispatchEvent(new Event('change'));
-                }
-            });
+            input.addEventListener('input', () => renderUploadOptions(select, inputId));
         }
         bindUploadSearch('platformUploadASearch', uploadSelectA);
         bindUploadSearch('platformUploadBSearch', uploadSelectB);
@@ -788,8 +778,7 @@
             filtered = [];
             latestComparisonData = null;
             applyFilter(1);
-            saveBtn.setAttribute('hidden', '');
-            exportBtn.setAttribute('hidden', '');
+            saveBtn.classList.add('hidden');
             saveBtn.disabled = false;
             saveBtn.textContent = '💾 حفظ المقارنة';
         }
@@ -798,21 +787,47 @@
             try {
                 const res = await axios.get('/compare-platform-uploads');
                 platformUploads = res.data?.uploads || [];
-                const optionsHtml = '<option value="">اختر ملف...</option>' + platformUploads.map((u) =>
-                    `<option value="${u.id}">${escapeHtml(uploadLabel(u))}</option>`
-                ).join('');
-                uploadSelectA.innerHTML = optionsHtml;
-                uploadSelectB.innerHTML = optionsHtml;
                 selectedUploadA = null;
                 selectedUploadB = null;
+                uploadSelectA.value = '';
+                uploadSelectB.value = '';
                 uploadSelectA.nextElementSibling.textContent = '';
                 uploadSelectB.nextElementSibling.textContent = '';
                 ['platformUploadASearch', 'platformUploadBSearch'].forEach((id) => {
                     const el = document.getElementById(id);
                     if (el) el.value = '';
                 });
+                renderUploadOptions(uploadSelectA, 'platformUploadASearch');
+                renderUploadOptions(uploadSelectB, 'platformUploadBSearch');
             } catch (err) {
                 console.error('[compare-platform] failed to load uploads', err);
+            }
+        }
+
+        function uploadState(u) {
+            return `${u.status}:${u.matched_count}`;
+        }
+
+        async function refreshPlatformUploads() {
+            if (document.hidden) return;
+            try {
+                const res = await axios.get('/compare-platform-uploads');
+                const next = res.data?.uploads || [];
+                const previous = new Map(platformUploads.map((u) => [String(u.id), u]));
+                const selectedChanged = [selectedUploadA, selectedUploadB].some((id) => {
+                    const before = previous.get(String(id));
+                    const after = next.find((u) => String(u.id) === String(id));
+                    return before && after && uploadState(before) !== uploadState(after);
+                });
+
+                platformUploads = next;
+                renderUploadOptions(uploadSelectA, 'platformUploadASearch');
+                renderUploadOptions(uploadSelectB, 'platformUploadBSearch');
+
+                const canRerun = currentMode === MODE.UPLOADS || !!fileInput.files?.[0];
+                if (selectedChanged && latestComparisonData && canRerun) runCompare();
+            } catch (err) {
+                console.error('[compare-platform] uploads refresh failed', err);
             }
         }
 
@@ -881,16 +896,14 @@
                     timestamp: new Date().toISOString(),
                 };
                 applyFilter(1);
-                saveBtn.removeAttribute('hidden');
-                exportBtn.removeAttribute('hidden');
+                saveBtn.classList.remove('hidden');
                 clientNotify('تمت المقارنة بنجاح', 'success');
             } catch (error) {
                 const msg = error.response?.data?.message || 'فشل تنفيذ المقارنة.';
                 table.innerHTML =
                     `<tr><td colspan="9" class="p-8 text-center text-rose-400">${escapeHtml(msg)}</td></tr>`;
                 clientNotify(msg, 'error');
-                saveBtn.setAttribute('hidden', '');
-                exportBtn.setAttribute('hidden', '');
+                saveBtn.classList.add('hidden');
             } finally {
                 runBtn.disabled = false;
             }
@@ -928,75 +941,12 @@
             }
         }
 
-        function exportPlatformCompare() {
-            const fd = new FormData();
-            fd.append('mode', currentMode);
-
-            if (currentMode === MODE.PLATFORM) {
-                const file = fileInput.files?.[0];
-                if (!file) {
-                    clientNotify('اختر ملف أولاً', 'warning');
-                    return;
-                }
-                fd.append('file', file);
-            } else if (currentMode === MODE.UPLOAD) {
-                const file = fileInput.files?.[0];
-                if (!file) {
-                    clientNotify('اختر ملف أولاً', 'warning');
-                    return;
-                }
-                if (!selectedUploadB) {
-                    clientNotify('اختر ملفاً من المنصة للمقارنة معه', 'warning');
-                    return;
-                }
-                fd.append('file', file);
-                fd.append('upload_id', selectedUploadB);
-            } else {
-                if (!selectedUploadA || !selectedUploadB) {
-                    clientNotify('اختر ملفين من المنصة أولاً', 'warning');
-                    return;
-                }
-                fd.append('upload_id_a', selectedUploadA);
-                fd.append('upload_id_b', selectedUploadB);
-            }
-
-            const modeLabels = {
-                [MODE.PLATFORM]: 'vs_platform',
-                [MODE.UPLOAD]: 'vs_upload',
-                [MODE.UPLOADS]: 'uploads',
-            };
-            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const filename = `Med_RANKO_Compare_${modeLabels[currentMode]}_${ts}.xlsx`;
-
-            clientNotify('جاري تصدير الملف...', 'info');
-
-            axios.post('/compare-platform-export', fd, { responseType: 'blob' })
-                .then((res) => {
-                    const blob = new Blob([res.data], {
-                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                    clientNotify('تم التصدير بنجاح', 'success');
-                })
-                .catch((error) => {
-                    const msg = error.response?.data?.message || 'فشل تصدير الملف.';
-                    clientNotify(msg, 'error');
-                });
-        }
-
         function applyFilter(nextPage) {
             page = nextPage;
             const q = (searchInput.value || '').trim().toLowerCase();
             filtered = rows.filter((r) => {
                 if (!q) return true;
-                const hay = `${r.query || ''} ${r.matched_product || ''} ${r.platform_best?.supplier || ''}`
+                const hay = `${r.sheet?.name || ''} ${r.matched_product || ''} ${r.platform_best?.supplier || ''}`
                     .toLowerCase();
                 return hay.includes(q);
             });
@@ -1020,23 +970,15 @@
             const view = filtered.slice(start, start + pageSize);
 
             table.innerHTML = view.map((line) => {
+                const sheet = line.sheet || {};
                 const best = line.platform_best || {};
+                const cmp = line.comparison || {};
                 const status = line.status || 'both';
                 const onlyA = status === 'only_a';
                 const onlyB = status === 'only_b';
 
-                const sheetPrice = line.price;
-                const sheetDiscount = line.discount;
-                const platformPrice = best.price;
-                const platformDiscount = best.discount;
-
-                const priceDiff = (onlyA || onlyB || sheetPrice == null || platformPrice == null) ?
-                    null :
-                    Math.round((sheetPrice - platformPrice) * 100) / 100;
-                const discountDiff = (onlyA || onlyB || sheetDiscount == null || platformDiscount == null) ?
-                    null :
-                    Math.round((sheetDiscount - platformDiscount) * 100) / 100;
-
+                const priceDiff = onlyA || onlyB ? null : cmp.price_diff;
+                const discountDiff = onlyA || onlyB ? null : cmp.discount_diff;
                 const priceCls = priceDiff === null ? 'text-slate-400' : (priceDiff > 0 ? 'text-rose-400' : (
                     priceDiff < 0 ? 'text-emerald-400' : 'text-slate-200'));
                 const discountCls = discountDiff === null ? 'text-slate-400' : (discountDiff > 0 ?
@@ -1049,13 +991,13 @@
 
                 return `
                     <tr class="border-b border-white/5">
-                        <td class="p-3 font-semibold text-white">${onlyB ? '<span class="text-slate-500">—</span>' : escapeHtml(line.query ?? '-')}</td>
-                        <td class="p-3">${onlyB ? '-' : formatNum(sheetPrice)}</td>
-                        <td class="p-3">${onlyB ? '-' : formatNum(sheetDiscount)}</td>
+                        <td class="p-3 font-semibold text-white">${onlyB ? '<span class="text-slate-500">—</span>' : escapeHtml(sheet.name ?? '-')}</td>
+                        <td class="p-3">${onlyB ? '-' : formatNum(sheet.price)}</td>
+                        <td class="p-3">${onlyB ? '-' : formatNum(sheet.discount)}</td>
                         <td class="p-3">${matchCell}</td>
                         <td class="p-3">${onlyA ? '-' : escapeHtml(best.supplier ?? '-')}</td>
-                        <td class="p-3">${onlyA ? '-' : formatNum(platformPrice)}</td>
-                        <td class="p-3">${onlyA ? '-' : formatNum(platformDiscount)}</td>
+                        <td class="p-3">${onlyA ? '-' : formatNum(best.price)}</td>
+                        <td class="p-3">${onlyA ? '-' : formatNum(best.discount)}</td>
                         <td class="p-3 ${priceCls}">${formatNum(priceDiff)}</td>
                         <td class="p-3 ${discountCls}">${formatNum(discountDiff)}</td>
                     </tr>
@@ -1077,15 +1019,12 @@
             const withBoth = filtered.filter((l) => l.status === 'both').length;
             const onlyA = filtered.filter((l) => l.status === 'only_a').length;
             const onlyB = filtered.filter((l) => l.status === 'only_b').length;
-            const diffs = filtered.filter((l) => {
-                if (l.status !== 'both') return false;
-                const sp = l.price;
-                const pp = l.platform_best?.price;
-                return sp != null && pp != null && Math.round((sp - pp) * 100) / 100 !== 0;
-            }).length;
+            const diffs = filtered
+                .map((l) => l.comparison?.price_diff)
+                .filter((v) => v !== null && v !== undefined && typeof v === 'number');
             statFromValue.textContent = `${withBoth + onlyA} / ${filtered.length}`;
             statToValue.textContent = `${withBoth + onlyB}`;
-            statDiffValue.textContent = diffs ? `${diffs} صنف بفرق` : '0';
+            statDiffValue.textContent = diffs.length ? `${diffs.length} صنف بفرق` : '0';
             statStatusValue.textContent = onlyA || onlyB ? 'يوجد فوارق' : 'اكتملت';
         }
 
@@ -1110,6 +1049,9 @@
                 .replace(/'/g, '&#39;');
         }
 
-        document.addEventListener('DOMContentLoaded', loadPlatformUploads);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPlatformUploads();
+            setInterval(refreshPlatformUploads, 5000);
+        });
     </script>
 @endpush

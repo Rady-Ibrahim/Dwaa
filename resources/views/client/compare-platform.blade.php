@@ -379,6 +379,10 @@
             display: none;
         }
 
+        .export-btn {
+            background: linear-gradient(90deg, #059669, #10b981, #059669) !important;
+        }
+
         table.platform-table {
             width: 100%;
             border-collapse: collapse;
@@ -563,7 +567,10 @@
         <div class="compare-results">
             <div class="results-header">
                 <input id="platformCompareSearch" type="text" placeholder="بحث داخل النتائج..." />
-                <button type="button" id="savePlatformComparisonBtn" class="save-btn" hidden>💾 حفظ المقارنة</button>
+                <div style="display:flex;gap:0.6rem;">
+                    <button type="button" id="exportPlatformCompareBtn" class="save-btn export-btn" hidden>📥 تصدير Excel</button>
+                    <button type="button" id="savePlatformComparisonBtn" class="save-btn" hidden>💾 حفظ المقارنة</button>
+                </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -654,6 +661,7 @@
         const pager = document.getElementById('platformComparePager');
         const searchInput = document.getElementById('platformCompareSearch');
         const saveBtn = document.getElementById('savePlatformComparisonBtn');
+        const exportBtn = document.getElementById('exportPlatformCompareBtn');
 
         const panelAFileWrap = document.getElementById('panelAFileWrap');
         const panelAUploadWrap = document.getElementById('panelAUploadWrap');
@@ -692,6 +700,7 @@
         });
         searchInput.addEventListener('input', () => applyFilter(1));
         saveBtn.addEventListener('click', savePlatformComparison);
+        exportBtn.addEventListener('click', exportPlatformCompare);
         runBtn.addEventListener('click', runCompare);
 
         uploadSelectA.addEventListener('change', (e) => {
@@ -778,7 +787,8 @@
             filtered = [];
             latestComparisonData = null;
             applyFilter(1);
-            saveBtn.classList.add('hidden');
+            saveBtn.setAttribute('hidden', '');
+            exportBtn.setAttribute('hidden', '');
             saveBtn.disabled = false;
             saveBtn.textContent = '💾 حفظ المقارنة';
         }
@@ -896,14 +906,16 @@
                     timestamp: new Date().toISOString(),
                 };
                 applyFilter(1);
-                saveBtn.classList.remove('hidden');
+                saveBtn.removeAttribute('hidden');
+                exportBtn.removeAttribute('hidden');
                 clientNotify('تمت المقارنة بنجاح', 'success');
             } catch (error) {
                 const msg = error.response?.data?.message || 'فشل تنفيذ المقارنة.';
                 table.innerHTML =
                     `<tr><td colspan="9" class="p-8 text-center text-rose-400">${escapeHtml(msg)}</td></tr>`;
                 clientNotify(msg, 'error');
-                saveBtn.classList.add('hidden');
+                saveBtn.setAttribute('hidden', '');
+                exportBtn.setAttribute('hidden', '');
             } finally {
                 runBtn.disabled = false;
             }
@@ -941,12 +953,75 @@
             }
         }
 
+        function exportPlatformCompare() {
+            const fd = new FormData();
+            fd.append('mode', currentMode);
+
+            if (currentMode === MODE.PLATFORM) {
+                const file = fileInput.files?.[0];
+                if (!file) {
+                    clientNotify('اختر ملف أولاً', 'warning');
+                    return;
+                }
+                fd.append('file', file);
+            } else if (currentMode === MODE.UPLOAD) {
+                const file = fileInput.files?.[0];
+                if (!file) {
+                    clientNotify('اختر ملف أولاً', 'warning');
+                    return;
+                }
+                if (!selectedUploadB) {
+                    clientNotify('اختر ملفاً من المنصة للمقارنة معه', 'warning');
+                    return;
+                }
+                fd.append('file', file);
+                fd.append('upload_id', selectedUploadB);
+            } else {
+                if (!selectedUploadA || !selectedUploadB) {
+                    clientNotify('اختر ملفين من المنصة أولاً', 'warning');
+                    return;
+                }
+                fd.append('upload_id_a', selectedUploadA);
+                fd.append('upload_id_b', selectedUploadB);
+            }
+
+            const modeLabels = {
+                [MODE.PLATFORM]: 'vs_platform',
+                [MODE.UPLOAD]: 'vs_upload',
+                [MODE.UPLOADS]: 'uploads',
+            };
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const filename = `Med_RANKO_Compare_${modeLabels[currentMode]}_${ts}.xlsx`;
+
+            clientNotify('جاري تصدير الملف...', 'info');
+
+            axios.post('/compare-platform-export', fd, { responseType: 'blob' })
+                .then((res) => {
+                    const blob = new Blob([res.data], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    clientNotify('تم التصدير بنجاح', 'success');
+                })
+                .catch((error) => {
+                    const msg = error.response?.data?.message || 'فشل تصدير الملف.';
+                    clientNotify(msg, 'error');
+                });
+        }
+
         function applyFilter(nextPage) {
             page = nextPage;
             const q = (searchInput.value || '').trim().toLowerCase();
             filtered = rows.filter((r) => {
                 if (!q) return true;
-                const hay = `${r.sheet?.name || ''} ${r.matched_product || ''} ${r.platform_best?.supplier || ''}`
+                const hay = `${r.query || ''} ${r.matched_product || ''} ${r.platform_best?.supplier || ''}`
                     .toLowerCase();
                 return hay.includes(q);
             });
@@ -970,15 +1045,23 @@
             const view = filtered.slice(start, start + pageSize);
 
             table.innerHTML = view.map((line) => {
-                const sheet = line.sheet || {};
                 const best = line.platform_best || {};
-                const cmp = line.comparison || {};
                 const status = line.status || 'both';
                 const onlyA = status === 'only_a';
                 const onlyB = status === 'only_b';
 
-                const priceDiff = onlyA || onlyB ? null : cmp.price_diff;
-                const discountDiff = onlyA || onlyB ? null : cmp.discount_diff;
+                const sheetPrice = line.price;
+                const sheetDiscount = line.discount;
+                const platformPrice = best.price;
+                const platformDiscount = best.discount;
+
+                const priceDiff = (onlyA || onlyB || sheetPrice == null || platformPrice == null) ?
+                    null :
+                    Math.round((sheetPrice - platformPrice) * 100) / 100;
+                const discountDiff = (onlyA || onlyB || sheetDiscount == null || platformDiscount == null) ?
+                    null :
+                    Math.round((sheetDiscount - platformDiscount) * 100) / 100;
+
                 const priceCls = priceDiff === null ? 'text-slate-400' : (priceDiff > 0 ? 'text-rose-400' : (
                     priceDiff < 0 ? 'text-emerald-400' : 'text-slate-200'));
                 const discountCls = discountDiff === null ? 'text-slate-400' : (discountDiff > 0 ?
@@ -991,13 +1074,13 @@
 
                 return `
                     <tr class="border-b border-white/5">
-                        <td class="p-3 font-semibold text-white">${onlyB ? '<span class="text-slate-500">—</span>' : escapeHtml(sheet.name ?? '-')}</td>
-                        <td class="p-3">${onlyB ? '-' : formatNum(sheet.price)}</td>
-                        <td class="p-3">${onlyB ? '-' : formatNum(sheet.discount)}</td>
+                        <td class="p-3 font-semibold text-white">${onlyB ? '<span class="text-slate-500">—</span>' : escapeHtml(line.query ?? '-')}</td>
+                        <td class="p-3">${onlyB ? '-' : formatNum(sheetPrice)}</td>
+                        <td class="p-3">${onlyB ? '-' : formatNum(sheetDiscount)}</td>
                         <td class="p-3">${matchCell}</td>
                         <td class="p-3">${onlyA ? '-' : escapeHtml(best.supplier ?? '-')}</td>
-                        <td class="p-3">${onlyA ? '-' : formatNum(best.price)}</td>
-                        <td class="p-3">${onlyA ? '-' : formatNum(best.discount)}</td>
+                        <td class="p-3">${onlyA ? '-' : formatNum(platformPrice)}</td>
+                        <td class="p-3">${onlyA ? '-' : formatNum(platformDiscount)}</td>
                         <td class="p-3 ${priceCls}">${formatNum(priceDiff)}</td>
                         <td class="p-3 ${discountCls}">${formatNum(discountDiff)}</td>
                     </tr>
@@ -1019,12 +1102,15 @@
             const withBoth = filtered.filter((l) => l.status === 'both').length;
             const onlyA = filtered.filter((l) => l.status === 'only_a').length;
             const onlyB = filtered.filter((l) => l.status === 'only_b').length;
-            const diffs = filtered
-                .map((l) => l.comparison?.price_diff)
-                .filter((v) => v !== null && v !== undefined && typeof v === 'number');
+            const diffs = filtered.filter((l) => {
+                if (l.status !== 'both') return false;
+                const sp = l.price;
+                const pp = l.platform_best?.price;
+                return sp != null && pp != null && Math.round((sp - pp) * 100) / 100 !== 0;
+            }).length;
             statFromValue.textContent = `${withBoth + onlyA} / ${filtered.length}`;
             statToValue.textContent = `${withBoth + onlyB}`;
-            statDiffValue.textContent = diffs.length ? `${diffs.length} صنف بفرق` : '0';
+            statDiffValue.textContent = diffs ? `${diffs} صنف بفرق` : '0';
             statStatusValue.textContent = onlyA || onlyB ? 'يوجد فوارق' : 'اكتملت';
         }
 
